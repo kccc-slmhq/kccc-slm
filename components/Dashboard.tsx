@@ -1,14 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
+import { useMemo } from "react";
+import { ResponsiveContainer, Tooltip, Treemap } from "recharts";
 import type { Group } from "@/lib/types";
 
 const DISTRICT_COLORS = [
@@ -24,8 +17,6 @@ export default function Dashboard({
   groups: Group[];
   error?: string;
 }) {
-  const [campusFilter, setCampusFilter] = useState("");
-
   const totalMembers = useMemo(
     () => groups.reduce((sum, g) => sum + g.members, 0),
     [groups]
@@ -46,17 +37,10 @@ export default function Dashboard({
     return Array.from(map.values()).sort((a, b) => b.members - a.members);
   }, [groups]);
 
-  const filteredCampuses = useMemo(() => {
-    const f = campusFilter.trim().toLowerCase();
-    return groups
-      .filter(
-        (g) =>
-          !f ||
-          g.district.toLowerCase().includes(f) ||
-          g.campus.toLowerCase().includes(f)
-      )
-      .sort((a, b) => b.members - a.members);
-  }, [groups, campusFilter]);
+  const sortedCampuses = useMemo(
+    () => [...groups].sort((a, b) => b.members - a.members),
+    [groups]
+  );
 
   if (error) {
     return (
@@ -94,27 +78,26 @@ export default function Dashboard({
         <Panel title="지구별 참여 인원">
           <div className="h-[420px]">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={districts}
-                  dataKey="members"
-                  nameKey="district"
-                  innerRadius="55%"
-                  outerRadius="80%"
-                  paddingAngle={1}
-                >
-                  {districts.map((d, i) => (
-                    <Cell key={d.district} fill={DISTRICT_COLORS[i % DISTRICT_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend
-                  layout="vertical"
-                  verticalAlign="middle"
-                  align="right"
-                  wrapperStyle={{ fontSize: 11, maxHeight: 400, overflowY: "auto" }}
+              <Treemap
+                data={districts}
+                dataKey="members"
+                nameKey="district"
+                stroke="#fff"
+                isAnimationActive={false}
+                content={<TreemapCell />}
+              >
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null;
+                    const d = payload[0]?.payload as { district: string; members: number };
+                    return (
+                      <div className="bg-white rounded-lg shadow px-3 py-2 text-sm">
+                        {d.district}: {d.members.toLocaleString()}명
+                      </div>
+                    );
+                  }}
                 />
-              </PieChart>
+              </Treemap>
             </ResponsiveContainer>
           </div>
         </Panel>
@@ -127,19 +110,19 @@ export default function Dashboard({
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-slate-50 text-slate-500">
                 <tr>
-                  <th className="text-left px-2 py-1.5">지구</th>
-                  <th className="text-left px-2 py-1.5">참여 캠퍼스 수</th>
-                  <th className="text-left px-2 py-1.5">인원 수</th>
-                  <th className="text-left px-2 py-1.5">전체 인원 비율</th>
+                  <th className="text-left px-2 py-1.5 text-xs whitespace-nowrap">지구</th>
+                  <th className="text-left px-2 py-1.5 text-xs whitespace-nowrap">참여 캠퍼스 수</th>
+                  <th className="text-left px-2 py-1.5 text-xs whitespace-nowrap">인원 수</th>
+                  <th className="text-left px-2 py-1.5 text-xs whitespace-nowrap">전체 인원 비율</th>
                 </tr>
               </thead>
               <tbody>
                 {districts.map((d) => (
                   <tr key={d.district} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-2 py-1.5">{d.district}</td>
-                    <td className="px-2 py-1.5">{d.campusCount}</td>
-                    <td className="px-2 py-1.5">{d.members.toLocaleString()}</td>
-                    <td className="px-2 py-1.5">
+                    <td className="px-2 py-1.5 whitespace-nowrap">{d.district}</td>
+                    <td className="px-2 py-1.5 whitespace-nowrap">{d.campusCount}</td>
+                    <td className="px-2 py-1.5 whitespace-nowrap">{d.members.toLocaleString()}</td>
+                    <td className="px-2 py-1.5 whitespace-nowrap">
                       {((d.members / totalMembers) * 100).toFixed(1)}%
                     </td>
                   </tr>
@@ -150,27 +133,21 @@ export default function Dashboard({
         </Panel>
 
         <Panel title="캠퍼스(소그룹)별 인원" full>
-          <input
-            className="w-full mb-2 border border-slate-200 rounded-lg px-3 py-2 text-sm"
-            placeholder="지구 또는 캠퍼스명 검색..."
-            value={campusFilter}
-            onChange={(e) => setCampusFilter(e.target.value)}
-          />
           <div className="overflow-y-auto max-h-[420px] rounded-lg">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-slate-50 text-slate-500">
                 <tr>
-                  <th className="text-left px-2 py-1.5">지구</th>
-                  <th className="text-left px-2 py-1.5">캠퍼스(소그룹)</th>
-                  <th className="text-left px-2 py-1.5">인원 수</th>
+                  <th className="text-left px-2 py-1.5 text-xs whitespace-nowrap">지구</th>
+                  <th className="text-left px-2 py-1.5 text-xs whitespace-nowrap">캠퍼스(소그룹)</th>
+                  <th className="text-left px-2 py-1.5 text-xs whitespace-nowrap">인원 수</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredCampuses.map((g) => (
+                {sortedCampuses.map((g) => (
                   <tr key={g.id} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-2 py-1.5">{g.district}</td>
-                    <td className="px-2 py-1.5">{g.campus}</td>
-                    <td className="px-2 py-1.5">{g.members}</td>
+                    <td className="px-2 py-1.5 whitespace-nowrap">{g.district}</td>
+                    <td className="px-2 py-1.5 whitespace-nowrap">{g.campus}</td>
+                    <td className="px-2 py-1.5 whitespace-nowrap">{g.members}</td>
                   </tr>
                 ))}
               </tbody>
@@ -204,6 +181,57 @@ function Kpi({
       <div className="text-xs text-slate-500 mb-1">{label}</div>
       <div className={`text-2xl font-bold ${color}`}>{value}</div>
     </div>
+  );
+}
+
+function TreemapCell(props: unknown) {
+  const { x, y, width, height, index, district, members } = props as {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    index: number;
+    district?: string;
+    members?: number;
+  };
+  if (district === undefined) return null;
+  const showLabel = width > 50 && height > 30;
+  return (
+    <g>
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill={DISTRICT_COLORS[index % DISTRICT_COLORS.length]}
+        stroke="#fff"
+        strokeWidth={2}
+        rx={4}
+      />
+      {showLabel && (
+        <text
+          x={x + width / 2}
+          y={y + height / 2 - 6}
+          textAnchor="middle"
+          fill="#fff"
+          fontSize={12}
+          fontWeight={600}
+        >
+          {district}
+        </text>
+      )}
+      {showLabel && (
+        <text
+          x={x + width / 2}
+          y={y + height / 2 + 12}
+          textAnchor="middle"
+          fill="#fff"
+          fontSize={12}
+        >
+          {members?.toLocaleString()}명
+        </text>
+      )}
+    </g>
   );
 }
 
