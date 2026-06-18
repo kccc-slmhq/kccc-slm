@@ -10,6 +10,10 @@ const DISTRICT_COLORS = [
   "#14b8a6", "#8b5cf6", "#eab308", "#f43f5e", "#10b981",
 ];
 
+function abbreviateCampus(name: string) {
+  return name.replace(/대학교/g, "대").replace(/캠퍼스/g, "캠");
+}
+
 export default function Dashboard({
   groups,
   error,
@@ -134,19 +138,21 @@ export default function Dashboard({
 
         <Panel title="캠퍼스(소그룹)별 인원" full>
           <div className="overflow-y-auto max-h-[420px] rounded-lg">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-fixed">
               <thead className="sticky top-0 bg-slate-50 text-slate-500">
                 <tr>
-                  <th className="text-left px-2 py-1.5 text-xs whitespace-nowrap">지구</th>
-                  <th className="text-left px-2 py-1.5 text-xs whitespace-nowrap">캠퍼스(소그룹)</th>
-                  <th className="text-left px-2 py-1.5 text-xs whitespace-nowrap">인원 수</th>
+                  <th className="text-left px-2 py-1.5 text-xs whitespace-nowrap w-[22%]">지구</th>
+                  <th className="text-left px-2 py-1.5 text-xs whitespace-nowrap">캠</th>
+                  <th className="text-left px-2 py-1.5 text-xs whitespace-nowrap w-16">인원 수</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedCampuses.map((g) => (
                   <tr key={g.id} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-2 py-1.5 whitespace-nowrap">{g.district}</td>
-                    <td className="px-2 py-1.5 whitespace-nowrap">{g.campus}</td>
+                    <td className="px-2 py-1.5 truncate">{g.district}</td>
+                    <td className="px-2 py-1.5 truncate" title={g.campus}>
+                      {abbreviateCampus(g.campus)}
+                    </td>
                     <td className="px-2 py-1.5 whitespace-nowrap">{g.members}</td>
                   </tr>
                 ))}
