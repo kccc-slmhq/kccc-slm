@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KCCC PRS 참여 현황 대시보드</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root {
+    --bg: #0f1626;
+    --card: #ffffff;
+    --accent: #3b5bdb;
+    --accent2: #f59f00;
+    --accent3: #20c997;
+    --text: #1b1f29;
+    --muted: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background: linear-gradient(160deg, #0f1626 0%, #1b2942 100%);
+    color: var(--text);
+    padding: 24px;
+  }
+  h1 {
+    color: #fff;
+    font-size: 26px;
+    margin: 0 0 4px;
+  }
+  .subtitle {
+    color: #b9c2d6;
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .kpi {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  }
+  .kpi .label { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .kpi .value { font-size: 28px; font-weight: 700; color: var(--accent); }
+  .kpi .value.green { color: var(--accent3); }
+  .kpi .value.orange { color: var(--accent2); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 16px;
+  }
+  .panel {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 18px 20px 10px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  }
+  .panel h2 {
+    font-size: 16px;
+    margin: 0 0 12px;
+    color: var(--text);
+  }
+  .panel.wide { grid-column: 1 / -1; }
+  canvas { max-height: 360px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th, td {
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 1px solid #eee;
+  }
+  th {
+    background: #f4f6fb;
+    color: var(--muted);
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+  }
+  tr:hover td { background: #f8f9ff; }
+  .table-wrap { max-height: 420px; overflow-y: auto; border-radius: 8px; }
+  .badge {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge.active { background: #d3f9d8; color: #2b8a3e; }
+  .badge.inactive { background: #ffe3e3; color: #c92a2a; }
+
+  .search {
+    width: 100%;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    border: 1px solid #e1e4ea;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .footer {
+    text-align: center;
+    color: #8892a8;
+    font-size: 12px;
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+
+<h1>KCCC PRS 참여 현황 대시보드</h1>
+<div class="subtitle">지구 / 캠퍼스(소그룹) 별 참여 현황 한눈에 보기 · 데이터 기준: PRS 최종 시트</div>
+
+<div class="kpi-row" id="kpiRow"></div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>모임 진행 여부 (참여 현황)</h2>
+    <canvas id="meetingStatusChart"></canvas>
+  </div>
+  <div class="panel">
+    <h2>모임 횟수 분포</h2>
+    <canvas id="meetingCountChart"></canvas>
+  </div>
+  <div class="panel wide">
+    <h2>지구별 멤버 수 · 모임 진행 캠퍼스 수</h2>
+    <canvas id="districtChart"></canvas>
+  </div>
+  <div class="panel wide">
+    <h2>지구별 현황 요약</h2>
+    <div class="table-wrap">
+      <table id="districtTable">
+        <thead>
+          <tr><th>지구</th><th>캠퍼스 수</th><th>총 멤버 수</th><th>모임 진행 캠퍼스</th><th>참여율</th><th>총 모임 횟수</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="panel wide">
+    <h2>캠퍼스(소그룹)별 상세 현황</h2>
+    <input class="search" id="campusSearch" placeholder="지구 또는 캠퍼스명 검색...">
+    <div class="table-wrap">
+      <table id="campusTable">
+        <thead>
+          <tr><th>지구</th><th>캠퍼스(소그룹)</th><th>멤버 수</th><th>모임 횟수</th><th>최근 모임</th><th>상태</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="footer">PRS 데이터 기반 자동 생성 대시보드</div>
+
+<script>
+const DATA = [{"district": "인천지구", "campus": "가천대학교", "members": 7.0, "meetings": 0, "last": null}, {"district": "강속지구", "campus": "가톨릭관동대학교", "members": 19.0, "meetings": 4, "last": "2026.03.25"}, {"district": "원주지구", "campus": "강원대학교 원주캠퍼스", "members": 16.0, "meetings": 0, "last": null}, {"district": "대전지구", "campus": "건양대학교", "members": 19.0, "meetings": 0, "last": null}, {"district": "수원지구", "campus": "경기대학교", "members": 21.0, "meetings": 0, "last": null}, {"district": "창원지구", "campus": "경남대학교", "members": 19.0, "meetings": 5, "last": "2026.03.24"}, {"district": "의정부지구", "campus": "경동대학교", "members": 62.0, "meetings": 0, "last": null}, {"district": "대구지구", "campus": "경북/영진대학교", "members": 5.0, "meetings": 0, "last": null}, {"district": "서울 북동팀", "campus": "경희대학교", "members": 25.0, "meetings": 0, "last": null}, {"district": "공주지구", "campus": "공주교육대학교", "members": 10.0, "meetings": 0, "last": null}, {"district": "공주지구", "campus": "공주대학교", "members": 54.0, "meetings": 0, "last": null}, {"district": "대구지구", "campus": "과학대&보건대", "members": 6.0, "meetings": 0, "last": null}, {"district": "서울 북동팀", "campus": "광운대학교", "members": 5.0, "meetings": 0, "last": null}, {"district": "용인지구", "campus": "단국대학교", "members": 19.0, "meetings": 0, "last": null}, {"district": "대구지구", "campus": "대구대학교", "members": 49.0, "meetings": 0, "last": null}, {"district": "서울 중앙팀", "campus": "동국대학교", "members": 12.0, "meetings": 0, "last": null}, {"district": "수원지구", "campus": "동남보건대학교", "members": 6.0, "meetings": 0, "last": null}, {"district": "울산지구", "campus": "동부과학대", "members": 8.0, "meetings": 3, "last": "2026.03.23"}, {"district": "성남지구", "campus": "동서울대학교", "members": 4.0, "meetings": 0, "last": null}, {"district": "부산지구", "campus": "동아대학교&부산보건대학교", "members": 38.0, "meetings": 0, "last": null}, {"district": "용인지구", "campus": "명지대학교", "members": 11.0, "meetings": 0, "last": null}, {"district": "대전지구", "campus": "배재대학교", "members": 26.0, "meetings": 0, "last": null}, {"district": "서울 남팀", "campus": "백석예술대학교", "members": 37.0, "meetings": 0, "last": null}, {"district": "부천지구", "campus": "부천지구 1팀", "members": 12.0, "meetings": 0, "last": null}, {"district": "부천지구", "campus": "부천지구 2팀", "members": 15.0, "meetings": 5, "last": "2026.03.30"}, {"district": "부천지구", "campus": "부천지구 6팀", "members": 13.0, "meetings": 0, "last": null}, {"district": "미분류", "campus": "상명대학교", "members": 2.0, "meetings": 0, "last": null}, {"district": "원주지구", "campus": "상지대학교", "members": 13.0, "meetings": 4, "last": "2026.03.30"}, {"district": "서울 아가페지구", "campus": "서울 아가페지구 가톨릭대학교", "members": 14.0, "meetings": 0, "last": null}, {"district": "서울 아가페지구", "campus": "서울 아가페지구 경희대학교", "members": 20.0, "meetings": 0, "last": null}, {"district": "서울 아가페지구", "campus": "서울 아가페지구 서울여자간호대학교", "members": 25.0, "meetings": 0, "last": null}, {"district": "서울 아가페지구", "campus": "서울 아가페지구 성신여자대학교", "members": 35.0, "meetings": 0, "last": null}, {"district": "서울 아가페지구", "campus": "서울 아가페지구 이화여자대학교", "members": 12.0, "meetings": 0, "last": null}, {"district": "서울 아가페지구", "campus": "서울 아가페지구 중앙대학교", "members": 11.0, "meetings": 0, "last": null}, {"district": "서울 아가페지구", "campus": "서울 아가페지구 한국성서대학교", "members": 22.0, "meetings": 0, "last": null}, {"district": "서울 아가페지구", "campus": "서울 아가페지구 한양대학교", "members": 22.0, "meetings": 0, "last": null}, {"district": "서울 아가페지구", "campus": "서울과학기술대학교 X 한국성서대학교", "members": 35.0, "meetings": 0, "last": null}, {"district": "서울 남팀", "campus": "서울교육대학교", "members": 8.0, "meetings": 0, "last": null}, {"district": "서울 아가페지구", "campus": "서울아가페지구 덕성여자대학교", "members": 11.0, "meetings": 0, "last": null}, {"district": "서울 북동팀", "campus": "서울여자대학교", "members": 16.0, "meetings": 0, "last": null}, {"district": "청주지구", "campus": "서원대학교", "members": 16.0, "meetings": 2, "last": "2025.03.19"}, {"district": "안양지구", "campus": "성결대학교", "members": 16.0, "meetings": 0, "last": null}, {"district": "수원지구", "campus": "성균관대학교 자연과학캠퍼스", "members": 52.0, "meetings": 0, "last": null}, {"district": "제천지구", "campus": "세명대학교", "members": 28.0, "meetings": 3, "last": "2026.03.24"}, {"district": "수원지구", "campus": "수원대학교", "members": 18.0, "meetings": 3, "last": "2026.03.30"}, {"district": "수원지구", "campus": "수원여자대학교", "members": 3.0, "meetings": 0, "last": null}, {"district": "서울 중앙팀", "campus": "숙명여자대학교", "members": 10.0, "meetings": 0, "last": null}, {"district": "서울 남팀", "campus": "숭실대학교", "members": 29.0, "meetings": 0, "last": null}, {"district": "서울 북동팀", "campus": "시립대학교", "members": 30.0, "meetings": 3, "last": "2026.03.09"}, {"district": "부산지구", "campus": "신라대학교", "members": 2.0, "meetings": 0, "last": null}, {"district": "서울 서팀", "campus": "연세대학교", "members": 40.0, "meetings": 0, "last": null}, {"district": "원주지구", "campus": "연세대학교 원주캠퍼스", "members": 30.0, "meetings": 4, "last": "2026.03.25"}, {"district": "대구지구", "campus": "영남대학교", "members": 5.0, "meetings": 0, "last": null}, {"district": "울산지구", "campus": "영산대학교", "members": 6.0, "meetings": 0, "last": null}, {"district": "전주지구", "campus": "예수대학교", "members": 4.0, "meetings": 0, "last": null}, {"district": "미분류", "campus": "온빛총단", "members": 6.0, "meetings": 0, "last": null}, {"district": "용인지구", "campus": "용인대학교", "members": 22.0, "meetings": 0, "last": null}, {"district": "전주지구", "campus": "우석대학교", "members": 22.0, "meetings": 0, "last": null}, {"district": "울산지구", "campus": "울산대학교", "members": 35.0, "meetings": 4, "last": "2026.03.26"}, {"district": "성남지구", "campus": "을지대학교 성남캠퍼스", "members": 4.0, "meetings": 0, "last": null}, {"district": "서울 서팀", "campus": "이화여자대학교", "members": 40.0, "meetings": 0, "last": null}, {"district": "서울 북동팀", "campus": "인덕대학교", "members": 22.0, "meetings": 2, "last": "2026.03.16"}, {"district": "부산지구", "campus": "인제&가야대학교", "members": 9.0, "meetings": 0, "last": null}, {"district": "인천지구", "campus": "인천대학교", "members": 10.0, "meetings": 0, "last": null}, {"district": "인천지구", "campus": "인하대학교", "members": 2.0, "meetings": 0, "last": null}, {"district": "제주지구", "campus": "제주대학교", "members": 29.0, "meetings": 2, "last": "2026.03.12"}, {"district": "대전지구", "campus": "중부대학교", "members": 18.0, "meetings": 0, "last": null}, {"district": "진주지구", "campus": "진주교육대학교", "members": 10.0, "meetings": 1, "last": "2026.03.12"}, {"district": "창원지구", "campus": "창원지구", "members": 4.0, "meetings": 0, "last": null}, {"district": "미분류", "campus": "채움총단", "members": 8.0, "meetings": 0, "last": null}, {"district": "용인지구", "campus": "청강문화산업대학교", "members": 12.0, "meetings": 0, "last": null}, {"district": "청주지구", "campus": "청주대학교", "members": 99.0, "meetings": 1, "last": "2026.03.23"}, {"district": "목포지구", "campus": "초당대학교", "members": 2.0, "meetings": 0, "last": null}, {"district": "서울 남팀", "campus": "총신대학교", "members": 17.0, "meetings": 0, "last": null}, {"district": "울산지구", "campus": "춘해보건대학교", "members": 12.0, "meetings": 4, "last": "2026.03.30"}, {"district": "대전지구", "campus": "충남대학교", "members": 53.0, "meetings": 0, "last": null}, {"district": "평안지구", "campus": "한경대학교", "members": 18.0, "meetings": 0, "last": null}, {"district": "청주지구", "campus": "한국교원대학교", "members": 11.0, "meetings": 0, "last": null}, {"district": "충주지구", "campus": "한국교통대학교", "members": 10.0, "meetings": 0, "last": null}, {"district": "미분류", "campus": "한국교통대학교 증평캠퍼스", "members": 21.0, "meetings": 1, "last": "2026.03.11"}, {"district": "공주지구", "campus": "한국영상대학교", "members": 4.0, "meetings": 4, "last": "2026.03.30"}, {"district": "부산지구", "campus": "한국해양대학교", "members": 38.0, "meetings": 0, "last": null}, {"district": "대전지구", "campus": "한남대학교", "members": 10.0, "meetings": 0, "last": null}, {"district": "서울 북중앙팀", "campus": "한성대학교", "members": 2.0, "meetings": 0, "last": null}, {"district": "안양지구", "campus": "한세대학교", "members": 20.0, "meetings": 0, "last": null}, {"district": "수원지구", "campus": "한신대학교", "members": 43.0, "meetings": 1, "last": "2026.03.24"}, {"district": "서울 동1팀", "campus": "한양대학교", "members": 56.0, "meetings": 0, "last": null}, {"district": "안산지구", "campus": "한양대학교 ERICA", "members": 12.0, "meetings": 0, "last": null}, {"district": "서울 동1팀", "campus": "한양여자대학교", "members": 7.0, "meetings": 1, "last": "2026.03.16"}, {"district": "수원지구", "campus": "협성대학교", "members": 11.0, "meetings": 0, "last": null}, {"district": "서울 서팀", "campus": "홍익대학교", "members": 36.0, "meetings": 0, "last": null}];
+
+// ---- aggregate ----
+const totalCampus = DATA.length;
+const totalMembers = DATA.reduce((s,d)=>s+d.members,0);
+const activeCampus = DATA.filter(d=>d.meetings>0);
+const inactiveCampus = DATA.filter(d=>d.meetings===0);
+const totalMeetings = DATA.reduce((s,d)=>s+d.meetings,0);
+const participationRate = (activeCampus.length/totalCampus*100).toFixed(1);
+
+document.getElementById('kpiRow').innerHTML = `
+  <div class="kpi"><div class="label">총 캠퍼스(소그룹) 수</div><div class="value">${totalCampus}</div></div>
+  <div class="kpi"><div class="label">총 멤버 수</div><div class="value">${totalMembers.toLocaleString()}</div></div>
+  <div class="kpi"><div class="label">모임 진행 캠퍼스</div><div class="value green">${activeCampus.length}</div></div>
+  <div class="kpi"><div class="label">캠퍼스 참여율</div><div class="value orange">${participationRate}%</div></div>
+  <div class="kpi"><div class="label">전체 모임 횟수 합</div><div class="value">${totalMeetings}</div></div>
+`;
+
+// ---- district aggregation ----
+const districtMap = {};
+DATA.forEach(d=>{
+  const k = d.district;
+  if(!districtMap[k]) districtMap[k] = {district:k, campusCount:0, members:0, activeCampus:0, meetings:0};
+  districtMap[k].campusCount++;
+  districtMap[k].members += d.members;
+  districtMap[k].meetings += d.meetings;
+  if(d.meetings>0) districtMap[k].activeCampus++;
+});
+const districts = Object.values(districtMap).sort((a,b)=>b.members-a.members);
+
+// ---- charts ----
+new Chart(document.getElementById('meetingStatusChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['모임 진행', '모임 미진행'],
+    datasets: [{
+      data: [activeCampus.length, inactiveCampus.length],
+      backgroundColor: ['#20c997', '#ffa8a8']
+    }]
+  },
+  options: { plugins: { legend: { position: 'bottom' } } }
+});
+
+const meetingBuckets = {'0회':0,'1회':0,'2회':0,'3회':0,'4회':0,'5회+':0};
+DATA.forEach(d=>{
+  if(d.meetings===0) meetingBuckets['0회']++;
+  else if(d.meetings>=5) meetingBuckets['5회+']++;
+  else meetingBuckets[d.meetings+'회']++;
+});
+new Chart(document.getElementById('meetingCountChart'), {
+  type: 'bar',
+  data: {
+    labels: Object.keys(meetingBuckets),
+    datasets: [{ label: '캠퍼스 수', data: Object.values(meetingBuckets), backgroundColor: '#3b5bdb' }]
+  },
+  options: { plugins: { legend: { display:false } }, scales: { y: { beginAtZero:true, ticks:{ stepSize:1 } } } }
+});
+
+new Chart(document.getElementById('districtChart'), {
+  type: 'bar',
+  data: {
+    labels: districts.map(d=>d.district),
+    datasets: [
+      { label: '총 멤버 수', data: districts.map(d=>d.members), backgroundColor: '#3b5bdb', yAxisID: 'y' },
+      { label: '모임 진행 캠퍼스 수', data: districts.map(d=>d.activeCampus), backgroundColor: '#20c997', yAxisID: 'y1' }
+    ]
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'index' },
+    scales: {
+      y: { type:'linear', position:'left', beginAtZero:true, title:{display:true,text:'멤버 수'} },
+      y1: { type:'linear', position:'right', beginAtZero:true, grid:{drawOnChartArea:false}, title:{display:true,text:'캠퍼스 수'} }
+    }
+  }
+});
+
+// ---- district table ----
+const dBody = document.querySelector('#districtTable tbody');
+dBody.innerHTML = districts.map(d=>`
+  <tr>
+    <td>${d.district}</td>
+    <td>${d.campusCount}</td>
+    <td>${d.members.toLocaleString()}</td>
+    <td>${d.activeCampus}</td>
+    <td>${(d.activeCampus/d.campusCount*100).toFixed(0)}%</td>
+    <td>${d.meetings}</td>
+  </tr>
+`).join('');
+
+// ---- campus table ----
+function renderCampusTable(filter='') {
+  const f = filter.trim().toLowerCase();
+  const rows = DATA
+    .filter(d => !f || d.district.toLowerCase().includes(f) || d.campus.toLowerCase().includes(f))
+    .sort((a,b)=> b.members - a.members)
+    .map(d => `
+      <tr>
+        <td>${d.district}</td>
+        <td>${d.campus}</td>
+        <td>${d.members}</td>
+        <td>${d.meetings}</td>
+        <td>${d.last || '-'}</td>
+        <td>${d.meetings>0 ? '<span class="badge active">진행</span>' : '<span class="badge inactive">미진행</span>'}</td>
+      </tr>
+    `).join('');
+  document.querySelector('#campusTable tbody').innerHTML = rows;
+}
+renderCampusTable();
+document.getElementById('campusSearch').addEventListener('input', e => renderCampusTable(e.target.value));
+</script>
+</body>
+</html>
