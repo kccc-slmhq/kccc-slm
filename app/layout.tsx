@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "KCCC PRS 참여 현황 대시보드",
   description: "지구별/캠퍼스별 참여 현황 대시보드",
+  other: {
+    "color-scheme": "light",
+  },
 };
 
 export default function RootLayout({

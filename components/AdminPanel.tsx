@@ -212,10 +212,10 @@ export default function AdminPanel({
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 p-4 sm:p-6">
+    <main className="min-h-screen bg-slate-100 p-4 sm:p-6 text-slate-900">
       <header className="flex items-center justify-between mb-5 flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold">관리자 페이지 · 캠퍼스 데이터 관리</h1>
+          <h1 className="text-xl font-bold text-slate-900">관리자 페이지 · 캠퍼스 데이터 관리</h1>
           <p className="text-sm text-slate-500 mt-1">{userEmail}로 로그인됨</p>
         </div>
         <div className="flex gap-2">
