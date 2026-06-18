@@ -2,15 +2,20 @@
 
 import { useMemo, useState } from "react";
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
-  YAxis,
 } from "recharts";
 import type { Group } from "@/lib/types";
+
+const DISTRICT_COLORS = [
+  "#3b5bdb", "#22c55e", "#f59e0b", "#ec4899", "#06b6d4",
+  "#a855f7", "#ef4444", "#84cc16", "#0ea5e9", "#f97316",
+  "#14b8a6", "#8b5cf6", "#eab308", "#f43f5e", "#10b981",
+];
 
 export default function Dashboard({
   groups,
@@ -19,7 +24,6 @@ export default function Dashboard({
   groups: Group[];
   error?: string;
 }) {
-  const [districtFilter, setDistrictFilter] = useState("");
   const [campusFilter, setCampusFilter] = useState("");
 
   const totalMembers = useMemo(
@@ -41,10 +45,6 @@ export default function Dashboard({
     }
     return Array.from(map.values()).sort((a, b) => b.members - a.members);
   }, [groups]);
-
-  const filteredDistricts = districts.filter((d) =>
-    d.district.toLowerCase().includes(districtFilter.trim().toLowerCase())
-  );
 
   const filteredCampuses = useMemo(() => {
     const f = campusFilter.trim().toLowerCase();
@@ -77,43 +77,52 @@ export default function Dashboard({
         </p>
       </header>
 
-      <section className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
-        <Kpi label="전체 참여 인원" value={`${totalMembers.toLocaleString()}명`} color="text-blue-600" />
-        <Kpi label="캠퍼스(소그룹) 수" value={`${groups.length}`} color="text-emerald-600" />
-        <Kpi label="지구 수" value={`${districts.length}`} color="text-amber-600" />
+      <section className="mb-5">
+        <div className="bg-white rounded-2xl px-6 py-6 shadow-lg mb-3">
+          <div className="text-sm text-slate-500 mb-1">전체 참여 인원</div>
+          <div className="text-5xl font-bold text-blue-600">
+            {totalMembers.toLocaleString()}명
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Kpi label="지구 수" value={`${districts.length}`} color="text-amber-600" />
+          <Kpi label="캠퍼스(소그룹) 수" value={`${groups.length}`} color="text-emerald-600" />
+        </div>
       </section>
 
       <section className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <Panel title="지구별 참여 인원">
           <div className="h-[420px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={districts}
-                layout="vertical"
-                margin={{ left: 10, right: 20 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis
-                  type="category"
-                  dataKey="district"
-                  width={110}
-                  tick={{ fontSize: 11 }}
-                />
+              <PieChart>
+                <Pie
+                  data={districts}
+                  dataKey="members"
+                  nameKey="district"
+                  innerRadius="55%"
+                  outerRadius="80%"
+                  paddingAngle={1}
+                >
+                  {districts.map((d, i) => (
+                    <Cell key={d.district} fill={DISTRICT_COLORS[i % DISTRICT_COLORS.length]} />
+                  ))}
+                </Pie>
                 <Tooltip />
-                <Bar dataKey="members" fill="#3b5bdb" radius={[0, 4, 4, 0]} />
-              </BarChart>
+                <Legend
+                  layout="vertical"
+                  verticalAlign="middle"
+                  align="right"
+                  wrapperStyle={{ fontSize: 11, maxHeight: 400, overflowY: "auto" }}
+                />
+              </PieChart>
             </ResponsiveContainer>
           </div>
         </Panel>
 
         <Panel title="지구별 현황 표">
-          <input
-            className="w-full mb-2 border border-slate-200 rounded-lg px-3 py-2 text-sm"
-            placeholder="지구명 검색..."
-            value={districtFilter}
-            onChange={(e) => setDistrictFilter(e.target.value)}
-          />
+          <p className="text-xs text-slate-400 mb-2">
+            전체 인원 비율 = 해당 지구 인원 ÷ 전체 참여 인원({totalMembers.toLocaleString()}명)
+          </p>
           <div className="overflow-y-auto max-h-[380px] rounded-lg">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-slate-50 text-slate-500">
@@ -121,11 +130,11 @@ export default function Dashboard({
                   <th className="text-left px-2 py-1.5">지구</th>
                   <th className="text-left px-2 py-1.5">참여 캠퍼스 수</th>
                   <th className="text-left px-2 py-1.5">인원 수</th>
-                  <th className="text-left px-2 py-1.5">전체 비율</th>
+                  <th className="text-left px-2 py-1.5">전체 인원 비율</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredDistricts.map((d) => (
+                {districts.map((d) => (
                   <tr key={d.district} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="px-2 py-1.5">{d.district}</td>
                     <td className="px-2 py-1.5">{d.campusCount}</td>
