@@ -10,8 +10,28 @@ const DISTRICT_COLORS = [
   "#14b8a6", "#8b5cf6", "#eab308", "#f43f5e", "#10b981",
 ];
 
-function abbreviateCampus(name: string) {
-  return name.replace(/대학교/g, "대").replace(/캠퍼스/g, "캠");
+function stripDistrictPrefix(campus: string, district: string) {
+  const normDistrict = district.replace(/\s+/g, "");
+  let ti = 0;
+  let pi = 0;
+  while (pi < normDistrict.length && ti < campus.length) {
+    if (campus[ti] === " ") {
+      ti++;
+      continue;
+    }
+    if (campus[ti] !== normDistrict[pi]) return campus;
+    ti++;
+    pi++;
+  }
+  if (pi !== normDistrict.length) return campus;
+  while (ti < campus.length && campus[ti] === " ") ti++;
+  const rest = campus.slice(ti);
+  return rest || campus;
+}
+
+function abbreviateCampus(campus: string, district: string) {
+  const cleaned = stripDistrictPrefix(campus, district);
+  return cleaned.replace(/대학교/g, "대").replace(/캠퍼스/g, "캠");
 }
 
 export default function Dashboard({
@@ -151,7 +171,7 @@ export default function Dashboard({
                   <tr key={g.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="px-2 py-1.5 truncate">{g.district}</td>
                     <td className="px-2 py-1.5 truncate" title={g.campus}>
-                      {abbreviateCampus(g.campus)}
+                      {abbreviateCampus(g.campus, g.district)}
                     </td>
                     <td className="px-2 py-1.5 whitespace-nowrap">{g.members}</td>
                   </tr>
