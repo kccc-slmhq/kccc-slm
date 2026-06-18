@@ -119,9 +119,9 @@ export default function Dashboard({
               <thead className="sticky top-0 bg-slate-50 text-slate-500">
                 <tr>
                   <th className="text-left px-2 py-1.5">지구</th>
-                  <th className="text-left px-2 py-1.5">캠퍼스 수</th>
+                  <th className="text-left px-2 py-1.5">참여 캠퍼스 수</th>
                   <th className="text-left px-2 py-1.5">인원 수</th>
-                  <th className="text-left px-2 py-1.5">비율</th>
+                  <th className="text-left px-2 py-1.5">전체 비율</th>
                 </tr>
               </thead>
               <tbody>
