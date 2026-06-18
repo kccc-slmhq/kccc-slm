@@ -169,7 +169,7 @@ export default function Dashboard({
               <tbody>
                 {sortedCampuses.map((g) => (
                   <tr key={g.id} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-2 py-1.5 truncate">{g.district}</td>
+                    <td className="px-2 py-1.5 whitespace-normal break-words">{g.district}</td>
                     <td className="px-2 py-1.5 truncate" title={g.campus}>
                       {abbreviateCampus(g.campus, g.district)}
                     </td>
