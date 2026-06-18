@@ -5,9 +5,9 @@ import { ResponsiveContainer, Tooltip, Treemap } from "recharts";
 import type { Group } from "@/lib/types";
 
 const DISTRICT_COLORS = [
-  "#3b5bdb", "#22c55e", "#f59e0b", "#ec4899", "#06b6d4",
-  "#a855f7", "#ef4444", "#84cc16", "#0ea5e9", "#f97316",
-  "#14b8a6", "#8b5cf6", "#eab308", "#f43f5e", "#10b981",
+  "#f59e0b", "#fb923c", "#f97316", "#fbbf24", "#ea580c",
+  "#d97706", "#fcd34d", "#c2410c", "#f59e42", "#eab308",
+  "#fdba74", "#b45309", "#facc15", "#9a3412", "#fde047",
 ];
 
 function stripDistrictPrefix(campus: string, district: string) {
@@ -75,12 +75,12 @@ export default function Dashboard({
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4 sm:p-6">
+    <main className="min-h-screen bg-gradient-to-b from-amber-400 via-amber-300 to-yellow-200 p-4 sm:p-6">
       <header className="mb-5">
-        <h1 className="text-xl sm:text-2xl font-bold text-white">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
           KCCC PRS 참여 현황 대시보드
         </h1>
-        <p className="text-sm text-slate-300 mt-1">
+        <p className="text-sm text-slate-700 mt-1">
           전체 / 지구별 / 캠퍼스별 참여 인원 한눈에 보기
         </p>
       </header>
@@ -88,13 +88,13 @@ export default function Dashboard({
       <section className="mb-5">
         <div className="bg-white rounded-2xl px-6 py-6 shadow-lg mb-3">
           <div className="text-sm text-slate-500 mb-1">전체 참여 인원</div>
-          <div className="text-5xl font-bold text-blue-600">
+          <div className="text-5xl font-bold text-amber-500">
             {totalMembers.toLocaleString()}명
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Kpi label="지구 수" value={`${districts.length}`} color="text-amber-600" />
-          <Kpi label="캠퍼스(소그룹) 수" value={`${groups.length}`} color="text-emerald-600" />
+          <Kpi label="지구 수" value={`${districts.length}`} color="text-orange-500" />
+          <Kpi label="캠퍼스(소그룹) 수" value={`${groups.length}`} color="text-orange-500" />
         </div>
       </section>
 
@@ -182,7 +182,7 @@ export default function Dashboard({
         </Panel>
       </section>
 
-      <footer className="text-center text-slate-400 text-xs mt-6">
+      <footer className="text-center text-slate-700/70 text-xs mt-6">
         PRS 데이터 기반 대시보드 · 데이터 수정은{" "}
         <a href="/admin" className="underline">
           관리자 페이지
