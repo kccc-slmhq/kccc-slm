@@ -5,9 +5,18 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { safeNext } from "@/lib/safe-next";
 
+// Supabase 로그인은 이메일 형식이 필요해서, 아이디만 입력하면 이 도메인을 붙여 이메일로 만듦
+// (Supabase에는 "아이디@slm-budget.local" 로 사용자를 만들어 두면 됨)
+const LOGIN_DOMAIN = "slm-budget.local";
+
+function toLoginEmail(id: string): string {
+  const trimmed = id.trim().toLowerCase();
+  return trimmed.includes("@") ? trimmed : `${trimmed}@${LOGIN_DOMAIN}`;
+}
+
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,12 +27,12 @@ export default function LoginPage() {
     setError(null);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: toLoginEmail(loginId),
       password,
     });
     setLoading(false);
     if (error) {
-      setError("로그인에 실패했습니다. 이메일/비밀번호를 확인해주세요.");
+      setError("로그인에 실패했습니다. 아이디/비밀번호를 확인해주세요.");
       return;
     }
     const next = new URLSearchParams(window.location.search).get("next");
@@ -39,18 +48,21 @@ export default function LoginPage() {
       >
         <h1 className="text-lg font-bold">SLM 예산 집행 현황</h1>
         <p className="text-sm text-slate-500 mb-4">재정 담당자 로그인</p>
-        <label className="block text-sm text-slate-600 mb-1">이메일</label>
+        <label className="block text-sm text-slate-600 mb-1">아이디</label>
         <input
-          type="email"
+          type="text"
           required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="username"
+          autoCapitalize="none"
+          value={loginId}
+          onChange={(e) => setLoginId(e.target.value)}
           className="w-full border border-slate-200 rounded-lg px-3 py-2 mb-3 text-sm"
         />
         <label className="block text-sm text-slate-600 mb-1">비밀번호</label>
         <input
           type="password"
           required
+          autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="w-full border border-slate-200 rounded-lg px-3 py-2 mb-4 text-sm"
