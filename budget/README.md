@@ -7,7 +7,7 @@
 
 - `/` : 대시보드 (항목별 예산 대비 사용액, 집행률, 월별 누적 추이, 세부 내역)
 - `/upload` : 예산안 업로드 / 월별 장부 업로드
-- `/login` : 로그인
+- `/login` : 로그인 (아이디 + 비밀번호)
 
 **회기**: 매년 8월 ~ 다음 해 7월 (예: "2026년 회기" = 2026.08 ~ 2027.07)
 
@@ -32,7 +32,8 @@ Next.js 16 (App Router) · Supabase (Postgres + Auth) · Recharts · Gemini API 
 
 1. [supabase.com](https://supabase.com) 에서 새 프로젝트 생성 (리전: Northeast Asia (Seoul) 권장)
 2. **SQL Editor** 에서 `supabase/schema.sql` 내용을 그대로 붙여넣고 **Run**
-3. **Authentication → Users → Add user** 에서 재정 담당자 계정(이메일/비밀번호) 생성. **Auto Confirm User** 체크
+3. **Authentication → Users → Add user** 에서 재정 담당자 계정 생성. **Auto Confirm User** 체크
+   - 로그인 화면은 아이디로 받습니다. 아이디 `abc` 로 로그인하려면 이메일을 `abc@slm-budget.local` 로 만드세요 (실제 메일 주소를 넣으면 그 주소 전체로 로그인)
 4. **Authentication → Sign In / Providers** 에서 **Allow new users to sign up** 을 꺼두세요 (아무나 가입하지 못하게)
 5. **Project Settings → API** 에서 `Project URL` 과 `anon public` 키 확인
 
