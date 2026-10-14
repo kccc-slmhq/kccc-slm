@@ -67,6 +67,12 @@ PRS 대시보드와 **별도의 Vercel 프로젝트**로 만듭니다.
 
 이후 기본 브랜치에 푸시할 때마다 자동으로 재배포됩니다.
 
+**자주 겪는 문제**
+
+- 탭 제목이 "KCCC PRS 참여 현황 대시보드"로 나옴 → Root Directory 가 `./` 로 되어 있어 PRS 앱이 배포된 것. **Settings → Build and Deployment → Root Directory** 를 `budget` 으로 바꾸고 다시 배포
+- "설정 오류" 화면 → 화면에 적힌 환경 변수를 고친 뒤 다시 배포 (`NEXT_PUBLIC_` 값은 빌드할 때 들어가므로, 환경 변수를 바꾸면 **반드시 Redeploy**)
+- 같은 프로젝트 설정의 **Skip deployments** 를 켜두면 PRS 쪽만 바뀐 푸시에는 예산 앱을 다시 배포하지 않습니다
+
 ## 폴더 구조
 
 ```
