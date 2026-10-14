@@ -6,6 +6,8 @@
 - `/admin` : 로그인한 관리자만 접근 가능한 데이터 관리 페이지 (추가/수정/삭제)
 - `/admin/login` : 관리자 로그인
 
+> `budget/` 폴더는 **SLM 예산 집행 현황** 별도 앱입니다 (Supabase·Vercel 프로젝트 별도). 자세한 내용은 [budget/README.md](budget/README.md) 참고.
+
 ## 1. Supabase 설정
 
 1. [supabase.com](https://supabase.com) 에서 무료 프로젝트 생성
