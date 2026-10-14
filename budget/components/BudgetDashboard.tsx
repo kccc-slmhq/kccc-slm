@@ -85,7 +85,7 @@ export default function BudgetDashboard({
       <div className="flex flex-wrap items-center gap-2">
         <select
           value={fiscalYear}
-          onChange={(e) => router.push(`/budget?fy=${e.target.value}`)}
+          onChange={(e) => router.push(`/?fy=${e.target.value}`)}
           className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-sm"
           aria-label="회기 선택"
         >
@@ -114,7 +114,7 @@ export default function BudgetDashboard({
       {!hasPlan ? (
         <Notice>
           {fiscalYearLabel(fiscalYear)} 예산안이 아직 없습니다.{" "}
-          <Link href="/budget/upload" className="underline font-medium">
+          <Link href="/upload" className="underline font-medium">
             예산안 업로드
           </Link>
           부터 진행해주세요.
@@ -124,7 +124,7 @@ export default function BudgetDashboard({
           {!effectiveThrough && (
             <Notice>
               이 회기에 확정된 월별 장부가 아직 없습니다.{" "}
-              <Link href="/budget/upload?tab=ledger" className="underline font-medium">
+              <Link href="/upload?tab=ledger" className="underline font-medium">
                 월별 장부 업로드
               </Link>
               를 하면 사용 현황이 표시됩니다.

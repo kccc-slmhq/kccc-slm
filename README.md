@@ -6,6 +6,8 @@
 - `/admin` : 로그인한 관리자만 접근 가능한 데이터 관리 페이지 (추가/수정/삭제)
 - `/admin/login` : 관리자 로그인
 
+> `budget/` 폴더는 **SLM 예산 집행 현황** 별도 앱입니다 (Supabase·Vercel 프로젝트 별도). 자세한 내용은 [budget/README.md](budget/README.md) 참고.
+
 ## 1. Supabase 설정
 
 1. [supabase.com](https://supabase.com) 에서 무료 프로젝트 생성
@@ -40,34 +42,6 @@ npm run dev
 4. Deploy
 
 이후로는 이 저장소의 main 브랜치에 푸시할 때마다 Vercel이 자동으로 재배포합니다.
-
-## 예산 집행 현황 (`/budget`)
-
-예산안과 월별 장부를 올리면, 예산 항목별로 얼마나 썼는지 그래프로 보여주는 비공개 페이지입니다. (관리자 로그인 필요)
-
-- `/budget` : 대시보드 (항목별 예산 대비 사용액, 집행률, 월별 누적 추이, 세부 내역)
-- `/budget/upload` : 예산안 업로드 / 월별 장부 업로드
-
-**회기**: 매년 8월 ~ 다음 해 7월 (예: "2026년 회기" = 2026.08 ~ 2027.07)
-
-**사용 순서**
-1. 예산안(PDF/사진) 업로드 → AI가 항목·금액 추출 → 항목 확인·수정 → **확정**
-2. 매달 장부(PDF/사진) 업로드 → AI가 지출 내역을 예산 항목으로 분류 → 확인·수정 → **확정**
-3. 대시보드에서 확정된 달까지의 누적 사용액을 예산과 비교
-
-확정 전에는 아무것도 저장되지 않습니다. 이미 확정된 회기/월을 다시 확정하면 새 내용으로 교체됩니다.
-파일은 4MB 이하만 올릴 수 있습니다 (Vercel 요청 크기 제한).
-
-**설정**
-1. Supabase SQL Editor에서 `supabase/budget_schema.sql` 실행
-2. 환경 변수 추가 (`.env.local` 및 Vercel)
-
-```
-GEMINI_API_KEY=발급받은-키        # https://aistudio.google.com/apikey
-GEMINI_MODEL=gemini-2.5-flash     # 선택, 기본값 gemini-2.5-flash
-```
-
-`GEMINI_API_KEY`가 없어도 "AI 없이 직접 입력"으로 사용할 수 있습니다.
 
 ## 5. 데이터 업데이트 방법 (담당자 인수인계용)
 

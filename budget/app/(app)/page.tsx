@@ -1,6 +1,6 @@
 import { loadBudgetData } from "@/lib/budget/data";
 import { currentMonthKst, fiscalYearOf } from "@/lib/budget/fiscal";
-import BudgetDashboard from "@/components/budget/BudgetDashboard";
+import BudgetDashboard from "@/components/BudgetDashboard";
 
 export const revalidate = 0;
 

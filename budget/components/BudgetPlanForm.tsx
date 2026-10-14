@@ -71,7 +71,7 @@ export default function BudgetPlanForm({ plans, items }: { plans: BudgetPlan[]; 
       setError(`저장에 실패했습니다: ${error.message}`);
       return;
     }
-    router.push(`/budget?fy=${fiscalYear}`);
+    router.push(`/?fy=${fiscalYear}`);
     router.refresh();
   }
 

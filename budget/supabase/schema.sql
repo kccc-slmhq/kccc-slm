@@ -1,5 +1,5 @@
--- SLM 예산 대비 집행 현황 - Supabase 스키마
--- Supabase SQL Editor에서 그대로 실행하세요. (schema.sql 실행 후, 여러 번 실행해도 안전)
+-- SLM 예산 집행 현황 - Supabase 스키마
+-- Supabase SQL Editor에서 그대로 실행하세요. (여러 번 실행해도 안전)
 --
 -- 회기: 매년 8월 ~ 다음 해 7월. fiscal_year 는 회기 "시작 연도"
 --   예) fiscal_year = 2026  →  2026.08 ~ 2027.07

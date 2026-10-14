@@ -1,5 +1,5 @@
 import { loadBudgetData } from "@/lib/budget/data";
-import BudgetUpload from "@/components/budget/BudgetUpload";
+import BudgetUpload from "@/components/BudgetUpload";
 
 export const revalidate = 0;
 

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 예산 앱은 별도 프로젝트 (budget/ 폴더에서 따로 린트)
+    "budget/**",
   ]),
 ]);
 

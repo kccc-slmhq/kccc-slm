@@ -86,7 +86,7 @@ export default function LedgerForm({
       setError(`저장에 실패했습니다: ${error.message}`);
       return;
     }
-    router.push(`/budget?fy=${fiscalYear}`);
+    router.push(`/?fy=${fiscalYear}`);
     router.refresh();
   }
 
@@ -111,7 +111,7 @@ export default function LedgerForm({
           <p className="text-sm text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
             {fiscalYear !== null && fiscalYearLabel(fiscalYear)} 예산안이 아직 확정되지 않았습니다. 지출을 예산 항목으로
             분류하려면{" "}
-            <Link href="/budget/upload" className="underline font-medium">
+            <Link href="/upload" className="underline font-medium">
               예산안
             </Link>
             을 먼저 확정해주세요.

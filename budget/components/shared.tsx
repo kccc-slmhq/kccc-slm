@@ -58,7 +58,7 @@ export function AnalyzeFile({
       const form = new FormData();
       form.set("file", file);
       for (const [k, v] of Object.entries(extraFields?.() ?? {})) form.set(k, v);
-      const res = await fetch("/api/budget/parse", { method: "POST", body: form });
+      const res = await fetch("/api/parse", { method: "POST", body: form });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "문서 분석에 실패했습니다.");
       onParsed(body, file);

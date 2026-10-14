@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { safeNext } from "@/lib/safe-next";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,8 +25,7 @@ export default function LoginPage() {
       setError("로그인에 실패했습니다. 이메일/비밀번호를 확인해주세요.");
       return;
     }
-    const next = new URLSearchParams(window.location.search).get("next");
-    router.push(safeNext(next));
+    router.push("/admin");
     router.refresh();
   }
 
