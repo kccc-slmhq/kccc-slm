@@ -3,7 +3,7 @@ import type { ParsedBudget, ParsedLedger } from "./types";
 import { UNCATEGORIZED } from "./types";
 
 // Gemini API 키/모델은 환경변수로만 받습니다 (코드에 키를 넣지 마세요).
-//   GEMINI_API_KEY  (필수)
+//   GEMINI_API_KEY  (필수) 여러 개면 쉼표로 구분 — 앞의 키가 한도 초과 등으로 막히면 다음 키로 시도
 //   GEMINI_MODEL    (선택, 기본값 gemini-2.5-flash)
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
@@ -11,11 +11,43 @@ export class GeminiError extends Error {}
 
 type InlineFile = { mimeType: string; base64: string };
 
+function apiKeys(): string[] {
+  return (process.env.GEMINI_API_KEY ?? "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+}
+
 async function generateJson(prompt: string, file: InlineFile, responseSchema: object): Promise<unknown> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  const keys = apiKeys();
+  if (keys.length === 0) {
     throw new GeminiError("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.");
   }
+
+  let lastError: GeminiError | null = null;
+  for (const key of keys) {
+    try {
+      return await generateJsonWithKey(key, prompt, file, responseSchema);
+    } catch (err) {
+      // 한도 초과/키 문제일 때만 다음 키로. 문서 자체 문제는 다른 키로 해도 같으므로 바로 실패
+      if (err instanceof KeyRejectedError) {
+        lastError = err;
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError ?? new GeminiError("AI 분석 중 오류가 발생했습니다.");
+}
+
+class KeyRejectedError extends GeminiError {}
+
+async function generateJsonWithKey(
+  apiKey: string,
+  prompt: string,
+  file: InlineFile,
+  responseSchema: object
+): Promise<unknown> {
   const model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
 
   const res = await fetch(
@@ -42,10 +74,11 @@ async function generateJson(prompt: string, file: InlineFile, responseSchema: ob
   if (!res.ok) {
     const body = await res.text();
     console.error("gemini error", res.status, body);
-    if (res.status === 429) throw new GeminiError("AI 사용 한도를 초과했습니다. 잠시 후 다시 시도해주세요.");
-    if (res.status === 400 || res.status === 403) {
-      throw new GeminiError("AI 요청이 거부되었습니다. API 키와 파일 형식을 확인해주세요.");
+    if (res.status === 429) throw new KeyRejectedError("AI 사용 한도를 초과했습니다. 잠시 후 다시 시도해주세요.");
+    if (res.status === 401 || res.status === 403 || (res.status === 400 && /API_KEY|api key/i.test(body))) {
+      throw new KeyRejectedError("AI 요청이 거부되었습니다. GEMINI_API_KEY를 확인해주세요.");
     }
+    if (res.status === 400) throw new GeminiError("AI가 이 파일을 처리하지 못했습니다. 파일 형식을 확인해주세요.");
     throw new GeminiError("AI 분석 중 오류가 발생했습니다.");
   }
 
