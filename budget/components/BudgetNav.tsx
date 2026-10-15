@@ -25,31 +25,22 @@ export function Sidebar() {
   const pathname = usePathname();
   const logout = useLogout();
   return (
-    <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col bg-white border-r border-gray-100">
-      <div className="px-6 pt-7 pb-5 border-b border-gray-100 mx-3">
+    <aside className="hidden md:flex fixed inset-y-3 left-3 w-56 flex-col bg-white rounded-3xl shadow-[0_1px_3px_rgba(17,24,39,0.05)]">
+      <div className="px-5 pt-6 pb-6">
         <Logo />
-        <div className="mt-1 text-xs text-gray-500">
-          <span className="font-bold text-brand-600 tracking-wide">CCC</span> 예산 집행 현황
-        </div>
       </div>
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 space-y-1.5">
         {LINKS.map(({ href, label, Icon }) => {
           const active = pathname === href;
           return (
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-semibold transition-colors ${
-                active ? "bg-brand-50 text-brand-600" : "text-gray-700 hover:bg-gray-50"
+              className={`flex items-center gap-3 rounded-full px-4 py-2.5 text-[15px] font-semibold transition-colors ${
+                active ? "bg-brand-600 text-white shadow-[0_4px_12px_rgba(122,36,245,0.25)]" : "text-gray-600 hover:bg-brand-50 hover:text-brand-700"
               }`}
             >
-              <span
-                className={`grid place-items-center w-8 h-8 rounded-lg ${
-                  active ? "bg-white text-brand-600 shadow-sm" : "text-gray-500"
-                }`}
-              >
-                <Icon />
-              </span>
+              <Icon />
               {label}
             </Link>
           );
@@ -59,11 +50,9 @@ export function Sidebar() {
         <button
           type="button"
           onClick={logout}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-semibold text-gray-500 hover:bg-gray-50"
+          className="flex w-full items-center gap-3 rounded-full px-4 py-2.5 text-[15px] font-semibold text-gray-500 hover:bg-gray-50"
         >
-          <span className="grid place-items-center w-8 h-8">
-            <LogoutIcon />
-          </span>
+          <LogoutIcon />
           로그아웃
         </button>
       </div>
@@ -89,5 +78,25 @@ export function BottomTabs() {
         로그아웃
       </button>
     </nav>
+  );
+}
+
+const TITLES: Record<string, [string, string]> = {
+  "/": ["대시보드", "예산 대비 항목별 사용 현황"],
+  "/upload": ["업로드", "예산안과 월별 장부를 올리고 확인한 뒤 확정해요"],
+};
+
+// 페이지 위쪽 제목
+export function PageHeader() {
+  const pathname = usePathname();
+  const [title, desc] = TITLES[pathname] ?? ["", ""];
+  return (
+    <header className="px-4 md:px-0 pt-5 md:pt-7 pb-1">
+      <div className="md:hidden mb-4">
+        <Logo />
+      </div>
+      <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+      <p className="text-sm text-gray-500 mt-1">{desc}</p>
+    </header>
   );
 }

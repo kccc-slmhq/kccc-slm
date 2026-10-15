@@ -38,3 +38,11 @@ export function LogoutIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function ChartIcon({ className }: IconProps) {
+  return (
+    <svg {...base} width={20} height={20} strokeWidth={2} className={className}>
+      <path d="M5 20V11M12 20V5M19 20v-6" />
+    </svg>
+  );
+}
