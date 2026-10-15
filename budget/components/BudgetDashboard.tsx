@@ -16,7 +16,16 @@ import {
   YAxis,
 } from "recharts";
 import { fiscalMonths, fiscalYearLabel, monthLabel, shortMonthLabel } from "@/lib/budget/fiscal";
-import { pct, shortWon, summarize, won, type CategoryRow, type CategoryStatus } from "@/lib/budget/summary";
+import {
+  pct,
+  shortWon,
+  summarize,
+  won,
+  type CategoryRow,
+  type CategoryStatus,
+  type GroupRow,
+} from "@/lib/budget/summary";
+import { itemKey } from "@/lib/budget/types";
 import type { BudgetData } from "@/lib/budget/data";
 
 // 차트 색: 사용액 = 강조(파랑), 예산 = 기준(회색). 상태색은 아이콘+라벨과 함께만 사용
@@ -60,16 +69,23 @@ export default function BudgetDashboard({
     [fiscalYear, items, entries, confirmedMonths, effectiveThrough]
   );
 
-  const [detailCategory, setDetailCategory] = useState<string>("");
+  // 세부 내역 필터: "" (전체) | "g:큰카테고리" | "i:항목키"
+  const [detailFilter, setDetailFilter] = useState<string>("");
+  const groupOfKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const g of summary.groups) for (const r of g.items) map.set(r.key, g.group);
+    return map;
+  }, [summary.groups]);
   const detailEntries = useMemo(
     () =>
-      entries.filter(
-        (e) =>
-          effectiveThrough &&
-          e.month.slice(0, 7) <= effectiveThrough &&
-          (!detailCategory || e.category === detailCategory)
-      ),
-    [entries, effectiveThrough, detailCategory]
+      entries.filter((e) => {
+        if (!effectiveThrough || e.month.slice(0, 7) > effectiveThrough) return false;
+        if (!detailFilter) return true;
+        const key = itemKey(e);
+        if (detailFilter.startsWith("g:")) return groupOfKey.get(key) === detailFilter.slice(2);
+        return key === detailFilter.slice(2);
+      }),
+    [entries, effectiveThrough, detailFilter, groupOfKey]
   );
 
   const hasPlan = plans.some((p) => p.fiscal_year === fiscalYear);
@@ -155,18 +171,18 @@ export default function BudgetDashboard({
 
           {/* 항목별 예산 대비 사용액 */}
           <Panel
-            title="항목별 예산 대비 사용액"
+            title="카테고리별 예산 대비 사용액"
             subtitle={effectiveThrough ? `${monthLabel(effectiveThrough)}까지 누적` : undefined}
           >
-            <CategoryBarChart rows={summary.rows} />
+            <GroupBarChart groups={summary.groups} />
           </Panel>
 
           {/* 항목별 집행률 표 */}
           <Panel
-            title="항목별 집행률"
+            title="카테고리·항목별 집행률"
             subtitle={`세로선 = 회기 경과율 ${pct(summary.elapsedRatio)}. 집행률이 경과율보다 10%p 이상 높으면 '빠름'`}
           >
-            <CategoryTable rows={summary.rows} elapsedRatio={summary.elapsedRatio} />
+            <GroupTable groups={summary.groups} elapsedRatio={summary.elapsedRatio} />
           </Panel>
 
           {/* 월별 누적 추이 */}
@@ -191,23 +207,29 @@ export default function BudgetDashboard({
           {effectiveThrough && (
             <Panel title="세부 지출 내역" subtitle={`${monthLabel(effectiveThrough)}까지`}>
               <select
-                value={detailCategory}
-                onChange={(e) => setDetailCategory(e.target.value)}
-                className="h-9 rounded-xl border border-gray-200 bg-white px-2 text-sm mb-2"
-                aria-label="항목 선택"
+                value={detailFilter}
+                onChange={(e) => setDetailFilter(e.target.value)}
+                className="h-9 max-w-full rounded-xl border border-gray-200 bg-white px-2 text-sm mb-2"
+                aria-label="카테고리·항목 선택"
               >
-                <option value="">전체 항목</option>
-                {summary.rows.map((r) => (
-                  <option key={r.category} value={r.category}>
-                    {r.category}
-                  </option>
+                <option value="">전체</option>
+                {summary.groups.map((g) => (
+                  <optgroup key={g.group} label={g.group}>
+                    <option value={`g:${g.group}`}>{g.group} 전체</option>
+                    {g.items.map((r) => (
+                      <option key={r.key} value={`i:${r.key}`}>
+                        {r.category}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
               <div className="overflow-auto max-h-[420px]">
-                <table className="w-full text-sm min-w-[560px]">
+                <table className="w-full text-sm min-w-[640px]">
                   <thead className="sticky top-0 bg-gray-50 text-gray-500 text-xs">
                     <tr>
                       <th className="text-left px-2 py-1.5 whitespace-nowrap">날짜</th>
+                      <th className="text-left px-2 py-1.5 whitespace-nowrap">카테고리</th>
                       <th className="text-left px-2 py-1.5 whitespace-nowrap">항목</th>
                       <th className="text-left px-2 py-1.5">내용</th>
                       <th className="text-right px-2 py-1.5 whitespace-nowrap">금액</th>
@@ -219,6 +241,9 @@ export default function BudgetDashboard({
                         <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">
                           {e.entry_date ?? monthLabel(e.month.slice(0, 7))}
                         </td>
+                        <td className="px-2 py-1.5 whitespace-nowrap text-gray-500">
+                          {groupOfKey.get(itemKey(e)) ?? ""}
+                        </td>
                         <td className="px-2 py-1.5 whitespace-nowrap">{e.category}</td>
                         <td className="px-2 py-1.5">{e.description}</td>
                         <td className="px-2 py-1.5 text-right whitespace-nowrap tabular-nums">{won(e.amount)}</td>
@@ -226,7 +251,7 @@ export default function BudgetDashboard({
                     ))}
                     {detailEntries.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="px-2 py-6 text-center text-gray-400">
+                        <td colSpan={5} className="px-2 py-6 text-center text-gray-400">
                           내역이 없습니다.
                         </td>
                       </tr>
@@ -242,13 +267,13 @@ export default function BudgetDashboard({
   );
 }
 
-function CategoryBarChart({ rows }: { rows: CategoryRow[] }) {
-  if (rows.length === 0) return <p className="text-sm text-gray-400">예산 항목이 없습니다.</p>;
-  const height = Math.max(160, rows.length * 52 + 48);
+function GroupBarChart({ groups }: { groups: GroupRow[] }) {
+  if (groups.length === 0) return <p className="text-sm text-gray-400">예산 항목이 없습니다.</p>;
+  const height = Math.max(160, groups.length * 52 + 48);
   return (
     <div style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 4 }} barGap={2}>
+        <BarChart data={groups} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 4 }} barGap={2}>
           <CartesianGrid horizontal={false} stroke={COLOR.grid} />
           <XAxis
             type="number"
@@ -259,8 +284,8 @@ function CategoryBarChart({ rows }: { rows: CategoryRow[] }) {
           />
           <YAxis
             type="category"
-            dataKey="category"
-            width={112}
+            dataKey="group"
+            width={120}
             tick={{ fontSize: 12, fill: "#334155" }}
             axisLine={false}
             tickLine={false}
@@ -269,15 +294,16 @@ function CategoryBarChart({ rows }: { rows: CategoryRow[] }) {
             cursor={{ fill: "#f1f5f9" }}
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
-              const r = payload[0].payload as CategoryRow;
+              const r = payload[0].payload as GroupRow;
               return (
                 <div className="bg-white rounded-lg shadow-md ring-1 ring-gray-200 px-3 py-2 text-xs space-y-0.5">
-                  <div className="font-semibold text-gray-800">{r.category}</div>
+                  <div className="font-semibold text-gray-800">{r.group}</div>
                   <div className="text-gray-600">예산 {won(r.budget)}</div>
                   <div className="text-gray-600">사용 {won(r.spent)}</div>
                   <div className="text-gray-600">
                     집행률 {pct(r.ratio)} · {STATUS[r.status].label}
                   </div>
+                  <div className="text-gray-400">세부 항목 {r.items.length}개</div>
                 </div>
               );
             }}
@@ -297,55 +323,130 @@ function CategoryBarChart({ rows }: { rows: CategoryRow[] }) {
   );
 }
 
-function CategoryTable({ rows, elapsedRatio }: { rows: CategoryRow[]; elapsedRatio: number }) {
+function GroupTable({ groups, elapsedRatio }: { groups: GroupRow[]; elapsedRatio: number }) {
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const allOpen = groups.length > 0 && groups.every((g) => open.has(g.group));
+  const toggle = (group: string) =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
+      return next;
+    });
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-gray-50 text-gray-500 text-xs">
-          <tr>
-            <th className="text-left px-2 py-1.5 whitespace-nowrap">항목</th>
-            <th className="text-right px-2 py-1.5 whitespace-nowrap">예산</th>
-            <th className="text-right px-2 py-1.5 whitespace-nowrap">사용액</th>
-            <th className="text-right px-2 py-1.5 whitespace-nowrap">잔액</th>
-            <th className="text-left px-2 py-1.5 min-w-[160px]">집행률</th>
-            <th className="text-left px-2 py-1.5 whitespace-nowrap">상태</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => {
-            const s = STATUS[r.status];
-            return (
-              <tr key={r.category} className="border-b border-gray-100">
-                <td className="px-2 py-2 whitespace-nowrap font-medium text-gray-800">{r.category}</td>
-                <td className="px-2 py-2 text-right whitespace-nowrap tabular-nums">{won(r.budget)}</td>
-                <td className="px-2 py-2 text-right whitespace-nowrap tabular-nums">{won(r.spent)}</td>
-                <td
-                  className={`px-2 py-2 text-right whitespace-nowrap tabular-nums ${
-                    r.remaining < 0 ? "text-red-700" : ""
-                  }`}
-                >
-                  {won(r.remaining)}
-                </td>
-                <td className="px-2 py-2">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <ProgressBar ratio={r.ratio ?? (r.spent > 0 ? 1 : 0)} marker={elapsedRatio} color={s.bar} />
-                    </div>
-                    <span className="w-10 text-right text-xs tabular-nums text-gray-600">{pct(r.ratio)}</span>
-                  </div>
-                </td>
-                <td className="px-2 py-2 whitespace-nowrap">
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 ${s.badge}`}>
-                    <span aria-hidden>{s.icon}</span>
-                    {s.label}
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div>
+      <div className="flex justify-end mb-2">
+        <button
+          type="button"
+          onClick={() => setOpen(allOpen ? new Set() : new Set(groups.map((g) => g.group)))}
+          className="rounded-full px-3 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50"
+        >
+          {allOpen ? "모두 접기" : "세부 항목 모두 펼치기"}
+        </button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[720px]">
+          <thead className="bg-gray-50 text-gray-500 text-xs">
+            <tr>
+              <th className="text-left px-2 py-1.5 whitespace-nowrap">카테고리 / 항목</th>
+              <th className="text-right px-2 py-1.5 whitespace-nowrap">예산</th>
+              <th className="text-right px-2 py-1.5 whitespace-nowrap">사용액</th>
+              <th className="text-right px-2 py-1.5 whitespace-nowrap">잔액</th>
+              <th className="text-left px-2 py-1.5 min-w-[160px]">집행률</th>
+              <th className="text-left px-2 py-1.5 whitespace-nowrap">상태</th>
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map((g) => {
+              const isOpen = open.has(g.group);
+              return (
+                <GroupRows key={g.group} g={g} isOpen={isOpen} onToggle={() => toggle(g.group)} elapsedRatio={elapsedRatio} />
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
+  );
+}
+
+function GroupRows({
+  g,
+  isOpen,
+  onToggle,
+  elapsedRatio,
+}: {
+  g: GroupRow;
+  isOpen: boolean;
+  onToggle: () => void;
+  elapsedRatio: number;
+}) {
+  return (
+    <>
+      <tr className="border-b border-gray-100 bg-brand-50/40 cursor-pointer hover:bg-brand-50" onClick={onToggle}>
+        <td className="px-2 py-2.5 whitespace-nowrap font-bold text-gray-900">
+          <button type="button" aria-expanded={isOpen} className="inline-flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className={`inline-block text-[10px] text-brand-600 transition-transform ${isOpen ? "rotate-90" : ""}`}
+            >
+              ▶
+            </span>
+            {g.group}
+            <span className="text-xs font-medium text-gray-400">{g.items.length}</span>
+          </button>
+        </td>
+        <MoneyCells row={g} elapsedRatio={elapsedRatio} bold />
+      </tr>
+      {isOpen &&
+        g.items.map((r) => (
+          <tr key={r.key} className="border-b border-gray-100">
+            <td className="pl-8 pr-2 py-2 whitespace-nowrap text-gray-700">{r.category}</td>
+            <MoneyCells row={r} elapsedRatio={elapsedRatio} />
+          </tr>
+        ))}
+    </>
+  );
+}
+
+function MoneyCells({
+  row,
+  elapsedRatio,
+  bold,
+}: {
+  row: Pick<CategoryRow, "budget" | "spent" | "remaining" | "ratio" | "status">;
+  elapsedRatio: number;
+  bold?: boolean;
+}) {
+  const s = STATUS[row.status];
+  const weight = bold ? "font-semibold text-gray-900" : "";
+  return (
+    <>
+      <td className={`px-2 py-2 text-right whitespace-nowrap tabular-nums ${weight}`}>{won(row.budget)}</td>
+      <td className={`px-2 py-2 text-right whitespace-nowrap tabular-nums ${weight}`}>{won(row.spent)}</td>
+      <td
+        className={`px-2 py-2 text-right whitespace-nowrap tabular-nums ${weight} ${
+          row.remaining < 0 ? "text-red-700" : ""
+        }`}
+      >
+        {won(row.remaining)}
+      </td>
+      <td className="px-2 py-2">
+        <div className="flex items-center gap-2">
+          <div className="flex-1">
+            <ProgressBar ratio={row.ratio ?? (row.spent > 0 ? 1 : 0)} marker={elapsedRatio} color={s.bar} />
+          </div>
+          <span className="w-10 text-right text-xs tabular-nums text-gray-600">{pct(row.ratio)}</span>
+        </div>
+      </td>
+      <td className="px-2 py-2 whitespace-nowrap">
+        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 ${s.badge}`}>
+          <span aria-hidden>{s.icon}</span>
+          {s.label}
+        </span>
+      </td>
+    </>
   );
 }
 
