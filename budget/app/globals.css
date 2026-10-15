@@ -1,14 +1,21 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
 @import "tailwindcss";
 
 :root {
-  --background: #f1f5f9;
-  --foreground: #0f172a;
+  --background: #f3f4f6;
+  --foreground: #111827;
   color-scheme: light;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  /* 포인트 색 (보라) */
+  --color-brand-50: #f5f0ff;
+  --color-brand-100: #ede4ff;
+  --color-brand-500: #8b3dff;
+  --color-brand-600: #7a24f5;
+  --color-brand-700: #6a14e0;
 }
 
 html {
@@ -18,5 +25,7 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", Arial, sans-serif;
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+    "Malgun Gothic", "Noto Sans KR", sans-serif;
+  letter-spacing: -0.01em;
 }
