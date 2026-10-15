@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { currentMonthKst, fiscalYearLabel, fiscalYearOf } from "@/lib/budget/fiscal";
+import { BUDGET_EDIT_CLOSED, budgetEditDeadline, canEditBudget, currentMonthKst, fiscalYearLabel, fiscalYearOf } from "@/lib/budget/fiscal";
 import { won } from "@/lib/budget/summary";
 import type { BudgetItem, BudgetPlan, ParsedBudget } from "@/lib/budget/types";
 import { KIND_LABEL, UNCATEGORIZED, itemKey, itemLabel, kindOf, type Kind } from "@/lib/budget/types";
@@ -81,6 +81,8 @@ export default function BudgetPlanForm({
   const lock = usePassword(password);
 
   const existing = plans.find((p) => p.fiscal_year === fiscalYear);
+  // 이미 확정된 예산안은 수정 가능 기간(회기 시작 후 1달)이 지나면 고칠 수 없음 → 용도변경으로
+  const closed = !!existing && !canEditBudget(fiscalYear);
   const yearOptions = Array.from(
     new Set([current - 1, current, current + 1, fiscalYear, ...plans.map((p) => p.fiscal_year)])
   ).sort((a, b) => b - a);
@@ -228,7 +230,7 @@ export default function BudgetPlanForm({
           >
             AI 없이 직접 입력
           </button>
-          {existing && (
+          {existing && !closed && (
             <button type="button" onClick={() => lock.ask(loadExisting, { continueFlow: true })} className="text-gray-600 underline">
               확정된 {fiscalYear}년 회기 예산안 불러와서 수정
             </button>
@@ -369,7 +371,13 @@ export default function BudgetPlanForm({
             </section>
           ))}
 
-          {existing && (
+          {closed && (
+            <p className="text-sm text-amber-800 bg-amber-50 rounded-lg px-3 py-2">
+              {fiscalYearLabel(fiscalYear)} {BUDGET_EDIT_CLOSED} (수정 가능 기간: {budgetEditDeadline(fiscalYear)}까지 · 예산안
+              화면의 &apos;용도변경&apos;에서 할 수 있습니다)
+            </p>
+          )}
+          {existing && !closed && (
             <p className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
               이 회기 예산안이 이미 확정되어 있습니다. 확정하면 새 내용으로 교체됩니다. 카테고리나 항목명을 바꾸면 이미
               확정된 월별 장부의 해당 항목은 &apos;예산 외&apos;로 표시되니 주의하세요.
@@ -386,12 +394,12 @@ export default function BudgetPlanForm({
             <button
               type="button"
               onClick={confirm}
-              disabled={saving || deleting || problems.length > 0}
+              disabled={saving || deleting || closed || problems.length > 0}
               className="w-full sm:w-auto rounded-xl bg-brand-600 hover:bg-brand-700 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
             >
               {saving ? "저장 중..." : `${fiscalYear}년 회기 예산안 확정`}
             </button>
-            {existing && (
+            {existing && !closed && (
               <button
                 type="button"
                 onClick={() => lock.ask((pw) => void deletePlan(pw))}

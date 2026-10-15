@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { fiscalYearLabel } from "@/lib/budget/fiscal";
+import { BUDGET_EDIT_CLOSED, budgetEditDeadline, canEditBudget, fiscalYearLabel } from "@/lib/budget/fiscal";
 import { shortWon, won } from "@/lib/budget/summary";
 import type { BudgetItem, BudgetPlan, BudgetTransfer } from "@/lib/budget/types";
 import { KIND_LABEL, isCarryoverItem, kindOf, type Kind } from "@/lib/budget/types";
@@ -57,6 +57,19 @@ export default function BudgetPlanView({
   if (error) return <Notice>데이터를 불러오지 못했습니다: {error}</Notice>;
 
   const expenseItems = fyItems.filter((i) => kindOf(i) === "expense");
+  const editable = canEditBudget(fiscalYear);
+  // 항목별 용도변경 기록 (받은 것 +, 보낸 것 −)
+  const changesOf = new Map<string, { sign: 1 | -1; t: BudgetTransfer }[]>();
+  for (const t of [...transfers].reverse()) {
+    for (const [group, category, sign] of [
+      [t.from_group, t.from_category, -1],
+      [t.to_group, t.to_category, 1],
+    ] as const) {
+      const k = `${group}\u241E${category}`;
+      if (!changesOf.has(k)) changesOf.set(k, []);
+      changesOf.get(k)!.push({ sign, t });
+    }
+  }
   const totalOf = (kind: Kind) =>
     fyItems.filter((i) => kindOf(i) === kind && !isCarryoverItem(i)).reduce((sum, i) => sum + i.amount, 0);
   const expenseTotal = totalOf("expense");
@@ -110,7 +123,7 @@ export default function BudgetPlanView({
               🔒 용도변경
             </button>
           )}
-          {plan && (
+          {plan && editable && (
             <button
               type="button"
               onClick={openEditor}
@@ -121,6 +134,15 @@ export default function BudgetPlanView({
           )}
         </span>
       </div>
+      {plan && (
+        <p
+          className={`-mt-3 px-1 text-xs ${editable ? "text-gray-500" : "rounded-xl bg-amber-50 px-3 py-2 text-amber-800"}`}
+        >
+          {editable
+            ? `예산안 수정은 ${budgetEditDeadline(fiscalYear)}까지 할 수 있습니다. 이후 변경은 회의를 거쳐 용도변경으로 해주세요.`
+            : BUDGET_EDIT_CLOSED}
+        </p>
+      )}
 
       {!plan ? (
         <Notice>
@@ -200,14 +222,37 @@ export default function BudgetPlanView({
                             )}
                           </div>
                           <ul className="divide-y divide-gray-100">
-                            {rows.map((r) => (
-                              <li key={r.id} className="flex items-baseline gap-3 px-4 py-2 text-sm">
-                                <span className="min-w-0 text-gray-700">{r.category}</span>
-                                <span className="ml-auto shrink-0 whitespace-nowrap tabular-nums text-gray-900">
-                                  {won(r.amount)}
-                                </span>
-                              </li>
-                            ))}
+                            {rows.map((r) => {
+                              const changes = kind === "expense" ? (changesOf.get(`${r.category_group}\u241E${r.category}`) ?? []) : [];
+                              const net = changes.reduce((sum, c) => sum + c.sign * c.t.amount, 0);
+                              return (
+                                <li key={r.id} className="px-4 py-2 text-sm">
+                                  <div className="flex items-baseline gap-3">
+                                    <span className="min-w-0 text-gray-700">{r.category}</span>
+                                    <span className="ml-auto shrink-0 whitespace-nowrap tabular-nums text-gray-900">
+                                      {won(r.amount)}
+                                    </span>
+                                  </div>
+                                  {changes.length > 0 && (
+                                    <div className="mt-1 space-y-0.5 rounded-lg bg-brand-50/50 px-2.5 py-1.5 text-xs text-gray-600">
+                                      <div className="tabular-nums text-gray-500">
+                                        용도변경 전 {won(r.amount - net)}
+                                      </div>
+                                      {changes.map(({ sign, t }) => (
+                                        <div key={`${t.id}:${sign}`}>
+                                          <span className={`font-semibold tabular-nums ${sign > 0 ? "text-brand-700" : "text-gray-700"}`}>
+                                            {sign > 0 ? "+" : "−"}
+                                            {won(t.amount)}
+                                          </span>{" "}
+                                          {t.meeting_date} 회의 · {sign > 0 ? `${t.from_category}에서` : `${t.to_category}(으)로`}
+                                          {t.reason ? ` · ${t.reason}` : ""}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </li>
+                              );
+                            })}
                           </ul>
                         </div>
                       ))}

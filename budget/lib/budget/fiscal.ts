@@ -71,3 +71,21 @@ export function fiscalElapsedRatio(fiscalYear: number, month: string): number {
 export function isBeforeFiscalStart(fiscalYear: number, month: string): boolean {
   return monthsFromFiscalStart(fiscalYear, month) <= 0;
 }
+
+export function todayKst(): string {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+// 확정된 예산안을 고칠 수 있는 마지막 날 (회기 시작 후 1달 = 8월 말일까지)
+// 이후 변경은 회의를 거친 '용도변경'으로만. 2026 회기는 앱 개발 기간이라 2026년 12월 말까지 허용
+const EDIT_DEADLINE_OVERRIDE: Record<number, string> = { 2026: "2026-12-31" };
+
+export function budgetEditDeadline(fiscalYear: number): string {
+  return EDIT_DEADLINE_OVERRIDE[fiscalYear] ?? `${fiscalYear}-08-31`;
+}
+
+export function canEditBudget(fiscalYear: number, today: string = todayKst()): boolean {
+  return today <= budgetEditDeadline(fiscalYear);
+}
+
+export const BUDGET_EDIT_CLOSED = "예산안 수정 가능 기간이 지났습니다. 용도변경을 활용해주세요.";
