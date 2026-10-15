@@ -47,13 +47,8 @@ export default function LoginPage() {
         onSubmit={handleSubmit}
         className="bg-white rounded-3xl shadow-[0_4px_24px_rgba(17,24,39,0.06)] p-7 w-full max-w-sm"
       >
-        <div className="text-[11px] font-medium text-gray-500">CCC Life Transforming Communitas</div>
-        <h1 className="mt-0.5">
-          <Logo size="lg" />
-        </h1>
-        <p className="text-sm text-gray-500 mt-1 mb-6">
-          <span className="font-bold text-brand-600">CCC</span> 예산 집행 현황 · 재정 담당자 로그인
-        </p>
+        <Logo size="lg" />
+        <p className="text-sm text-gray-500 mt-5 mb-6">재정 담당자 로그인</p>
         <label className="block text-sm text-gray-700 font-medium mb-1.5">아이디</label>
         <input
           type="text"
