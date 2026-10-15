@@ -226,17 +226,18 @@ export default function BudgetDashboard({
           )}
 
           {/* 핵심 지표 */}
-          <section className={`grid grid-cols-2 lg:grid-cols-4 gap-3 ${mobileView === "summary" ? "" : "hidden md:grid"}`}>
+          <section className={`grid grid-cols-2 2xl:grid-cols-4 gap-3 ${mobileView === "summary" ? "" : "hidden md:grid"}`}>
             <Kpi
               label={effectiveThrough ? `누적 지출 (~${shortMonthLabel(effectiveThrough)})` : "누적 지출"}
               value={won(summary.totalSpent)}
-              sub={`예산 ${won(summary.totalBudget)} · ${summary.remaining < 0 ? "초과" : "잔여"} ${won(
-                Math.abs(summary.remaining)
-              )}`}
+              sub={[
+                `예산 ${won(summary.totalBudget)}`,
+                `${summary.remaining < 0 ? "초과" : "잔여"} ${won(Math.abs(summary.remaining))}`,
+              ]}
             />
-            <div className="bg-white rounded-2xl p-5 shadow-[0_1px_3px_rgba(17,24,39,0.04)]">
-              <div className="text-xs text-gray-500 mb-1">집행률 / 회기 경과율</div>
-              <div className="text-2xl font-bold text-gray-900">
+            <div className={KPI_CARD}>
+              <div className="text-xs text-gray-500 mb-1 whitespace-nowrap">집행률 / 회기 경과율</div>
+              <div className={`${KPI_VALUE} text-gray-900`}>
                 {pct(summary.usedRatio)}
                 <span className="text-sm font-medium text-gray-500"> / {pct(summary.elapsedRatio)}</span>
               </div>
@@ -248,8 +249,8 @@ export default function BudgetDashboard({
               tone="text-emerald-700"
               sub={
                 incomeSummary.totalBudget > 0
-                  ? `수입 예산 ${won(incomeSummary.totalBudget)} · 달성 ${pct(incomeSummary.usedRatio)}`
-                  : "수입 예산 없음"
+                  ? [`수입 예산 ${won(incomeSummary.totalBudget)}`, `달성 ${pct(incomeSummary.usedRatio)}`]
+                  : ["수입 예산 없음"]
               }
             />
             <Kpi
@@ -258,7 +259,7 @@ export default function BudgetDashboard({
                 Math.abs(incomeSummary.totalSpent - summary.totalSpent)
               )}`}
               tone={incomeSummary.totalSpent - summary.totalSpent < 0 ? "text-red-700" : "text-gray-900"}
-              sub="확정된 장부 기준 (이월금 제외)"
+              sub={["확정된 장부 기준", "이월금 제외"]}
             />
           </section>
 
@@ -352,13 +353,18 @@ export default function BudgetDashboard({
                 {[...confirmedMonths].reverse().map((m) => {
                   const st = monthStats.get(m) ?? { count: 0, expense: 0, income: 0 };
                   return (
-                    <li key={m} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2.5">
-                      <span className="w-36 font-semibold text-gray-900">{monthName(m)}</span>
-                      <span className="text-sm text-gray-500">{st.count}건</span>
-                      <span className="text-sm font-medium tabular-nums text-gray-900">지출 {won(st.expense)}</span>
-                      {st.income > 0 && (
-                        <span className="text-sm font-medium tabular-nums text-emerald-700">수입 {won(st.income)}</span>
-                      )}
+                    <li key={m} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-gray-900">
+                          {monthName(m)} <span className="ml-1 text-xs font-normal text-gray-400">{st.count}건</span>
+                        </div>
+                        <div className="mt-0.5 flex flex-wrap gap-x-3 text-sm tabular-nums">
+                          <span className="whitespace-nowrap text-gray-700">지출 {won(st.expense)}</span>
+                          {st.income > 0 && (
+                            <span className="whitespace-nowrap text-emerald-700">수입 {won(st.income)}</span>
+                          )}
+                        </div>
+                      </div>
                       <span className="ml-auto flex gap-1">
                         <button
                           type="button"
@@ -438,7 +444,38 @@ export default function BudgetDashboard({
                 )}
               </select>
               </div>
-              <div className="overflow-auto max-h-[420px]">
+              {/* 모바일: 목록 */}
+              <ul className="md:hidden max-h-[60vh] overflow-auto divide-y divide-gray-100">
+                {detailEntries.map((e) => {
+                  const income = kindOf(e) === "income";
+                  return (
+                    <li key={e.id} className="py-2.5">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="min-w-0 text-sm text-gray-900">{e.description || e.category}</span>
+                        <span
+                          className={`shrink-0 text-sm font-semibold tabular-nums whitespace-nowrap ${
+                            income ? "text-emerald-700" : "text-gray-900"
+                          }`}
+                        >
+                          {income ? "+" : ""}
+                          {won(e.amount)}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 text-xs text-gray-500">
+                        <span className="tabular-nums">{e.entry_date ?? monthLabel(e.month.slice(0, 7))}</span>
+                        {" · "}
+                        <span className={income ? "text-emerald-700" : ""}>{KIND_LABEL[kindOf(e)]}</span>
+                        {" · "}
+                        {groupOfKey.get(itemKey(e)) ? `${groupOfKey.get(itemKey(e))} › ` : ""}
+                        {e.category}
+                      </div>
+                    </li>
+                  );
+                })}
+                {detailEntries.length === 0 && <li className="py-6 text-center text-sm text-gray-400">내역이 없습니다.</li>}
+              </ul>
+              {/* 데스크톱: 표 */}
+              <div className="hidden md:block overflow-auto max-h-[420px]">
                 <table className="w-full text-sm min-w-[700px]">
                   <thead className="sticky top-0 bg-gray-50 text-gray-500 text-xs">
                     <tr>
@@ -507,10 +544,13 @@ export default function BudgetDashboard({
 function GroupBarChart({ groups, kind }: { groups: GroupRow[]; kind: Kind }) {
   if (groups.length === 0) return <p className="text-sm text-gray-400">예산 항목이 없습니다.</p>;
   const height = Math.max(160, groups.length * 52 + 48);
+  // 카테고리 이름 길이에 맞춰 왼쪽 폭을 잡음 (고정 폭이면 짧은 이름일 때 왼쪽이 많이 빔)
+  const longest = Math.max(...groups.map((g) => g.group.length));
+  const labelWidth = Math.min(140, Math.max(40, Math.round(longest * 12.5) + 10));
   return (
     <div style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={groups} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 4 }} barGap={2}>
+        <BarChart data={groups} layout="vertical" margin={{ top: 4, right: 12, bottom: 4, left: 0 }} barGap={2}>
           <CartesianGrid horizontal={false} stroke={COLOR.grid} />
           <XAxis
             type="number"
@@ -522,7 +562,7 @@ function GroupBarChart({ groups, kind }: { groups: GroupRow[]; kind: Kind }) {
           <YAxis
             type="category"
             dataKey="group"
-            width={120}
+            width={labelWidth}
             tick={{ fontSize: 12, fill: "#334155" }}
             axisLine={false}
             tickLine={false}
@@ -549,7 +589,7 @@ function GroupBarChart({ groups, kind }: { groups: GroupRow[]; kind: Kind }) {
           />
           <Legend
             verticalAlign="top"
-            align="right"
+            align="left"
             height={28}
             iconType="square"
             wrapperStyle={{ fontSize: 12, color: "#475569" }}
@@ -590,7 +630,51 @@ function GroupTable({ groups, elapsedRatio, kind }: { groups: GroupRow[]; elapse
           {allOpen ? "모두 접기" : "세부 항목 모두 펼치기"}
         </button>
       </div>
-      <div className="overflow-x-auto">
+      {/* 모바일: 카드 목록 */}
+      <ul className="md:hidden divide-y divide-gray-100">
+        {groups.map((g) => {
+          const isOpen = open.has(g.group);
+          return (
+            <li key={g.group} className="py-3">
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                onClick={() => toggle(g.group)}
+                className="flex w-full items-center gap-1.5 text-left"
+              >
+                <span
+                  aria-hidden
+                  className={`inline-block text-[10px] text-brand-600 transition-transform ${isOpen ? "rotate-90" : ""}`}
+                >
+                  ▶
+                </span>
+                <span className="font-bold text-gray-900">{g.group}</span>
+                <span className="text-xs text-gray-400">{g.items.length}</span>
+              </button>
+              <MobileMoney row={g} elapsedRatio={elapsedRatio} kind={kind} />
+              {isOpen && (
+                <ul className="mt-3 space-y-3 rounded-xl bg-gray-50 px-3 py-3">
+                  {g.items.map((r) => (
+                    <li key={r.key}>
+                      <div className="text-sm text-gray-800">
+                        {r.category}
+                        {r.oneTime && (
+                          <span className="ml-1.5 rounded-full bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                            일회성
+                          </span>
+                        )}
+                      </div>
+                      <MobileMoney row={r} elapsedRatio={elapsedRatio} kind={kind} small />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {/* 데스크톱: 표 */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm min-w-[720px]">
           <thead className="bg-gray-50 text-gray-500 text-xs">
             <tr>
@@ -713,6 +797,46 @@ function MoneyCells({
   );
 }
 
+// 모바일 카드 한 줄: 사용액 / 예산, 막대, 잔액·상태
+function MobileMoney({
+  row,
+  elapsedRatio,
+  kind,
+  small,
+}: {
+  row: Pick<CategoryRow, "budget" | "spent" | "remaining" | "ratio" | "status">;
+  elapsedRatio: number;
+  kind: Kind;
+  small?: boolean;
+}) {
+  const s = statusMeta(kind, row.status);
+  return (
+    <div className="mt-1.5 space-y-1.5">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className={`tabular-nums whitespace-nowrap ${small ? "text-sm" : "font-semibold text-gray-900"}`}>
+          {won(row.spent)}
+          <span className="text-xs font-normal text-gray-400"> / {won(row.budget)}</span>
+        </span>
+        <span className="text-xs tabular-nums text-gray-600">{pct(row.ratio)}</span>
+      </div>
+      <ProgressBar ratio={row.ratio ?? (row.spent > 0 ? 1 : 0)} marker={elapsedRatio} color={s.bar} />
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <span
+          className={`tabular-nums whitespace-nowrap ${
+            row.remaining < 0 && kind === "expense" ? "text-red-700" : "text-gray-500"
+          }`}
+        >
+          잔액 {won(row.remaining)}
+        </span>
+        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ring-1 ${s.badge}`}>
+          <span aria-hidden>{s.icon}</span>
+          {s.label}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 type MonthPointWithIncome = ReturnType<typeof summarize>["monthly"][number] & {
   incomeCumulative: number | null;
   incomeSpent: number | null;
@@ -732,7 +856,7 @@ function MonthlyChart({
   return (
     <div className="h-[280px]">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: 4 }}>
+        <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
           <CartesianGrid vertical={false} stroke={COLOR.grid} />
           <XAxis
             dataKey="month"
@@ -748,7 +872,7 @@ function MonthlyChart({
             tick={{ fontSize: 11, fill: COLOR.axis }}
             axisLine={false}
             tickLine={false}
-            width={56}
+            width={48}
           />
           <Tooltip
             content={({ active, payload, label }) => {
@@ -770,7 +894,7 @@ function MonthlyChart({
               );
             }}
           />
-          <Legend verticalAlign="top" align="right" height={28} wrapperStyle={{ fontSize: 12, color: "#475569" }} />
+          <Legend verticalAlign="top" align="left" height={28} wrapperStyle={{ fontSize: 12, color: "#475569" }} />
           <Line
             type="linear"
             dataKey="pace"
@@ -827,22 +951,34 @@ function ProgressBar({ ratio, marker, color }: { ratio: number; marker?: number;
   );
 }
 
-function Kpi({ label, value, tone, sub }: { label: string; value: string; tone?: string; sub?: string }) {
+// 금액은 한 줄로, 보조 설명은 줄마다 끊어서 (화면이 좁아도 숫자 중간에서 줄이 바뀌지 않게)
+function Kpi({ label, value, tone, sub }: { label: string; value: string; tone?: string; sub?: string[] }) {
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-[0_1px_3px_rgba(17,24,39,0.04)]">
-      <div className="text-xs text-gray-500 mb-1">{label}</div>
-      <div className={`text-lg sm:text-2xl font-bold tabular-nums break-all ${tone ?? "text-gray-900"}`}>{value}</div>
-      {sub && <div className="mt-1 text-xs text-gray-500">{sub}</div>}
+    <div className={KPI_CARD}>
+      <div className="text-xs text-gray-500 mb-1 whitespace-nowrap">{label}</div>
+      <div className={`${KPI_VALUE} ${tone ?? "text-gray-900"}`}>{value}</div>
+      {sub && (
+        <div className="mt-1.5 space-y-0.5 text-xs text-gray-500">
+          {sub.map((line) => (
+            <div key={line} className="whitespace-nowrap tabular-nums">
+              {line}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
+const KPI_CARD = "min-w-0 bg-white rounded-2xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(17,24,39,0.04)]";
+const KPI_VALUE = "whitespace-nowrap font-bold tabular-nums text-[clamp(1rem,4.6vw,1.5rem)] md:text-2xl";
+
 function Panel({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <section>
-      <div className="flex items-baseline gap-2 mb-2 px-1">
+      <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2 mb-2 px-1">
         <h2 className="text-[15px] font-bold text-gray-900">{title}</h2>
-        {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
+        {subtitle && <p className="text-xs text-gray-500 [word-break:keep-all]">{subtitle}</p>}
       </div>
       <div className="bg-white rounded-2xl p-5 shadow-[0_1px_3px_rgba(17,24,39,0.04)]">{children}</div>
     </section>
