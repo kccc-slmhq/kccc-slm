@@ -795,6 +795,24 @@ function GroupDetailDialog({
           <section>
             <h3 className="mb-2 text-sm font-bold text-gray-900">세부 항목</h3>
             <ul className="space-y-1">
+              {/* 카테고리 전체 내역으로 돌아가기 */}
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setItemFilter(null)}
+                  className={`w-full rounded-xl px-3 py-2 text-left ${
+                    itemFilter === null ? "bg-brand-50 ring-1 ring-brand-200" : "hover:bg-gray-50"
+                  }`}
+                >
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="min-w-0 text-sm font-semibold text-gray-900">{group.group} 전체</span>
+                    <span className="shrink-0 text-sm font-semibold tabular-nums whitespace-nowrap">
+                      {won(group.spent)}
+                      <span className="text-xs font-normal text-gray-400"> / {won(group.budget)}</span>
+                    </span>
+                  </div>
+                </button>
+              </li>
               {group.items.map((r) => {
                 const active = itemFilter === r.key;
                 return (
@@ -835,8 +853,12 @@ function GroupDetailDialog({
                 <span className="ml-1.5 text-xs font-normal text-gray-400">{rows.length}건</span>
               </h3>
               {itemFilter ? (
-                <button type="button" onClick={() => setItemFilter(null)} className="text-xs font-semibold text-brand-600">
-                  전체 보기
+                <button
+                  type="button"
+                  onClick={() => setItemFilter(null)}
+                  className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 ring-1 ring-brand-100 hover:bg-brand-100"
+                >
+                  ← {group.group} 전체 보기
                 </button>
               ) : (
                 <span className="text-xs text-gray-400">항목을 누르면 그 항목만</span>
