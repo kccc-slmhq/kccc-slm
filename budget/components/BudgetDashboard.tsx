@@ -15,7 +15,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { fiscalMonths, fiscalYearLabel, monthLabel, shortMonthLabel } from "@/lib/budget/fiscal";
+import { fiscalYearLabel, isBeforeFiscalStart, monthLabel, shortMonthLabel } from "@/lib/budget/fiscal";
+import { createClient } from "@/lib/supabase/client";
 import {
   pct,
   shortWon,
@@ -54,11 +55,16 @@ export default function BudgetDashboard({
 }: BudgetData & { fiscalYear: number }) {
   const router = useRouter();
 
-  const fyMonths = useMemo(() => fiscalMonths(fiscalYear), [fiscalYear]);
+  // 이 회기로 확정된 달 (회기 시작 전에 미리 쓴 달 포함)
   const confirmedMonths = useMemo(
-    () => months.map((m) => m.month.slice(0, 7)).filter((m) => fyMonths.includes(m)),
-    [months, fyMonths]
+    () =>
+      months
+        .filter((m) => m.fiscal_year === fiscalYear)
+        .map((m) => m.month.slice(0, 7))
+        .sort(),
+    [months, fiscalYear]
   );
+  const monthName = (m: string) => `${monthLabel(m)}${isBeforeFiscalStart(fiscalYear, m) ? " (사전)" : ""}`;
   const latestConfirmed = confirmedMonths.length > 0 ? confirmedMonths[confirmedMonths.length - 1] : null;
   const [throughMonth, setThroughMonth] = useState<string | null>(latestConfirmed);
   // 회기를 바꾸면 기준월을 그 회기의 마지막 확정월로
@@ -69,8 +75,35 @@ export default function BudgetDashboard({
     [fiscalYear, items, entries, confirmedMonths, effectiveThrough]
   );
 
-  // 세부 내역 필터: "" (전체) | "g:큰카테고리" | "i:항목키"
+  // 세부 내역 필터: "" (전체) | "g:큰카테고리" | "i:항목키", 그리고 특정 달
   const [detailFilter, setDetailFilter] = useState<string>("");
+  const [detailMonth, setDetailMonth] = useState<string>("");
+  const [deletingMonth, setDeletingMonth] = useState<string | null>(null);
+
+  async function deleteMonth(m: string) {
+    if (!window.confirm(`${monthLabel(m)} 장부를 삭제할까요? 이 달의 지출 내역이 모두 지워집니다.`)) return;
+    setDeletingMonth(m);
+    const { error } = await createClient().from("ledger_months").delete().eq("month", `${m}-01`);
+    setDeletingMonth(null);
+    if (error) {
+      window.alert(`삭제에 실패했습니다: ${error.message}`);
+      return;
+    }
+    router.refresh();
+  }
+
+  // 확정된 달별 건수·합계
+  const monthStats = useMemo(() => {
+    const map = new Map<string, { count: number; total: number }>();
+    for (const e of entries) {
+      const m = e.month.slice(0, 7);
+      const cur = map.get(m) ?? { count: 0, total: 0 };
+      cur.count += 1;
+      cur.total += e.amount;
+      map.set(m, cur);
+    }
+    return map;
+  }, [entries]);
   const groupOfKey = useMemo(() => {
     const map = new Map<string, string>();
     for (const g of summary.groups) for (const r of g.items) map.set(r.key, g.group);
@@ -80,12 +113,13 @@ export default function BudgetDashboard({
     () =>
       entries.filter((e) => {
         if (!effectiveThrough || e.month.slice(0, 7) > effectiveThrough) return false;
+        if (detailMonth && e.month.slice(0, 7) !== detailMonth) return false;
         if (!detailFilter) return true;
         const key = itemKey(e);
         if (detailFilter.startsWith("g:")) return groupOfKey.get(key) === detailFilter.slice(2);
         return key === detailFilter.slice(2);
       }),
-    [entries, effectiveThrough, detailFilter, groupOfKey]
+    [entries, effectiveThrough, detailFilter, detailMonth, groupOfKey]
   );
 
   const hasPlan = plans.some((p) => p.fiscal_year === fiscalYear);
@@ -120,10 +154,18 @@ export default function BudgetDashboard({
           >
             {[...confirmedMonths].reverse().map((m) => (
               <option key={m} value={m}>
-                {monthLabel(m)}까지 누적
+                {monthName(m)}까지 누적
               </option>
             ))}
           </select>
+        )}
+        {hasPlan && (
+          <Link
+            href={`/upload?tab=budget&edit=${fiscalYear}`}
+            className="ml-auto rounded-full px-3 py-1.5 text-sm font-semibold text-brand-600 hover:bg-brand-50"
+          >
+            예산안 수정
+          </Link>
         )}
       </div>
 
@@ -188,7 +230,11 @@ export default function BudgetDashboard({
           {/* 월별 누적 추이 */}
           <Panel title="월별 누적 사용액" subtitle="점선 = 예산을 12개월에 균등하게 쓸 때의 기준선">
             <MonthlyChart data={summary.monthly} />
-            <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-1.5 mt-3">
+            <div
+              className={`grid grid-cols-4 sm:grid-cols-6 gap-1.5 mt-3 ${
+                summary.monthly.length > 12 ? "lg:grid-cols-[repeat(13,minmax(0,1fr))]" : "lg:grid-cols-12"
+              }`}
+            >
               {summary.monthly.map((m) => (
                 <div
                   key={m.month}
@@ -196,20 +242,86 @@ export default function BudgetDashboard({
                     m.confirmed ? "bg-white ring-gray-200" : "bg-gray-50 ring-gray-100 text-gray-400"
                   }`}
                 >
-                  <div className="text-xs font-medium">{shortMonthLabel(m.month)}</div>
+                  <div className="text-xs font-medium">
+                    {shortMonthLabel(m.month)}
+                    {m.beforeStart ? "(사전)" : ""}
+                  </div>
                   <div className="text-[11px] tabular-nums">{m.spent === null ? "미확정" : shortWon(m.spent)}</div>
                 </div>
               ))}
             </div>
           </Panel>
 
+          {/* 확정된 장부: 보기 / 수정 / 삭제 */}
+          <Panel title="확정된 월별 장부" subtitle="보기 = 아래 세부 내역에서 그 달만, 수정 = 장부 편집 화면">
+            {confirmedMonths.length === 0 ? (
+              <p className="text-sm text-gray-400">확정된 장부가 없습니다.</p>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {[...confirmedMonths].reverse().map((m) => {
+                  const st = monthStats.get(m) ?? { count: 0, total: 0 };
+                  return (
+                    <li key={m} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2.5">
+                      <span className="w-36 font-semibold text-gray-900">{monthName(m)}</span>
+                      <span className="text-sm text-gray-500">{st.count}건</span>
+                      <span className="text-sm font-medium tabular-nums text-gray-900">{won(st.total)}</span>
+                      <span className="ml-auto flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDetailMonth(m);
+                            setDetailFilter("");
+                            document.getElementById("detail")?.scrollIntoView({ behavior: "smooth" });
+                          }}
+                          className="rounded-full px-3 py-1 text-xs font-semibold text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50"
+                        >
+                          보기
+                        </button>
+                        <Link
+                          href={`/upload?tab=ledger&month=${m}`}
+                          className="rounded-full px-3 py-1 text-xs font-semibold text-brand-600 ring-1 ring-brand-100 hover:bg-brand-50"
+                        >
+                          수정
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => deleteMonth(m)}
+                          disabled={deletingMonth === m}
+                          className="rounded-full px-3 py-1 text-xs font-semibold text-red-600 ring-1 ring-red-200 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          {deletingMonth === m ? "삭제 중..." : "삭제"}
+                        </button>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Panel>
+
           {/* 세부 지출 내역 */}
           {effectiveThrough && (
-            <Panel title="세부 지출 내역" subtitle={`${monthLabel(effectiveThrough)}까지`}>
+            <Panel title="세부 지출 내역" subtitle={`${monthName(effectiveThrough)}까지`}>
+              <div id="detail" className="flex flex-wrap gap-2 mb-2">
+              <select
+                value={detailMonth}
+                onChange={(e) => setDetailMonth(e.target.value)}
+                className="h-9 rounded-xl border border-gray-200 bg-white px-2 text-sm"
+                aria-label="달 선택"
+              >
+                <option value="">모든 달</option>
+                {confirmedMonths
+                  .filter((m) => m <= effectiveThrough)
+                  .map((m) => (
+                    <option key={m} value={m}>
+                      {monthName(m)}
+                    </option>
+                  ))}
+              </select>
               <select
                 value={detailFilter}
                 onChange={(e) => setDetailFilter(e.target.value)}
-                className="h-9 max-w-full rounded-xl border border-gray-200 bg-white px-2 text-sm mb-2"
+                className="h-9 max-w-full rounded-xl border border-gray-200 bg-white px-2 text-sm"
                 aria-label="카테고리·항목 선택"
               >
                 <option value="">전체</option>
@@ -224,6 +336,7 @@ export default function BudgetDashboard({
                   </optgroup>
                 ))}
               </select>
+              </div>
               <div className="overflow-auto max-h-[420px]">
                 <table className="w-full text-sm min-w-[640px]">
                   <thead className="sticky top-0 bg-gray-50 text-gray-500 text-xs">
@@ -458,7 +571,9 @@ function MonthlyChart({ data }: { data: ReturnType<typeof summarize>["monthly"] 
           <CartesianGrid vertical={false} stroke={COLOR.grid} />
           <XAxis
             dataKey="month"
-            tickFormatter={shortMonthLabel}
+            tickFormatter={(m: string, i: number) =>
+              `${shortMonthLabel(m)}${data[i]?.beforeStart ? "(사전)" : ""}`
+            }
             tick={{ fontSize: 11, fill: COLOR.axis }}
             axisLine={{ stroke: COLOR.grid }}
             tickLine={false}
@@ -476,7 +591,10 @@ function MonthlyChart({ data }: { data: ReturnType<typeof summarize>["monthly"] 
               const m = payload[0].payload as ReturnType<typeof summarize>["monthly"][number];
               return (
                 <div className="bg-white rounded-lg shadow-md ring-1 ring-gray-200 px-3 py-2 text-xs space-y-0.5">
-                  <div className="font-semibold text-gray-800">{monthLabel(String(label))}</div>
+                  <div className="font-semibold text-gray-800">
+                    {monthLabel(String(label))}
+                    {m.beforeStart ? " (회기 시작 전 미리 쓴 지출)" : ""}
+                  </div>
                   <div className="text-gray-600">그 달 사용 {m.spent === null ? "미확정" : won(m.spent)}</div>
                   {m.cumulative !== null && <div className="text-gray-600">누적 사용 {won(m.cumulative)}</div>}
                   <div className="text-gray-600">균등 기준선 {won(m.pace)}</div>

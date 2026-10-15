@@ -1,4 +1,4 @@
-import { fiscalMonthIndex, fiscalMonths } from "./fiscal";
+import { fiscalElapsedRatio, fiscalMonths, isBeforeFiscalStart } from "./fiscal";
 import { itemKey, type BudgetItem, type LedgerEntry } from "./types";
 
 export type CategoryStatus = "over" | "fast" | "ok" | "unbudgeted";
@@ -31,6 +31,7 @@ export type MonthPoint = {
   spent: number | null; // 그 달 사용액 (미확정이면 null)
   cumulative: number | null; // 누적 사용액 (기준월 이후는 null)
   pace: number; // 예산을 12개월에 균등하게 쓴다고 했을 때의 누적 기준선
+  beforeStart: boolean; // 회기 시작 전에 미리 쓴 달 (예: 7월)
 };
 
 export type BudgetSummary = {
@@ -62,12 +63,13 @@ export function summarize(
   fiscalYear: number,
   items: BudgetItem[],
   entries: LedgerEntry[],
-  confirmedMonths: string[], // YYYY-MM
+  confirmedMonths: string[], // 이 회기로 확정된 달 YYYY-MM (회기 시작 전 달 포함 가능)
   throughMonth: string | null // 이 달까지 누적. null 이면 확정된 달 없음
 ): BudgetSummary {
-  const months = fiscalMonths(fiscalYear);
+  const preMonths = confirmedMonths.filter((m) => isBeforeFiscalStart(fiscalYear, m)).sort();
+  const months = [...preMonths, ...fiscalMonths(fiscalYear)];
   const confirmed = new Set(confirmedMonths);
-  const elapsedRatio = throughMonth ? fiscalMonthIndex(throughMonth) / 12 : 0;
+  const elapsedRatio = throughMonth ? fiscalElapsedRatio(fiscalYear, throughMonth) : 0;
 
   const fyItems = items.filter((i) => i.fiscal_year === fiscalYear).sort((a, b) => a.sort_order - b.sort_order);
   const totalBudget = fyItems.reduce((s, i) => s + i.amount, 0);
@@ -135,7 +137,7 @@ export function summarize(
   const totalSpent = rows.reduce((s, r) => s + r.spent, 0);
 
   let running = 0;
-  const monthly: MonthPoint[] = months.map((month, i) => {
+  const monthly: MonthPoint[] = months.map((month) => {
     const isConfirmed = confirmed.has(month);
     const spent = isConfirmed ? spentByMonth.get(month) ?? 0 : null;
     const inRange = throughMonth !== null && month <= throughMonth;
@@ -145,7 +147,8 @@ export function summarize(
       confirmed: isConfirmed,
       spent,
       cumulative: inRange ? running : null,
-      pace: Math.round((totalBudget * (i + 1)) / 12),
+      pace: Math.round(totalBudget * fiscalElapsedRatio(fiscalYear, month)),
+      beforeStart: isBeforeFiscalStart(fiscalYear, month),
     };
   });
 
