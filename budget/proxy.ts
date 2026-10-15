@@ -7,6 +7,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // 정적 파일과 API는 제외 (API 라우트는 자체적으로 로그인 확인)
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/).*)"],
+  // 정적 파일·앱 아이콘·매니페스트와 API는 제외 (API 라우트는 자체적으로 로그인 확인)
+  // 아이콘·매니페스트는 홈 화면에 추가할 때 로그인 없이 읽히므로 열어둠
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|manifest.webmanifest|api/).*)"],
 };
