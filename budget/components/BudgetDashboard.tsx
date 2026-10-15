@@ -694,7 +694,7 @@ function GroupTable({
                 <span className="font-bold text-gray-900">{g.group}</span>
                 <span className="text-xs text-gray-400">{g.items.length}</span>
               </button>
-                <DetailButton onClick={() => setDetail(g)} />
+                {isOpen && <DetailButton onClick={() => setDetail(g)} />}
               </div>
               <MobileMoney row={g} elapsedRatio={elapsedRatio} kind={kind} />
               {isOpen && (
@@ -948,9 +948,11 @@ function GroupRows({
             {g.group}
             <span className="text-xs font-medium text-gray-400">{g.items.length}</span>
           </button>
-          <span className="ml-2 inline-block align-middle">
-            <DetailButton onClick={onDetail} />
-          </span>
+          {isOpen && (
+            <span className="ml-2 inline-block align-middle">
+              <DetailButton onClick={onDetail} />
+            </span>
+          )}
         </td>
         <MoneyCells row={g} elapsedRatio={elapsedRatio} kind={kind} bold />
       </tr>
