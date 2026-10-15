@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { safeNext } from "@/lib/safe-next";
 import { Logo } from "@/components/Logo";
+import { PasswordInput } from "@/components/PasswordInput";
 
 // Supabase 로그인은 이메일 형식이 필요해서, 아이디만 입력하면 이 도메인을 붙여 이메일로 만듦
 // (Supabase에는 "아이디@slm-budget.local" 로 사용자를 만들어 두면 됨)
@@ -60,14 +61,15 @@ export default function LoginPage() {
           className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 mb-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
         />
         <label className="block text-sm text-gray-700 font-medium mb-1.5">비밀번호</label>
-        <input
-          type="password"
-          required
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 mb-5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-        />
+        <div className="mb-5">
+          <PasswordInput
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+          />
+        </div>
         {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
         <button
           type="submit"

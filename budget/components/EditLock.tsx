@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { PasswordInput } from "./PasswordInput";
 
 export const EDIT_NOTICE = "업로드와 확정된 자료의 수정·삭제는 SLM HQ 재정 담당자만 할 수 있습니다.";
 
@@ -130,17 +131,16 @@ function PasswordForm({
         🔒 재정 담당자 확인
       </h2>
       <p className="mt-1 text-sm text-gray-600">{notice}</p>
-      <label className="mt-4 block text-sm font-medium text-gray-700" htmlFor="edit-password">
+      <label className="mt-4 mb-1.5 block text-sm font-medium text-gray-700" htmlFor="edit-password">
         비밀번호
       </label>
-      <input
+      <PasswordInput
         ref={inputRef}
         id="edit-password"
-        type="password"
         autoComplete="off"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+        className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
       />
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       <div className="mt-5 flex gap-2">
