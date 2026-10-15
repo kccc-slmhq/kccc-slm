@@ -29,3 +29,18 @@ body {
     "Malgun Gothic", "Noto Sans KR", sans-serif;
   letter-spacing: -0.01em;
 }
+
+/* 아이폰은 글자가 16px 보다 작은 입력칸을 누르면 화면을 확대함 → 모바일에서는 입력칸 글자를 16px 로 */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* 한글은 단어 중간에서 줄이 바뀌지 않게 (긴 단어만 예외로 끊음) */
+body {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
