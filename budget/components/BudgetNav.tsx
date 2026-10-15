@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { BarsIcon, HomeIcon, ListIcon, LogoutIcon, TrendIcon, UploadIcon } from "./Icons";
+import { BarsIcon, DocIcon, HomeIcon, ListIcon, LogoutIcon, TrendIcon, UploadIcon } from "./Icons";
 import { Logo } from "./Logo";
 
 const LINKS = [
   { href: "/", label: "대시보드", Icon: HomeIcon },
+  { href: "/plan", label: "예산안", Icon: DocIcon },
   { href: "/upload", label: "업로드", Icon: UploadIcon },
 ];
 
@@ -105,12 +106,21 @@ export function BottomTabs() {
           {label}
         </button>
       ))}
+      <Link
+        href="/plan"
+        aria-current={pathname === "/plan" ? "page" : undefined}
+        className={`${item} ${pathname === "/plan" ? "text-brand-600" : "text-gray-400"}`}
+      >
+        <DocIcon />
+        예산안
+      </Link>
     </nav>
   );
 }
 
 const TITLES: Record<string, [string, string]> = {
   "/": ["대시보드", "예산 대비 항목별 사용 현황"],
+  "/plan": ["예산안", "회기별로 확정된 지출·수입 예산"],
   "/upload": ["업로드", "예산안과 월별 장부를 올리고 확인한 뒤 확정해요"],
 };
 
