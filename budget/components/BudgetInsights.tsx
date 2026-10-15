@@ -9,10 +9,12 @@ export default function BudgetInsights({
   expense,
   income,
   throughLabel,
+  carryover = 0,
 }: {
   expense: BudgetSummary;
   income: BudgetSummary | null;
   throughLabel: string;
+  carryover?: number; // 전년도 이월금 (수입 달성률과 별도)
 }) {
   const health = healthOf(expense);
   const monthsElapsed = Math.round(expense.elapsedRatio * 12);
@@ -95,6 +97,11 @@ export default function BudgetInsights({
           </div>
           <Bar ratio={income.usedRatio ?? 0} color="#1baf7a" />
           <p className="text-xs text-gray-500">회기 경과율 {pct(income.elapsedRatio)}</p>
+          {carryover > 0 && (
+            <p className="text-xs text-gray-500">
+              전년도 이월금 {won(carryover)}은 수입으로 기록되지만, 올해 수입 예산 달성률에서는 뺐어요.
+            </p>
+          )}
         </Card>
       )}
 
