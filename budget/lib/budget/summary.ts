@@ -12,6 +12,7 @@ export type CategoryRow = {
   remaining: number;
   ratio: number | null; // 집행률 (예산 0이면 null)
   status: CategoryStatus;
+  oneTime: boolean; // 일회성 행사 — 지출 속도로는 판단하지 않고 초과만 봄
 };
 
 // 큰 카테고리 단위 합계 + 그 안의 세부 항목
@@ -24,6 +25,9 @@ export type GroupRow = {
   status: CategoryStatus;
   items: CategoryRow[];
 };
+
+// 지출 속도 판단에 쓰는 '정기 지출' 부분만의 예산·사용액 (일회성 행사 제외)
+export type Pace = { budget: number; spent: number; ratio: number | null };
 
 export type MonthPoint = {
   month: string; // YYYY-MM
@@ -39,6 +43,7 @@ export type BudgetSummary = {
   totalSpent: number;
   remaining: number;
   usedRatio: number | null;
+  recurring: Pace; // 일회성 행사를 뺀 집행률 (재정 건전성·속도 판단용)
   elapsedRatio: number; // 기준월까지 회기 경과율 (n/12)
   rows: CategoryRow[];
   groups: GroupRow[];
@@ -49,11 +54,28 @@ export type BudgetSummary = {
 export const NO_GROUP_LABEL = "기타";
 export const UNBUDGETED_GROUP_LABEL = "예산 외";
 
-function statusOf(budget: number, spent: number, elapsedRatio: number): CategoryStatus {
+// oneTime: 일회성 행사는 한 번에 쓰고 끝나므로 '빠름'으로 보지 않고 예산 초과만 경고
+// paceBudget/paceSpent: 속도 판단에 쓸 정기 지출 부분 (카테고리는 일회성 항목을 뺀 값)
+function statusOf(
+  budget: number,
+  spent: number,
+  elapsedRatio: number,
+  oneTime = false,
+  paceBudget = budget,
+  paceSpent = spent
+): CategoryStatus {
   if (budget === 0) return spent > 0 ? "unbudgeted" : "ok";
   if (spent > budget) return "over";
-  if (spent / budget > elapsedRatio + FAST_MARGIN) return "fast";
+  if (oneTime || paceBudget <= 0) return "ok";
+  if (paceSpent / paceBudget > elapsedRatio + FAST_MARGIN) return "fast";
   return "ok";
+}
+
+function paceOf(rows: { budget: number; spent: number; oneTime: boolean }[]): Pace {
+  const recurring = rows.filter((r) => !r.oneTime);
+  const budget = recurring.reduce((s, r) => s + r.budget, 0);
+  const spent = recurring.reduce((s, r) => s + r.spent, 0);
+  return { budget, spent, ratio: budget > 0 ? spent / budget : null };
 }
 
 // 집행률이 회기 경과율보다 이만큼 이상 앞서면 "빠름"
@@ -94,12 +116,17 @@ export function summarize(
 
   const budgetKeys = new Set(fyItems.map((i) => itemKey(i)));
   const rows: CategoryRow[] = [
-    ...fyItems.map((i) => ({ category_group: i.category_group, category: i.category, budget: i.amount })),
+    ...fyItems.map((i) => ({
+      category_group: i.category_group,
+      category: i.category,
+      budget: i.amount,
+      oneTime: kind === "expense" && !!i.one_time,
+    })),
     // 예산에 없는 항목으로 기록된 지출 (미분류 포함)
     ...[...spentByItem.entries()]
       .filter(([key]) => !budgetKeys.has(key))
-      .map(([, v]) => ({ category_group: v.category_group, category: v.category, budget: 0 })),
-  ].map(({ category_group, category, budget }) => {
+      .map(([, v]) => ({ category_group: v.category_group, category: v.category, budget: 0, oneTime: false })),
+  ].map(({ category_group, category, budget, oneTime }) => {
     const key = itemKey({ kind, category_group, category });
     const spent = spentByItem.get(key)?.amount ?? 0;
     return {
@@ -110,7 +137,8 @@ export function summarize(
       spent,
       remaining: budget - spent,
       ratio: budget > 0 ? spent / budget : null,
-      status: statusOf(budget, spent, elapsedRatio),
+      status: statusOf(budget, spent, elapsedRatio, oneTime),
+      oneTime,
     };
   });
 
@@ -127,13 +155,15 @@ export function summarize(
   const groups: GroupRow[] = [...groupMap.entries()].map(([group, items]) => {
     const budget = items.reduce((sum, r) => sum + r.budget, 0);
     const spent = items.reduce((sum, r) => sum + r.spent, 0);
+    const pace = paceOf(items);
+    const allOneTime = items.length > 0 && items.every((r) => r.oneTime);
     return {
       group,
       budget,
       spent,
       remaining: budget - spent,
       ratio: budget > 0 ? spent / budget : null,
-      status: statusOf(budget, spent, elapsedRatio),
+      status: statusOf(budget, spent, elapsedRatio, allOneTime, pace.budget, pace.spent),
       items,
     };
   });
@@ -161,6 +191,7 @@ export function summarize(
     totalSpent,
     remaining: totalBudget - totalSpent,
     usedRatio: totalBudget > 0 ? totalSpent / totalBudget : null,
+    recurring: paceOf(rows),
     elapsedRatio,
     rows,
     groups,

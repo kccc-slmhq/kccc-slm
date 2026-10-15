@@ -9,16 +9,19 @@ import type { BudgetItem, BudgetPlan, ParsedBudget } from "@/lib/budget/types";
 import { KIND_LABEL, UNCATEGORIZED, itemKey, itemLabel, kindOf, type Kind } from "@/lib/budget/types";
 import { AmountInput, AnalyzeFile, Card } from "./shared";
 
-type Row = { key: number; kind: Kind; category_group: string; category: string; amount: number };
+type Row = { key: number; kind: Kind; category_group: string; category: string; amount: number; one_time: boolean };
 
 let nextKey = 1;
-const toRows = (items: { kind?: Kind; category_group: string; category: string; amount: number }[]): Row[] =>
+const toRows = (
+  items: { kind?: Kind; category_group: string; category: string; amount: number; one_time?: boolean }[]
+): Row[] =>
   items.map((i) => ({
     key: nextKey++,
     kind: kindOf(i),
     category_group: i.category_group,
     category: i.category,
     amount: i.amount,
+    one_time: !!i.one_time,
   }));
 
 const KINDS: Kind[] = ["expense", "income"];
@@ -39,7 +42,13 @@ function existingRows(items: BudgetItem[], fiscalYear: number): Row[] {
     items
       .filter((i) => i.fiscal_year === fiscalYear)
       .sort((a, b) => a.sort_order - b.sort_order)
-      .map((i) => ({ kind: i.kind, category_group: i.category_group, category: i.category, amount: i.amount }))
+      .map((i) => ({
+        kind: i.kind,
+        category_group: i.category_group,
+        category: i.category,
+        amount: i.amount,
+        one_time: i.one_time,
+      }))
   );
 }
 
@@ -150,6 +159,7 @@ export default function BudgetPlanForm({
         category_group: r.category_group.trim(),
         category: r.category.trim(),
         amount: r.amount,
+        one_time: r.kind === "expense" && r.one_time,
       })),
     });
     setSaving(false);
@@ -226,6 +236,11 @@ export default function BudgetPlanForm({
                   {KIND_LABEL[kind]}
                 </span>
                 {KIND_LABEL[kind]} 예산
+                {kind === "expense" && (
+                  <span className="ml-auto text-xs font-normal text-gray-500">
+                    일회성 = 한 번 열리고 끝나는 행사 (속도 경고 없이 초과만 알림)
+                  </span>
+                )}
               </h3>
           <div className="space-y-3">
             {groupRows(rows, kind).map(({ group, rows: groupItems }) => {
@@ -257,6 +272,22 @@ export default function BudgetPlanForm({
                               className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
                             />
                           </td>
+                          {kind === "expense" && (
+                            <td className="px-1 py-1.5 w-24 whitespace-nowrap">
+                              <label
+                                className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-gray-600"
+                                title="한 번 열리고 끝나는 행사 예산이면 체크하세요. 지출 속도로 '빠름' 경고를 하지 않고, 예산 초과만 알려줍니다."
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={r.one_time}
+                                  onChange={(e) => updateRow(r.key, { one_time: e.target.checked })}
+                                  className="h-4 w-4 accent-brand-600"
+                                />
+                                일회성
+                              </label>
+                            </td>
+                          )}
                           <td className="px-2 py-1.5 w-36 sm:w-44">
                             <AmountInput
                               value={r.amount}

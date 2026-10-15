@@ -643,7 +643,14 @@ function GroupRows({
       {isOpen &&
         g.items.map((r) => (
           <tr key={r.key} className="border-b border-gray-100">
-            <td className="pl-8 pr-2 py-2 whitespace-nowrap text-gray-700">{r.category}</td>
+            <td className="pl-8 pr-2 py-2 whitespace-nowrap text-gray-700">
+              {r.category}
+              {r.oneTime && (
+                <span className="ml-1.5 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                  일회성
+                </span>
+              )}
+            </td>
             <MoneyCells row={r} elapsedRatio={elapsedRatio} kind={kind} />
           </tr>
         ))}
