@@ -185,3 +185,94 @@ revoke all on function save_budget(integer, text, jsonb) from public, anon;
 revoke all on function save_ledger_month(date, text, jsonb, integer) from public, anon;
 grant execute on function save_budget(integer, text, jsonb) to authenticated;
 grant execute on function save_ledger_month(date, text, jsonb, integer) to authenticated;
+
+-- ─────────────────────────────────────────────
+-- 예산 용도변경: 한 항목의 예산 일부를 다른 항목으로 옮김 (회의록 정보 필수)
+-- 변경 내역은 예산안을 다시 확정해도 지워지지 않게 따로 보관
+create table if not exists budget_transfers (
+  id bigint generated always as identity primary key,
+  fiscal_year integer not null,
+  from_group text not null default '',
+  from_category text not null,
+  to_group text not null default '',
+  to_category text not null,
+  amount bigint not null check (amount > 0),
+  reason text not null default '',
+  meeting_date date not null,
+  meeting_place text not null,
+  attendees text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists budget_transfers_fy on budget_transfers (fiscal_year, created_at);
+
+alter table budget_transfers enable row level security;
+drop policy if exists "authenticated full access" on budget_transfers;
+create policy "authenticated full access" on budget_transfers
+  for all to authenticated using (true) with check (true);
+
+-- 용도변경 실행 (한 트랜잭션): 보내는 항목에서 빼고, 받는 항목에 더하고(없으면 새로 만듦), 내역 기록
+create or replace function transfer_budget(
+  p_fiscal_year integer,
+  p_from_group text,
+  p_from_category text,
+  p_to_group text,
+  p_to_category text,
+  p_amount bigint,
+  p_reason text,
+  p_meeting_date date,
+  p_meeting_place text,
+  p_attendees text
+) returns void
+language plpgsql
+security invoker
+as $$
+declare
+  v_from budget_items%rowtype;
+  v_to_id bigint;
+begin
+  if p_amount is null or p_amount <= 0 then
+    raise exception '옮길 금액을 확인해주세요.';
+  end if;
+  if p_meeting_date is null or coalesce(trim(p_meeting_place), '') = '' or coalesce(trim(p_attendees), '') = '' then
+    raise exception '회의 날짜, 장소, 참석자 명단을 모두 기록해야 용도변경을 할 수 있습니다.';
+  end if;
+  if p_from_group = trim(p_to_group) and p_from_category = trim(p_to_category) then
+    raise exception '보내는 항목과 받는 항목이 같습니다.';
+  end if;
+
+  select * into v_from from budget_items
+  where fiscal_year = p_fiscal_year and kind = 'expense'
+    and category_group = p_from_group and category = p_from_category
+  for update;
+  if not found then
+    raise exception '보내는 항목을 찾을 수 없습니다.';
+  end if;
+  if v_from.amount < p_amount then
+    raise exception '보내는 항목의 예산(%)보다 많이 옮길 수 없습니다.', v_from.amount;
+  end if;
+
+  update budget_items set amount = amount - p_amount where id = v_from.id;
+
+  select id into v_to_id from budget_items
+  where fiscal_year = p_fiscal_year and kind = 'expense'
+    and category_group = trim(p_to_group) and category = trim(p_to_category)
+  for update;
+  if found then
+    update budget_items set amount = amount + p_amount where id = v_to_id;
+  else
+    insert into budget_items (fiscal_year, kind, category_group, category, amount, one_time, sort_order)
+    values (
+      p_fiscal_year, 'expense', trim(p_to_group), trim(p_to_category), p_amount, false,
+      coalesce((select max(sort_order) + 1 from budget_items where fiscal_year = p_fiscal_year and kind = 'expense'), 0)
+    );
+  end if;
+
+  insert into budget_transfers (fiscal_year, from_group, from_category, to_group, to_category, amount, reason,
+    meeting_date, meeting_place, attendees)
+  values (p_fiscal_year, p_from_group, p_from_category, trim(p_to_group), trim(p_to_category), p_amount,
+    coalesce(trim(p_reason), ''), p_meeting_date, trim(p_meeting_place), trim(p_attendees));
+end;
+$$;
+
+revoke all on function transfer_budget(integer, text, text, text, text, bigint, text, date, text, text) from public, anon;
+grant execute on function transfer_budget(integer, text, text, text, text, bigint, text, date, text, text) to authenticated;

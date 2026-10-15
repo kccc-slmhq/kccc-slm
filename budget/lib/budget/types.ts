@@ -101,3 +101,19 @@ export type ParsedLedger = {
     amount: number;
   }[];
 };
+
+// 예산 용도변경 기록 (회의록 정보 포함)
+export type BudgetTransfer = {
+  id: number;
+  fiscal_year: number;
+  from_group: string;
+  from_category: string;
+  to_group: string;
+  to_category: string;
+  amount: number;
+  reason: string;
+  meeting_date: string;
+  meeting_place: string;
+  attendees: string;
+  created_at: string;
+};
