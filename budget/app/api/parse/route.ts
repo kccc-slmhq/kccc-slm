@@ -3,7 +3,8 @@ import { GeminiError, parseBudgetDocument, parseLedgerDocument } from "@/lib/bud
 import type { ItemRef } from "@/lib/budget/types";
 import { MAX_UPLOAD_BYTES, detectUploadType, unsupportedUploadMessage } from "@/lib/budget/upload";
 
-export const maxDuration = 60;
+// Gemini 가 혼잡할 때 재시도할 시간을 주기 위해 넉넉하게 (Vercel Fluid Compute 기준 최대 300초)
+export const maxDuration = 180;
 
 // POST multipart/form-data
 //   kind: "budget" | "ledger"

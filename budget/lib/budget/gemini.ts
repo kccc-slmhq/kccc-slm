@@ -4,8 +4,12 @@ import { UNCATEGORIZED, UNCATEGORIZED_REF, itemLabel, type ItemRef } from "./typ
 
 // Gemini API 키/모델은 환경변수로만 받습니다 (코드에 키를 넣지 마세요).
 //   GEMINI_API_KEY  (필수) 여러 개면 쉼표로 구분 — 앞의 키가 한도 초과 등으로 막히면 다음 키로 시도
-//   GEMINI_MODEL    (선택, 기본값 gemini-3.8-flash)
+//   GEMINI_MODEL    (선택, 기본값 gemini-3.8-flash) — 혼잡하면 FALLBACK_MODELS 순서로 자동 전환
 const DEFAULT_MODEL = "gemini-3.8-flash";
+const FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+
+// Vercel 함수 제한(route.ts 의 maxDuration = 180초) 안에 끝내고 안내 문구를 돌려주기 위한 전체 시간 한도
+const DEADLINE_MS = 165_000;
 
 export class GeminiError extends Error {}
 
@@ -18,28 +22,42 @@ function apiKeys(): string[] {
     .filter(Boolean);
 }
 
+function models(): string[] {
+  const first = process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
+  return [first, ...FALLBACK_MODELS.filter((m) => m !== first)];
+}
+
 async function generateJson(prompt: string, file: InlineFile, responseSchema: object): Promise<unknown> {
   const keys = apiKeys();
   if (keys.length === 0) {
     throw new GeminiError("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.");
   }
 
-  // 키마다 시도. 한도 초과/키 문제면 다음 키로, Gemini 서버 혼잡(503 등)이면 잠깐 쉬었다가 다시 시도.
-  // 문서 자체 문제는 다른 키로 해도 같으므로 바로 실패
+  // 모델 × 키 순서로 시도.
+  // - 서버 혼잡(503 등)/시간 초과: 다음 모델로
+  // - 한도 초과/키 문제: 같은 모델의 다음 키로
+  // - 문서 자체 문제: 다른 키·모델로 해도 같으므로 바로 실패
+  const deadline = Date.now() + DEADLINE_MS;
   let lastError: GeminiError | null = null;
-  for (const key of keys) {
-    for (let attempt = 0; attempt < 2; attempt++) {
+  // Gemini 혼잡은 순간적인 경우가 많아서, 모든 모델이 혼잡하면 잠깐 쉬고 한 바퀴 더 시도
+  const attempts = [...models(), ...models()];
+  for (const [i, model] of attempts.entries()) {
+    if (i === attempts.length / 2) await new Promise((r) => setTimeout(r, 3000));
+    for (const key of keys) {
+      const remaining = deadline - Date.now();
+      if (remaining < 3_000) {
+        throw lastError ?? new BusyError(BUSY_MESSAGE);
+      }
       try {
-        return await generateJsonWithKey(key, prompt, file, responseSchema);
+        return await generateJsonWithKey(model, key, prompt, file, responseSchema, remaining);
       } catch (err) {
         if (err instanceof BusyError) {
           lastError = err;
-          await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
-          continue;
+          break; // 이 모델은 혼잡 → 다음 모델
         }
         if (err instanceof KeyRejectedError) {
           lastError = err;
-          break;
+          continue; // 다음 키
         }
         throw err;
       }
@@ -48,47 +66,60 @@ async function generateJson(prompt: string, file: InlineFile, responseSchema: ob
   throw lastError ?? new GeminiError("AI 분석 중 오류가 발생했습니다.");
 }
 
+const BUSY_MESSAGE = "AI 서버가 잠시 혼잡합니다. 1~2분 뒤에 다시 시도해주세요.";
+
 class KeyRejectedError extends GeminiError {}
 class BusyError extends GeminiError {}
 
 async function generateJsonWithKey(
+  model: string,
   apiKey: string,
   prompt: string,
   file: InlineFile,
-  responseSchema: object
+  responseSchema: object,
+  timeoutMs: number
 ): Promise<unknown> {
-  const model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ inline_data: { mime_type: file.mimeType, data: file.base64 } }, { text: prompt }],
+  let res: Response;
+  try {
+    res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        signal: AbortSignal.timeout(timeoutMs),
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ inline_data: { mime_type: file.mimeType, data: file.base64 } }, { text: prompt }],
+            },
+          ],
+          generationConfig: {
+            temperature: 0,
+            responseMimeType: "application/json",
+            responseSchema,
+            // 표 읽기에는 '생각' 단계가 필요 없고, 켜면 응답이 수십 초 느려져 시간 제한에 걸림
+            thinkingConfig: { thinkingBudget: 0 },
           },
-        ],
-        generationConfig: {
-          temperature: 0,
-          responseMimeType: "application/json",
-          responseSchema,
-        },
-      }),
-    }
-  );
+        }),
+      }
+    );
+  } catch (err) {
+    console.error("gemini request failed", model, err);
+    throw new BusyError(BUSY_MESSAGE);
+  }
 
   if (!res.ok) {
     const body = await res.text();
-    console.error("gemini error", res.status, body);
+    console.error("gemini error", model, res.status, body);
     if (res.status === 429) throw new KeyRejectedError("AI 사용 한도를 초과했습니다. 잠시 후 다시 시도해주세요.");
     if (res.status === 401 || res.status === 403 || (res.status === 400 && /API_KEY|api key/i.test(body))) {
       throw new KeyRejectedError("AI 요청이 거부되었습니다. GEMINI_API_KEY를 확인해주세요.");
     }
+    // 모델을 못 쓰는 경우(404, 미지원 설정 등)는 다음 모델로
+    if (res.status === 404 || (res.status === 400 && /model|thinking/i.test(body))) throw new BusyError(BUSY_MESSAGE);
     if (res.status === 400) throw new GeminiError("AI가 이 파일을 처리하지 못했습니다. 파일 형식을 확인해주세요.");
-    if (res.status >= 500) throw new BusyError("AI 서버가 잠시 혼잡합니다. 1~2분 뒤에 다시 시도해주세요.");
+    if (res.status >= 500) throw new BusyError(BUSY_MESSAGE);
     throw new GeminiError("AI 분석 중 오류가 발생했습니다.");
   }
 
