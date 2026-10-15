@@ -62,8 +62,12 @@ export function isCarryoverEntry(e: { kind?: Kind | null; description?: string |
   return kindOf(e) === "income" && (e.description ?? "").includes("이월금");
 }
 
+// 항목 식별자 구분자. 화면의 <option value> 에도 쓰이므로 NUL(\u0000)은 쓰면 안 됨
+// (서버에서 그린 HTML 의 NUL 은 브라우저가 다른 글자로 바꿔서 선택값이 맞지 않게 됨)
+const KEY_SEP = "\u241E";
+
 export function itemKey(ref: ItemRef): string {
-  return `${kindOf(ref)}\u0000${ref.category_group}\u0000${ref.category}`;
+  return `${kindOf(ref)}${KEY_SEP}${ref.category_group}${KEY_SEP}${ref.category}`;
 }
 
 export function itemLabel(ref: ItemRef): string {
