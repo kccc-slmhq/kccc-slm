@@ -33,7 +33,7 @@ export default function BudgetUpload({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-6xl">
       <div className="flex gap-1.5" role="tablist">
         {(
           [

@@ -1,6 +1,6 @@
 import "server-only";
 import type { ParsedBudget, ParsedLedger } from "./types";
-import { UNCATEGORIZED, UNCATEGORIZED_REF, itemLabel, type ItemRef } from "./types";
+import { UNCATEGORIZED, itemLabel, kindOf, uncategorizedRef, type ItemRef, type Kind } from "./types";
 
 // Gemini API 키/모델은 환경변수로만 받습니다 (코드에 키를 넣지 마세요).
 //   GEMINI_API_KEY  (필수) 여러 개면 쉼표로 구분 — 앞의 키가 한도 초과 등으로 막히면 다음 키로 시도
@@ -155,7 +155,12 @@ export async function parseBudgetDocument(file: InlineFile): Promise<ParsedBudge
     "다음을 추출해라:",
     "- fiscal_year: 회기 '시작 연도' (예: 2026년 8월~2027년 7월 회기면 2026). 알 수 없으면 null.",
     "- document_total: 문서에 적힌 지출 예산 총액(원, 아래 items 와 같은 금액 열 기준). 없으면 null.",
-    "- items: 지출 예산의 세부 항목 하나씩. 각 항목은 category_group, category, amount.",
+    "- document_income_total: 문서에 적힌 수입 예산 총액(원). 없으면 null.",
+    "- items: 예산의 세부 항목 하나씩. 각 항목은 kind, category_group, category, amount.",
+    "",
+    "kind:",
+    "- 지출 예산 항목은 'expense', 수입 예산 항목은 'income'.",
+    "- 예산안에는 보통 지출 예산 표와 별도의 수입 예산 표('[수입 예산]', '수입' 등)가 있다. 두 표의 항목을 모두 넣는다.",
     "",
     "category_group / category:",
     "- 예산안은 보통 왼쪽 열에 큰 카테고리(예: 업무추진비, 경조사비, 해외출장비)가 있고, 그 옆에 세부 항목(세부내역)이 여러 줄 있다.",
@@ -164,6 +169,7 @@ export async function parseBudgetDocument(file: InlineFile): Promise<ParsedBudge
     "- 큰 카테고리는 반드시 왼쪽 카테고리 열에 적힌 이름만 쓴다. 'OO 소계' 행의 이름은 큰 카테고리가 아니다.",
     "  (소계 행 이름이 왼쪽 카테고리 이름과 달라도 무시하고, 소계 행 바로 위 항목들은 왼쪽 열의 카테고리에 넣는다)",
     "- 큰 카테고리가 없는 문서면 category_group 은 빈 문자열로 둔다.",
+    "- 수입 예산도 같은 방식이다 (예: 항목 열의 '수련회·CMS', '후원' 이 큰 카테고리, 세부내역 열이 항목).",
     "- '예비비'처럼 같은 이름의 세부 항목이 여러 큰 카테고리에 있으면 각각 따로 넣는다.",
     "",
     "amount:",
@@ -172,9 +178,8 @@ export async function parseBudgetDocument(file: InlineFile): Promise<ParsedBudge
     "- 금액은 원 단위 정수로 변환한다 (예: '1,200만원' → 12000000, 천원 단위 표기면 1000을 곱한다, 괄호는 무시).",
     "",
     "제외:",
-    "- '소계', '합계', '총계', '총 지출의 합' 행은 넣지 마라. 이름에 '소계'가 붙은 행, 이름 없이 금액만 있는 합계 행도 마찬가지다.",
+    "- '소계', '합계', '총계', '총 지출의 합', '수입 총계' 행은 넣지 마라. 이름에 '소계'가 붙은 행, 이름 없이 금액만 있는 합계 행도 마찬가지다.",
     "  세부내역 칸에 이름이 적힌 행만 항목이다.",
-    "- 수입 예산(수련회 지원금, 후원, 회비 수입 등)은 넣지 마라. 지출 예산만 넣는다.",
     "- 피드백·비고 열의 내용은 항목이 아니다.",
   ].join("\n");
 
@@ -183,16 +188,18 @@ export async function parseBudgetDocument(file: InlineFile): Promise<ParsedBudge
     properties: {
       fiscal_year: { type: "INTEGER", nullable: true },
       document_total: { type: "NUMBER", nullable: true },
+      document_income_total: { type: "NUMBER", nullable: true },
       items: {
         type: "ARRAY",
         items: {
           type: "OBJECT",
           properties: {
+            kind: { type: "STRING", enum: ["expense", "income"] },
             category_group: { type: "STRING" },
             category: { type: "STRING" },
             amount: { type: "NUMBER" },
           },
-          required: ["category_group", "category", "amount"],
+          required: ["kind", "category_group", "category", "amount"],
         },
       },
     },
@@ -202,6 +209,7 @@ export async function parseBudgetDocument(file: InlineFile): Promise<ParsedBudge
   const raw = (await generateJson(prompt, file, schema)) as Record<string, unknown>;
   const items = (Array.isArray(raw.items) ? raw.items : [])
     .map((it: Record<string, unknown>) => ({
+      kind: (it.kind === "income" ? "income" : "expense") as Kind,
       category_group: toStr(it.category_group),
       category: toStr(it.category),
       amount: toAmount(it.amount),
@@ -212,30 +220,33 @@ export async function parseBudgetDocument(file: InlineFile): Promise<ParsedBudge
   return {
     fiscal_year: fy && fy > 2000 && fy < 2100 ? fy : null,
     document_total: raw.document_total == null ? null : toAmount(raw.document_total),
+    document_income_total: raw.document_income_total == null ? null : toAmount(raw.document_income_total),
     items,
   };
 }
 
 export async function parseLedgerDocument(file: InlineFile, budgetItems: ItemRef[]): Promise<ParsedLedger> {
-  // AI에게는 "큰 카테고리 › 항목" 라벨 중 하나를 고르게 하고, 결과를 다시 (큰 카테고리, 항목)으로 되돌림
-  const refs = [...budgetItems, UNCATEGORIZED_REF];
-  const byLabel = new Map(refs.map((r) => [itemLabel(r), r]));
+  // AI에게는 "[지출] 큰 카테고리 › 세부 항목" 라벨 중 하나를 고르게 하고, 결과를 다시 항목으로 되돌림
+  const refs = [...budgetItems, uncategorizedRef("expense"), uncategorizedRef("income")];
+  const labelOf = (r: ItemRef) => `[${kindOf(r) === "income" ? "수입" : "지출"}] ${itemLabel(r)}`;
+  const byLabel = new Map(refs.map((r) => [labelOf(r), r]));
   const allowed = [...byLabel.keys()];
 
   const prompt = [
-    "첨부된 문서는 한국 대학생 선교단체(SLM)의 한 달치 회계 장부(지출 내역)다.",
+    "첨부된 문서는 한국 대학생 선교단체(SLM)의 한 달치 회계 장부(수입·지출 내역)다.",
     "",
     "다음을 추출해라:",
     "- month: 장부의 대상 월 'YYYY-MM'. 알 수 없으면 null.",
-    "- items: 지출 거래 한 건씩. 각 거래는 entry_date('YYYY-MM-DD' 또는 null), description(적요/내용/거래처), amount(원 단위 정수), category.",
+    "- items: 거래 한 건씩. 각 거래는 entry_date('YYYY-MM-DD' 또는 null), description(적요/내용/거래처), amount(원 단위 양수 정수), category.",
     "",
-    "category 는 반드시 다음 예산 항목('큰 카테고리 › 세부 항목') 중 하나로 분류한다:",
+    "category 는 반드시 다음 예산 항목('[지출/수입] 큰 카테고리 › 세부 항목') 중 하나로 분류한다:",
     allowed.map((c) => `- ${c}`).join("\n"),
-    `어느 항목에도 맞지 않으면 '${UNCATEGORIZED}'로 둔다.`,
+    `돈이 나간 거래(출금·지출)는 [지출] 항목에서, 들어온 거래(입금·수입·후원·지원금)는 [수입] 항목에서 고른다.`,
+    `맞는 항목이 없으면 '[지출] ${UNCATEGORIZED}' 또는 '[수입] ${UNCATEGORIZED}' 로 둔다.`,
     "장부에 계정과목/항목명이 적혀 있으면 그 이름과 가장 가까운 큰 카테고리를 먼저 고르고, 그 안에서 내용에 맞는 세부 항목을 고른다.",
     "",
     "규칙:",
-    "- 지출만 넣는다. 수입, 이월금, 잔액, 합계/소계 행은 넣지 마라.",
+    "- 전월 이월금, 잔액, 합계/소계 행은 넣지 마라.",
     "- 같은 거래를 중복으로 넣지 마라.",
   ].join("\n");
 
@@ -264,11 +275,12 @@ export async function parseLedgerDocument(file: InlineFile, budgetItems: ItemRef
   const items = (Array.isArray(raw.items) ? raw.items : [])
     .map((it: Record<string, unknown>) => {
       const date = toStr(it.entry_date);
-      const ref = byLabel.get(toStr(it.category)) ?? UNCATEGORIZED_REF;
+      const ref = byLabel.get(toStr(it.category)) ?? uncategorizedRef("expense");
       return {
         entry_date: DATE_RE.test(date) ? date : null,
         description: toStr(it.description),
         amount: toAmount(it.amount),
+        kind: kindOf(ref),
         category_group: ref.category_group,
         category: ref.category,
       };

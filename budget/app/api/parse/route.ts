@@ -52,7 +52,11 @@ export async function POST(request: Request) {
       if (Array.isArray(parsed)) {
         budgetItems = parsed
           .filter((c) => c && typeof c.category === "string")
-          .map((c) => ({ category_group: typeof c.category_group === "string" ? c.category_group : "", category: c.category }));
+          .map((c) => ({
+            kind: c.kind === "income" ? ("income" as const) : ("expense" as const),
+            category_group: typeof c.category_group === "string" ? c.category_group : "",
+            category: c.category,
+          }));
       }
     } catch {
       // 아래에서 빈 목록으로 처리
