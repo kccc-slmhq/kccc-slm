@@ -23,11 +23,11 @@ export default function BudgetUpload({
   const [tab, setTab] = useState<Tab>(initialTab);
 
   if (error) {
-    return <div className="bg-white rounded-2xl shadow-sm p-4 text-sm text-slate-600">데이터를 불러오지 못했습니다: {error}</div>;
+    return <div className="bg-white rounded-2xl p-5 text-sm text-gray-600">데이터를 불러오지 못했습니다: {error}</div>;
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex gap-1.5" role="tablist">
         {(
           [
@@ -40,8 +40,10 @@ export default function BudgetUpload({
             role="tab"
             aria-selected={tab === key}
             onClick={() => setTab(key)}
-            className={`flex-1 sm:flex-none rounded-lg border px-4 py-2 text-sm font-medium ${
-              tab === key ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 border-slate-300"
+            className={`flex-1 sm:flex-none rounded-xl border px-5 py-2.5 text-sm font-semibold transition-colors ${
+              tab === key
+                ? "bg-brand-50 text-brand-600 border-brand-100"
+                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
             }`}
           >
             {label}

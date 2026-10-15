@@ -94,21 +94,21 @@ export default function LedgerForm({
     setRows((prev) => (prev ?? []).map((x) => (x.key === key ? { ...x, ...patch } : x)));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <Card title="1. 월별 장부 분석">
         <label className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
-          <span className="text-slate-600 whitespace-nowrap">대상 월</span>
+          <span className="text-gray-600 whitespace-nowrap">대상 월</span>
           <input
             type="month"
             value={month}
             onChange={(e) => setMonth(e.target.value)}
-            className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-sm"
+            className="h-9 rounded-xl border border-gray-200 bg-white px-2 text-sm"
           />
-          {fiscalYear !== null && <span className="text-xs text-slate-500">{fiscalYearLabel(fiscalYear)}</span>}
+          {fiscalYear !== null && <span className="text-xs text-gray-500">{fiscalYearLabel(fiscalYear)}</span>}
         </label>
 
         {!hasPlan ? (
-          <p className="text-sm text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
+          <p className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
             {fiscalYear !== null && fiscalYearLabel(fiscalYear)} 예산안이 아직 확정되지 않았습니다. 지출을 예산 항목으로
             분류하려면{" "}
             <Link href="/upload" className="underline font-medium">
@@ -145,7 +145,7 @@ export default function LedgerForm({
                 setFilename(null);
                 setDetectedMonth(null);
               }}
-              className="text-sm text-slate-600 underline"
+              className="text-sm text-gray-600 underline"
             >
               AI 없이 직접 입력
             </button>
@@ -173,7 +173,7 @@ export default function LedgerForm({
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[640px]">
-              <thead className="bg-slate-50 text-slate-500 text-xs">
+              <thead className="bg-gray-50 text-gray-500 text-xs">
                 <tr>
                   <th className="text-left px-2 py-1.5 w-36">날짜</th>
                   <th className="text-left px-2 py-1.5">내용</th>
@@ -186,7 +186,7 @@ export default function LedgerForm({
                 {rows.map((r, i) => (
                   <tr
                     key={r.key}
-                    className={`border-b border-slate-100 ${r.category === UNCATEGORIZED ? "bg-orange-50/60" : ""}`}
+                    className={`border-b border-gray-100 ${r.category === UNCATEGORIZED ? "bg-orange-50/60" : ""}`}
                   >
                     <td className="px-2 py-1.5">
                       <input
@@ -194,7 +194,7 @@ export default function LedgerForm({
                         value={r.entry_date}
                         aria-label={`${i + 1}번째 날짜`}
                         onChange={(e) => updateRow(r.key, { entry_date: e.target.value })}
-                        className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                        className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
                       />
                     </td>
                     <td className="px-2 py-1.5">
@@ -202,7 +202,7 @@ export default function LedgerForm({
                         value={r.description}
                         aria-label={`${i + 1}번째 내용`}
                         onChange={(e) => updateRow(r.key, { description: e.target.value })}
-                        className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                        className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
                       />
                     </td>
                     <td className="px-2 py-1.5">
@@ -210,7 +210,7 @@ export default function LedgerForm({
                         value={r.category}
                         aria-label={`${i + 1}번째 예산 항목`}
                         onChange={(e) => updateRow(r.key, { category: e.target.value })}
-                        className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm"
+                        className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm"
                       >
                         {!options.includes(r.category) && <option value={r.category}>{r.category}</option>}
                         {options.map((c) => (
@@ -231,7 +231,7 @@ export default function LedgerForm({
                       <button
                         type="button"
                         onClick={() => setRows(rows.filter((x) => x.key !== r.key))}
-                        className="text-slate-400 hover:text-red-600 text-xs"
+                        className="text-gray-400 hover:text-red-600 text-xs"
                         aria-label={`${i + 1}번째 행 삭제`}
                       >
                         삭제
@@ -241,7 +241,7 @@ export default function LedgerForm({
                 ))}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-2 py-6 text-center text-slate-400">
+                    <td colSpan={5} className="px-2 py-6 text-center text-gray-400">
                       지출 내역이 없습니다. 지출이 없는 달이면 그대로 확정해도 됩니다.
                     </td>
                   </tr>
@@ -258,7 +258,7 @@ export default function LedgerForm({
                           { key: nextKey++, entry_date: "", description: "", category: options[0], amount: 0 },
                         ])
                       }
-                      className="text-sm text-blue-700"
+                      className="text-sm font-semibold text-brand-600"
                     >
                       + 행 추가
                     </button>
@@ -271,11 +271,11 @@ export default function LedgerForm({
           </div>
 
           {byCategory.length > 0 && (
-            <div className="rounded-lg bg-slate-50 px-3 py-2">
-              <div className="text-xs font-medium text-slate-500 mb-1">항목별 합계</div>
+            <div className="rounded-lg bg-gray-50 px-3 py-2">
+              <div className="text-xs font-medium text-gray-500 mb-1">항목별 합계</div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                 {byCategory.map((c) => (
-                  <span key={c.category} className={c.category === UNCATEGORIZED ? "text-orange-800" : "text-slate-700"}>
+                  <span key={c.category} className={c.category === UNCATEGORIZED ? "text-orange-800" : "text-gray-700"}>
                     {c.category} <span className="tabular-nums font-medium">{won(c.amount)}</span>
                   </span>
                 ))}
@@ -284,7 +284,7 @@ export default function LedgerForm({
           )}
 
           {alreadyConfirmed && (
-            <p className="text-sm text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
+            <p className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
               {monthLabel(month)} 장부가 이미 확정되어 있습니다. 확정하면 새 내용으로 교체됩니다.
             </p>
           )}
@@ -299,7 +299,7 @@ export default function LedgerForm({
             type="button"
             onClick={confirm}
             disabled={saving || problems.length > 0}
-            className="w-full sm:w-auto rounded-lg bg-slate-800 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            className="w-full sm:w-auto rounded-xl bg-brand-600 hover:bg-brand-700 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
           >
             {saving ? "저장 중..." : `${monthLabel(month)} 장부 확정`}
           </button>

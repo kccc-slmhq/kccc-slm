@@ -76,7 +76,7 @@ export default function BudgetPlanForm({ plans, items }: { plans: BudgetPlan[]; 
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <Card title="1. 예산안 문서 분석">
         <AnalyzeFile
           label="예산안 파일 (PDF 또는 사진)"
@@ -99,12 +99,12 @@ export default function BudgetPlanForm({ plans, items }: { plans: BudgetPlan[]; 
               setFilename(null);
               setDocumentTotal(null);
             }}
-            className="text-slate-600 underline"
+            className="text-gray-600 underline"
           >
             AI 없이 직접 입력
           </button>
           {existing && (
-            <button type="button" onClick={loadExisting} className="text-slate-600 underline">
+            <button type="button" onClick={loadExisting} className="text-gray-600 underline">
               확정된 {fiscalYear}년 회기 예산안 불러와서 수정
             </button>
           )}
@@ -114,11 +114,11 @@ export default function BudgetPlanForm({ plans, items }: { plans: BudgetPlan[]; 
       {rows && (
         <Card title="2. 항목 확인 및 수정">
           <label className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
-            <span className="text-slate-600 whitespace-nowrap">회기</span>
+            <span className="text-gray-600 whitespace-nowrap">회기</span>
             <select
               value={fiscalYear}
               onChange={(e) => setFiscalYear(Number(e.target.value))}
-              className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-sm"
+              className="h-9 rounded-xl border border-gray-200 bg-white px-2 text-sm"
             >
               {yearOptions.map((y) => (
                 <option key={y} value={y}>
@@ -131,7 +131,7 @@ export default function BudgetPlanForm({ plans, items }: { plans: BudgetPlan[]; 
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-500 text-xs">
+              <thead className="bg-gray-50 text-gray-500 text-xs">
                 <tr>
                   <th className="text-left px-2 py-1.5">항목명</th>
                   <th className="text-right px-2 py-1.5 w-40">예산 금액(원)</th>
@@ -140,7 +140,7 @@ export default function BudgetPlanForm({ plans, items }: { plans: BudgetPlan[]; 
               </thead>
               <tbody>
                 {rows.map((r, i) => (
-                  <tr key={r.key} className="border-b border-slate-100">
+                  <tr key={r.key} className="border-b border-gray-100">
                     <td className="px-2 py-1.5">
                       <input
                         value={r.category}
@@ -148,7 +148,7 @@ export default function BudgetPlanForm({ plans, items }: { plans: BudgetPlan[]; 
                         onChange={(e) =>
                           setRows(rows.map((x) => (x.key === r.key ? { ...x, category: e.target.value } : x)))
                         }
-                        className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                        className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
                       />
                     </td>
                     <td className="px-2 py-1.5">
@@ -162,7 +162,7 @@ export default function BudgetPlanForm({ plans, items }: { plans: BudgetPlan[]; 
                       <button
                         type="button"
                         onClick={() => setRows(rows.filter((x) => x.key !== r.key))}
-                        className="text-slate-400 hover:text-red-600 text-xs"
+                        className="text-gray-400 hover:text-red-600 text-xs"
                         aria-label={`${i + 1}번째 항목 삭제`}
                       >
                         삭제
@@ -177,7 +177,7 @@ export default function BudgetPlanForm({ plans, items }: { plans: BudgetPlan[]; 
                     <button
                       type="button"
                       onClick={() => setRows([...rows, ...toRows([{ category: "", amount: 0 }])])}
-                      className="text-sm text-blue-700"
+                      className="text-sm font-semibold text-brand-600"
                     >
                       + 항목 추가
                     </button>
@@ -196,7 +196,7 @@ export default function BudgetPlanForm({ plans, items }: { plans: BudgetPlan[]; 
             </p>
           )}
           {existing && (
-            <p className="text-sm text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
+            <p className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
               이 회기 예산안이 이미 확정되어 있습니다. 확정하면 새 내용으로 교체됩니다. 항목명을 바꾸면 이미 확정된
               월별 장부의 해당 항목은 &apos;예산 외&apos;로 표시되니 주의하세요.
             </p>
@@ -212,7 +212,7 @@ export default function BudgetPlanForm({ plans, items }: { plans: BudgetPlan[]; 
             type="button"
             onClick={confirm}
             disabled={saving || problems.length > 0}
-            className="w-full sm:w-auto rounded-lg bg-slate-800 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            className="w-full sm:w-auto rounded-xl bg-brand-600 hover:bg-brand-700 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
           >
             {saving ? "저장 중..." : `${fiscalYear}년 회기 예산안 확정`}
           </button>

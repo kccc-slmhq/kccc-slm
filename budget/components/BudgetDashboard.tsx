@@ -21,8 +21,8 @@ import type { BudgetData } from "@/lib/budget/data";
 
 // 차트 색: 사용액 = 강조(파랑), 예산 = 기준(회색). 상태색은 아이콘+라벨과 함께만 사용
 const COLOR = {
-  spent: "#2a78d6",
-  budget: "#cbd5e1",
+  spent: "#7a24f5",
+  budget: "#e5e7eb",
   pace: "#64748b",
   grid: "#e2e8f0",
   axis: "#64748b",
@@ -31,7 +31,7 @@ const COLOR = {
 const STATUS: Record<CategoryStatus, { label: string; icon: string; bar: string; badge: string }> = {
   over: { label: "초과", icon: "▲", bar: "#d03b3b", badge: "bg-red-50 text-red-700 ring-red-200" },
   fast: { label: "빠름", icon: "●", bar: "#fab219", badge: "bg-amber-50 text-amber-800 ring-amber-200" },
-  ok: { label: "정상", icon: "✓", bar: "#2a78d6", badge: "bg-slate-50 text-slate-600 ring-slate-200" },
+  ok: { label: "정상", icon: "✓", bar: "#7a24f5", badge: "bg-gray-50 text-gray-600 ring-gray-200" },
   unbudgeted: { label: "예산 외", icon: "!", bar: "#ec835a", badge: "bg-orange-50 text-orange-800 ring-orange-200" },
 };
 
@@ -80,13 +80,13 @@ export default function BudgetDashboard({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* 필터: 회기 / 기준월 */}
       <div className="flex flex-wrap items-center gap-2">
         <select
           value={fiscalYear}
           onChange={(e) => router.push(`/?fy=${e.target.value}`)}
-          className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-sm"
+          className="h-9 rounded-xl border border-gray-200 bg-white px-2 text-sm"
           aria-label="회기 선택"
         >
           {yearOptions.map((y) => (
@@ -99,7 +99,7 @@ export default function BudgetDashboard({
           <select
             value={effectiveThrough ?? ""}
             onChange={(e) => setThroughMonth(e.target.value)}
-            className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-sm"
+            className="h-9 rounded-xl border border-gray-200 bg-white px-2 text-sm"
             aria-label="기준월 선택"
           >
             {[...confirmedMonths].reverse().map((m) => (
@@ -143,11 +143,11 @@ export default function BudgetDashboard({
               value={won(Math.abs(summary.remaining))}
               tone={summary.remaining < 0 ? "text-red-700" : undefined}
             />
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <div className="text-xs text-slate-500 mb-1">집행률 / 회기 경과율</div>
-              <div className="text-2xl font-bold text-slate-900">
+            <div className="bg-white rounded-2xl p-5 shadow-[0_1px_3px_rgba(17,24,39,0.04)]">
+              <div className="text-xs text-gray-500 mb-1">집행률 / 회기 경과율</div>
+              <div className="text-2xl font-bold text-gray-900">
                 {pct(summary.usedRatio)}
-                <span className="text-sm font-medium text-slate-500"> / {pct(summary.elapsedRatio)}</span>
+                <span className="text-sm font-medium text-gray-500"> / {pct(summary.elapsedRatio)}</span>
               </div>
               <ProgressBar ratio={summary.usedRatio ?? 0} marker={summary.elapsedRatio} color={COLOR.spent} />
             </div>
@@ -177,7 +177,7 @@ export default function BudgetDashboard({
                 <div
                   key={m.month}
                   className={`rounded-lg px-2 py-1.5 text-center ring-1 ${
-                    m.confirmed ? "bg-white ring-slate-200" : "bg-slate-50 ring-slate-100 text-slate-400"
+                    m.confirmed ? "bg-white ring-gray-200" : "bg-gray-50 ring-gray-100 text-gray-400"
                   }`}
                 >
                   <div className="text-xs font-medium">{shortMonthLabel(m.month)}</div>
@@ -193,7 +193,7 @@ export default function BudgetDashboard({
               <select
                 value={detailCategory}
                 onChange={(e) => setDetailCategory(e.target.value)}
-                className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-sm mb-2"
+                className="h-9 rounded-xl border border-gray-200 bg-white px-2 text-sm mb-2"
                 aria-label="항목 선택"
               >
                 <option value="">전체 항목</option>
@@ -205,7 +205,7 @@ export default function BudgetDashboard({
               </select>
               <div className="overflow-auto max-h-[420px]">
                 <table className="w-full text-sm min-w-[560px]">
-                  <thead className="sticky top-0 bg-slate-50 text-slate-500 text-xs">
+                  <thead className="sticky top-0 bg-gray-50 text-gray-500 text-xs">
                     <tr>
                       <th className="text-left px-2 py-1.5 whitespace-nowrap">날짜</th>
                       <th className="text-left px-2 py-1.5 whitespace-nowrap">항목</th>
@@ -215,7 +215,7 @@ export default function BudgetDashboard({
                   </thead>
                   <tbody>
                     {detailEntries.map((e) => (
-                      <tr key={e.id} className="border-b border-slate-100">
+                      <tr key={e.id} className="border-b border-gray-100">
                         <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">
                           {e.entry_date ?? monthLabel(e.month.slice(0, 7))}
                         </td>
@@ -226,7 +226,7 @@ export default function BudgetDashboard({
                     ))}
                     {detailEntries.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="px-2 py-6 text-center text-slate-400">
+                        <td colSpan={4} className="px-2 py-6 text-center text-gray-400">
                           내역이 없습니다.
                         </td>
                       </tr>
@@ -243,7 +243,7 @@ export default function BudgetDashboard({
 }
 
 function CategoryBarChart({ rows }: { rows: CategoryRow[] }) {
-  if (rows.length === 0) return <p className="text-sm text-slate-400">예산 항목이 없습니다.</p>;
+  if (rows.length === 0) return <p className="text-sm text-gray-400">예산 항목이 없습니다.</p>;
   const height = Math.max(160, rows.length * 52 + 48);
   return (
     <div style={{ height }}>
@@ -271,11 +271,11 @@ function CategoryBarChart({ rows }: { rows: CategoryRow[] }) {
               if (!active || !payload?.length) return null;
               const r = payload[0].payload as CategoryRow;
               return (
-                <div className="bg-white rounded-lg shadow-md ring-1 ring-slate-200 px-3 py-2 text-xs space-y-0.5">
-                  <div className="font-semibold text-slate-800">{r.category}</div>
-                  <div className="text-slate-600">예산 {won(r.budget)}</div>
-                  <div className="text-slate-600">사용 {won(r.spent)}</div>
-                  <div className="text-slate-600">
+                <div className="bg-white rounded-lg shadow-md ring-1 ring-gray-200 px-3 py-2 text-xs space-y-0.5">
+                  <div className="font-semibold text-gray-800">{r.category}</div>
+                  <div className="text-gray-600">예산 {won(r.budget)}</div>
+                  <div className="text-gray-600">사용 {won(r.spent)}</div>
+                  <div className="text-gray-600">
                     집행률 {pct(r.ratio)} · {STATUS[r.status].label}
                   </div>
                 </div>
@@ -301,7 +301,7 @@ function CategoryTable({ rows, elapsedRatio }: { rows: CategoryRow[]; elapsedRat
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
-        <thead className="bg-slate-50 text-slate-500 text-xs">
+        <thead className="bg-gray-50 text-gray-500 text-xs">
           <tr>
             <th className="text-left px-2 py-1.5 whitespace-nowrap">항목</th>
             <th className="text-right px-2 py-1.5 whitespace-nowrap">예산</th>
@@ -315,8 +315,8 @@ function CategoryTable({ rows, elapsedRatio }: { rows: CategoryRow[]; elapsedRat
           {rows.map((r) => {
             const s = STATUS[r.status];
             return (
-              <tr key={r.category} className="border-b border-slate-100">
-                <td className="px-2 py-2 whitespace-nowrap font-medium text-slate-800">{r.category}</td>
+              <tr key={r.category} className="border-b border-gray-100">
+                <td className="px-2 py-2 whitespace-nowrap font-medium text-gray-800">{r.category}</td>
                 <td className="px-2 py-2 text-right whitespace-nowrap tabular-nums">{won(r.budget)}</td>
                 <td className="px-2 py-2 text-right whitespace-nowrap tabular-nums">{won(r.spent)}</td>
                 <td
@@ -331,7 +331,7 @@ function CategoryTable({ rows, elapsedRatio }: { rows: CategoryRow[]; elapsedRat
                     <div className="flex-1">
                       <ProgressBar ratio={r.ratio ?? (r.spent > 0 ? 1 : 0)} marker={elapsedRatio} color={s.bar} />
                     </div>
-                    <span className="w-10 text-right text-xs tabular-nums text-slate-600">{pct(r.ratio)}</span>
+                    <span className="w-10 text-right text-xs tabular-nums text-gray-600">{pct(r.ratio)}</span>
                   </div>
                 </td>
                 <td className="px-2 py-2 whitespace-nowrap">
@@ -374,11 +374,11 @@ function MonthlyChart({ data }: { data: ReturnType<typeof summarize>["monthly"] 
               if (!active || !payload?.length) return null;
               const m = payload[0].payload as ReturnType<typeof summarize>["monthly"][number];
               return (
-                <div className="bg-white rounded-lg shadow-md ring-1 ring-slate-200 px-3 py-2 text-xs space-y-0.5">
-                  <div className="font-semibold text-slate-800">{monthLabel(String(label))}</div>
-                  <div className="text-slate-600">그 달 사용 {m.spent === null ? "미확정" : won(m.spent)}</div>
-                  {m.cumulative !== null && <div className="text-slate-600">누적 사용 {won(m.cumulative)}</div>}
-                  <div className="text-slate-600">균등 기준선 {won(m.pace)}</div>
+                <div className="bg-white rounded-lg shadow-md ring-1 ring-gray-200 px-3 py-2 text-xs space-y-0.5">
+                  <div className="font-semibold text-gray-800">{monthLabel(String(label))}</div>
+                  <div className="text-gray-600">그 달 사용 {m.spent === null ? "미확정" : won(m.spent)}</div>
+                  {m.cumulative !== null && <div className="text-gray-600">누적 사용 {won(m.cumulative)}</div>}
+                  <div className="text-gray-600">균등 기준선 {won(m.pace)}</div>
                 </div>
               );
             }}
@@ -414,11 +414,11 @@ function MonthlyChart({ data }: { data: ReturnType<typeof summarize>["monthly"] 
 function ProgressBar({ ratio, marker, color }: { ratio: number; marker?: number; color: string }) {
   const width = Math.min(1, Math.max(0, ratio)) * 100;
   return (
-    <div className="relative h-2 mt-2 rounded-full bg-slate-100">
+    <div className="relative h-2 mt-2 rounded-full bg-gray-100">
       <div className="h-2 rounded-full" style={{ width: `${width}%`, backgroundColor: color }} />
       {marker !== undefined && marker > 0 && (
         <div
-          className="absolute -top-1 h-4 w-0.5 bg-slate-500"
+          className="absolute -top-1 h-4 w-0.5 bg-gray-500"
           style={{ left: `${Math.min(1, marker) * 100}%` }}
           aria-hidden
         />
@@ -429,23 +429,25 @@ function ProgressBar({ ratio, marker, color }: { ratio: number; marker?: number;
 
 function Kpi({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm">
-      <div className="text-xs text-slate-500 mb-1">{label}</div>
-      <div className={`text-lg sm:text-2xl font-bold tabular-nums break-all ${tone ?? "text-slate-900"}`}>{value}</div>
+    <div className="bg-white rounded-2xl p-5 shadow-[0_1px_3px_rgba(17,24,39,0.04)]">
+      <div className="text-xs text-gray-500 mb-1">{label}</div>
+      <div className={`text-lg sm:text-2xl font-bold tabular-nums break-all ${tone ?? "text-gray-900"}`}>{value}</div>
     </div>
   );
 }
 
 function Panel({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <section className="bg-white rounded-2xl shadow-sm p-4">
-      <h2 className="text-base font-semibold text-slate-800">{title}</h2>
-      {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
-      <div className="mt-3">{children}</div>
+    <section>
+      <div className="flex items-baseline gap-2 mb-2 px-1">
+        <h2 className="text-[15px] font-bold text-gray-900">{title}</h2>
+        {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
+      </div>
+      <div className="bg-white rounded-2xl p-5 shadow-[0_1px_3px_rgba(17,24,39,0.04)]">{children}</div>
     </section>
   );
 }
 
 function Notice({ children }: { children: React.ReactNode }) {
-  return <div className="bg-white rounded-2xl shadow-sm p-4 text-sm text-slate-600">{children}</div>;
+  return <div className="bg-white rounded-2xl p-5 text-sm text-gray-600 text-center shadow-[0_1px_3px_rgba(17,24,39,0.04)]">{children}</div>;
 }
