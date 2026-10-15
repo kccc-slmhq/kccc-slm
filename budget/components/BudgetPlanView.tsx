@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { fiscalYearLabel } from "@/lib/budget/fiscal";
 import { won } from "@/lib/budget/summary";
-import type { BudgetItem, BudgetPlan } from "@/lib/budget/types";
+import type { BudgetItem, BudgetPlan, BudgetTransfer } from "@/lib/budget/types";
 import { KIND_LABEL, isCarryoverItem, kindOf, type Kind } from "@/lib/budget/types";
 import { handOffPassword, usePassword } from "./EditLock";
+import { TRANSFER_KEEP_NOTICE, TransferDialog, TransferHistory } from "./BudgetTransfer";
 
 const KINDS: Kind[] = ["expense", "income"];
 
@@ -28,15 +30,21 @@ export default function BudgetPlanView({
   fiscalYear,
   plans,
   items,
+  transfers,
+  transfersReady,
   error,
 }: {
   fiscalYear: number;
   plans: BudgetPlan[];
   items: BudgetItem[];
+  transfers: BudgetTransfer[];
+  transfersReady: boolean; // 용도변경 표(SQL)가 준비되었는지
   error?: string;
 }) {
   const router = useRouter();
   const lock = usePassword();
+  // 용도변경 창에 넘길 비밀번호 (창을 열 때 한 번 확인)
+  const [transferPassword, setTransferPassword] = useState<string | null>(null);
   const plan = plans.find((p) => p.fiscal_year === fiscalYear);
   const fyItems = items.filter((i) => i.fiscal_year === fiscalYear).sort((a, b) => a.sort_order - b.sort_order);
 
@@ -53,6 +61,19 @@ export default function BudgetPlanView({
   return (
     <div className="max-w-4xl space-y-6">
       {lock.dialog}
+      {transferPassword && (
+        <TransferDialog
+          fiscalYear={fiscalYear}
+          items={fyItems.filter((i) => kindOf(i) === "expense")}
+          password={transferPassword}
+          onClose={() => setTransferPassword(null)}
+          onDone={() => {
+            setTransferPassword(null);
+            router.refresh();
+            window.alert(`용도변경을 반영했습니다.\n${TRANSFER_KEEP_NOTICE}`);
+          }}
+        />
+      )}
       <div className="flex flex-wrap items-center gap-2">
         {plans.length > 0 && (
           <select
@@ -68,15 +89,31 @@ export default function BudgetPlanView({
             ))}
           </select>
         )}
+        <span className="ml-auto flex gap-1">
+        {plan && transfersReady && (
+          <button
+            type="button"
+            onClick={() =>
+              lock.ask((pw) => {
+                lock.forget();
+                setTransferPassword(pw);
+              })
+            }
+            className="rounded-full px-3 py-1.5 text-sm font-semibold text-brand-600 hover:bg-brand-50"
+          >
+            🔒 용도변경
+          </button>
+        )}
         {plan && (
           <button
             type="button"
             onClick={openEditor}
-            className="ml-auto rounded-full px-3 py-1.5 text-sm font-semibold text-brand-600 hover:bg-brand-50"
+            className="rounded-full px-3 py-1.5 text-sm font-semibold text-brand-600 hover:bg-brand-50"
           >
             🔒 예산안 수정
           </button>
         )}
+        </span>
       </div>
 
       {!plan ? (
@@ -145,8 +182,6 @@ export default function BudgetPlanView({
                           <li key={r.id} className="flex items-baseline gap-3 px-4 py-2 text-sm">
                             <span className="min-w-0 text-gray-700">
                               {r.category}
-                              {r.one_time && <Badge>일회성</Badge>}
-                              {isCarryoverItem(r) && <Badge>이월금 · 달성률 제외</Badge>}
                             </span>
                             <span className="ml-auto shrink-0 whitespace-nowrap tabular-nums text-gray-900">
                               {won(r.amount)}
@@ -161,6 +196,18 @@ export default function BudgetPlanView({
             );
           })}
 
+          {transfersReady && (
+            <section>
+              <h2 className="mb-2 flex flex-col gap-0.5 px-1 sm:flex-row sm:items-baseline sm:gap-2">
+                <span className="text-[15px] font-bold text-gray-900">용도변경 내역</span>
+                <span className="text-xs text-gray-500">{TRANSFER_KEEP_NOTICE}</span>
+              </h2>
+              <div className="rounded-2xl bg-white px-4 py-1 shadow-[0_1px_3px_rgba(17,24,39,0.04)]">
+                <TransferHistory transfers={transfers} />
+              </div>
+            </section>
+          )}
+
           <p className="px-1 text-xs text-gray-400">
             {plan.source_filename ? `원본 파일: ${plan.source_filename} · ` : ""}확정일{" "}
             {new Date(plan.confirmed_at).toLocaleDateString("ko-KR")}
@@ -168,14 +215,6 @@ export default function BudgetPlanView({
         </>
       )}
     </div>
-  );
-}
-
-function Badge({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="ml-1.5 whitespace-nowrap rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
-      {children}
-    </span>
   );
 }
 
