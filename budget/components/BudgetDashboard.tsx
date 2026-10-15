@@ -117,7 +117,7 @@ export default function BudgetDashboard({
     [entries, effectiveThrough]
   );
   const hasIncome = incomeSummary.totalBudget > 0 || incomeSummary.totalSpent > 0;
-  // 수입 − 지출 (전년도 이월금 포함)
+  // 잔액 = 수입 − 지출 (전년도 이월금 포함)
   const balance = incomeSummary.totalSpent + carryover - summary.totalSpent;
   // 카테고리 그래프·표를 지출/수입 중 무엇으로 볼지
   const [view, setView] = useState<Kind>("expense");
@@ -282,7 +282,7 @@ export default function BudgetDashboard({
               }
             />
             <Kpi
-              label="수입 − 지출"
+              label="잔액"
               value={`${balance < 0 ? "−" : "+"}${won(Math.abs(balance))}`}
               tone={balance < 0 ? "text-red-700" : "text-gray-900"}
             />
