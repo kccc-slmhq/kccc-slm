@@ -1,5 +1,5 @@
 import { fiscalElapsedRatio, fiscalMonths, isBeforeFiscalStart } from "./fiscal";
-import { itemKey, type BudgetItem, type LedgerEntry } from "./types";
+import { itemKey, kindOf, type BudgetItem, type Kind, type LedgerEntry } from "./types";
 
 export type CategoryStatus = "over" | "fast" | "ok" | "unbudgeted";
 
@@ -64,19 +64,23 @@ export function summarize(
   items: BudgetItem[],
   entries: LedgerEntry[],
   confirmedMonths: string[], // 이 회기로 확정된 달 YYYY-MM (회기 시작 전 달 포함 가능)
-  throughMonth: string | null // 이 달까지 누적. null 이면 확정된 달 없음
+  throughMonth: string | null, // 이 달까지 누적. null 이면 확정된 달 없음
+  kind: Kind = "expense" // 지출 예산 대비 사용액 / 수입 예산 대비 실제 수입
 ): BudgetSummary {
   const preMonths = confirmedMonths.filter((m) => isBeforeFiscalStart(fiscalYear, m)).sort();
   const months = [...preMonths, ...fiscalMonths(fiscalYear)];
   const confirmed = new Set(confirmedMonths);
   const elapsedRatio = throughMonth ? fiscalElapsedRatio(fiscalYear, throughMonth) : 0;
 
-  const fyItems = items.filter((i) => i.fiscal_year === fiscalYear).sort((a, b) => a.sort_order - b.sort_order);
+  const fyItems = items
+    .filter((i) => i.fiscal_year === fiscalYear && kindOf(i) === kind)
+    .sort((a, b) => a.sort_order - b.sort_order);
   const totalBudget = fyItems.reduce((s, i) => s + i.amount, 0);
 
   const spentByMonth = new Map<string, number>();
   const spentByItem = new Map<string, { category_group: string; category: string; amount: number }>();
   for (const e of entries) {
+    if (kindOf(e) !== kind) continue;
     const month = e.month.slice(0, 7);
     if (!months.includes(month)) continue;
     spentByMonth.set(month, (spentByMonth.get(month) ?? 0) + e.amount);
@@ -96,7 +100,7 @@ export function summarize(
       .filter(([key]) => !budgetKeys.has(key))
       .map(([, v]) => ({ category_group: v.category_group, category: v.category, budget: 0 })),
   ].map(({ category_group, category, budget }) => {
-    const key = itemKey({ category_group, category });
+    const key = itemKey({ kind, category_group, category });
     const spent = spentByItem.get(key)?.amount ?? 0;
     return {
       key,

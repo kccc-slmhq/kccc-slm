@@ -6,19 +6,28 @@ import { createClient } from "@/lib/supabase/client";
 import { currentMonthKst, fiscalYearLabel, fiscalYearOf } from "@/lib/budget/fiscal";
 import { won } from "@/lib/budget/summary";
 import type { BudgetItem, BudgetPlan, ParsedBudget } from "@/lib/budget/types";
-import { UNCATEGORIZED, itemKey, itemLabel } from "@/lib/budget/types";
+import { KIND_LABEL, UNCATEGORIZED, itemKey, itemLabel, kindOf, type Kind } from "@/lib/budget/types";
 import { AmountInput, AnalyzeFile, Card } from "./shared";
 
-type Row = { key: number; category_group: string; category: string; amount: number };
+type Row = { key: number; kind: Kind; category_group: string; category: string; amount: number };
 
 let nextKey = 1;
-const toRows = (items: { category_group: string; category: string; amount: number }[]): Row[] =>
-  items.map((i) => ({ key: nextKey++, category_group: i.category_group, category: i.category, amount: i.amount }));
+const toRows = (items: { kind?: Kind; category_group: string; category: string; amount: number }[]): Row[] =>
+  items.map((i) => ({
+    key: nextKey++,
+    kind: kindOf(i),
+    category_group: i.category_group,
+    category: i.category,
+    amount: i.amount,
+  }));
+
+const KINDS: Kind[] = ["expense", "income"];
 
 // 행들을 큰 카테고리별로 묶음 (처음 나온 순서 유지)
-function groupRows(rows: Row[]): { group: string; rows: Row[] }[] {
+function groupRows(rows: Row[], kind: Kind): { group: string; rows: Row[] }[] {
   const map = new Map<string, Row[]>();
   for (const r of rows) {
+    if (r.kind !== kind) continue;
     if (!map.has(r.category_group)) map.set(r.category_group, []);
     map.get(r.category_group)!.push(r);
   }
@@ -30,7 +39,7 @@ function existingRows(items: BudgetItem[], fiscalYear: number): Row[] {
     items
       .filter((i) => i.fiscal_year === fiscalYear)
       .sort((a, b) => a.sort_order - b.sort_order)
-      .map((i) => ({ category_group: i.category_group, category: i.category, amount: i.amount }))
+      .map((i) => ({ kind: i.kind, category_group: i.category_group, category: i.category, amount: i.amount }))
   );
 }
 
@@ -53,7 +62,8 @@ export default function BudgetPlanForm({
     () => (editing ? plans.find((p) => p.fiscal_year === editFiscalYear)?.source_filename ?? null : null)
   );
   const [deleting, setDeleting] = useState(false);
-  const [documentTotal, setDocumentTotal] = useState<number | null>(null);
+  // 문서에 적힌 총액 (지출/수입) — 항목 합계와 다르면 경고
+  const [documentTotals, setDocumentTotals] = useState<Record<Kind, number | null>>({ expense: null, income: null });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,8 +72,12 @@ export default function BudgetPlanForm({
     new Set([current - 1, current, current + 1, fiscalYear, ...plans.map((p) => p.fiscal_year)])
   ).sort((a, b) => b - a);
 
-  const total = (rows ?? []).reduce((s, r) => s + r.amount, 0);
-  const trimmed = (rows ?? []).map((r) => ({ category_group: r.category_group.trim(), category: r.category.trim() }));
+  const totalOf = (kind: Kind) => (rows ?? []).filter((r) => r.kind === kind).reduce((s, r) => s + r.amount, 0);
+  const trimmed = (rows ?? []).map((r) => ({
+    kind: r.kind,
+    category_group: r.category_group.trim(),
+    category: r.category.trim(),
+  }));
   const keys = trimmed.map(itemKey);
   const duplicateIndex = keys.findIndex((k, i) => trimmed[i].category && keys.indexOf(k) !== i);
   const problems = [
@@ -75,27 +89,29 @@ export default function BudgetPlanForm({
 
   const updateRow = (key: number, patch: Partial<Row>) =>
     setRows((prev) => (prev ?? []).map((x) => (x.key === key ? { ...x, ...patch } : x)));
-  const renameGroup = (from: string, to: string) =>
-    setRows((prev) => (prev ?? []).map((x) => (x.category_group === from ? { ...x, category_group: to } : x)));
-  const addItemToGroup = (group: string) =>
+  const renameGroup = (kind: Kind, from: string, to: string) =>
+    setRows((prev) =>
+      (prev ?? []).map((x) => (x.kind === kind && x.category_group === from ? { ...x, category_group: to } : x))
+    );
+  const addItemToGroup = (kind: Kind, group: string) =>
     setRows((prev) => {
       const list = prev ?? [];
-      const last = list.map((x) => x.category_group).lastIndexOf(group);
-      const row = toRows([{ category_group: group, category: "", amount: 0 }])[0];
+      const last = list.findLastIndex((x) => x.kind === kind && x.category_group === group);
+      const row = toRows([{ kind, category_group: group, category: "", amount: 0 }])[0];
       return [...list.slice(0, last + 1), row, ...list.slice(last + 1)];
     });
-  const addGroup = () =>
+  const addGroup = (kind: Kind) =>
     setRows((prev) => {
       const list = prev ?? [];
       let n = 1;
-      while (list.some((x) => x.category_group === `새 카테고리 ${n}`)) n++;
-      return [...list, ...toRows([{ category_group: `새 카테고리 ${n}`, category: "", amount: 0 }])];
+      while (list.some((x) => x.kind === kind && x.category_group === `새 카테고리 ${n}`)) n++;
+      return [...list, ...toRows([{ kind, category_group: `새 카테고리 ${n}`, category: "", amount: 0 }])];
     });
 
   function loadExisting() {
     setRows(existingRows(items, fiscalYear));
     setFilename(existing?.source_filename ?? null);
-    setDocumentTotal(null);
+    setDocumentTotals({ expense: null, income: null });
   }
 
   async function deletePlan() {
@@ -130,6 +146,7 @@ export default function BudgetPlanForm({
       p_fiscal_year: fiscalYear,
       p_source_filename: filename,
       p_items: rows.map((r) => ({
+        kind: r.kind,
         category_group: r.category_group.trim(),
         category: r.category.trim(),
         amount: r.amount,
@@ -149,13 +166,13 @@ export default function BudgetPlanForm({
       <Card title="1. 예산안 문서 분석">
         <AnalyzeFile
           label="예산안 파일 (PDF 또는 사진)"
-          hint="AI가 지출 예산의 큰 카테고리와 세부 항목, 금액을 뽑아냅니다. 결과는 아래에서 확인·수정한 뒤 확정해야 저장됩니다."
+          hint="AI가 지출·수입 예산의 큰 카테고리와 세부 항목, 금액을 뽑아냅니다. 결과는 아래에서 확인·수정한 뒤 확정해야 저장됩니다."
           extraFields={() => ({ kind: "budget" })}
           onParsed={(result, file) => {
             const parsed = result as ParsedBudget;
             setRows(toRows(parsed.items));
             setFilename(file.name);
-            setDocumentTotal(parsed.document_total);
+            setDocumentTotals({ expense: parsed.document_total, income: parsed.document_income_total });
             if (parsed.fiscal_year) setFiscalYear(parsed.fiscal_year);
             setError(null);
           }}
@@ -164,9 +181,9 @@ export default function BudgetPlanForm({
           <button
             type="button"
             onClick={() => {
-              setRows(toRows([{ category_group: "", category: "", amount: 0 }]));
+              setRows(toRows([{ kind: "expense", category_group: "", category: "", amount: 0 }]));
               setFilename(null);
-              setDocumentTotal(null);
+              setDocumentTotals({ expense: null, income: null });
             }}
             className="text-gray-600 underline"
           >
@@ -198,17 +215,29 @@ export default function BudgetPlanForm({
             </select>
           </label>
 
+          {KINDS.map((kind) => (
+            <section key={kind} className="space-y-3">
+              <h3 className="flex items-center gap-2 px-1 pt-2 text-[15px] font-bold text-gray-900">
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-xs ${
+                    kind === "income" ? "bg-emerald-50 text-emerald-700" : "bg-brand-50 text-brand-700"
+                  }`}
+                >
+                  {KIND_LABEL[kind]}
+                </span>
+                {KIND_LABEL[kind]} 예산
+              </h3>
           <div className="space-y-3">
-            {groupRows(rows).map(({ group, rows: groupItems }) => {
+            {groupRows(rows, kind).map(({ group, rows: groupItems }) => {
               const subtotal = groupItems.reduce((sum, r) => sum + r.amount, 0);
               return (
-                <div key={group} className="rounded-2xl border border-gray-100 overflow-hidden">
+                <div key={`${kind}:${group}`} className="rounded-2xl border border-gray-100 overflow-hidden">
                   <div className="flex items-center gap-2 bg-brand-50/60 px-3 py-2">
                     <input
                       value={group}
                       placeholder="카테고리 없음"
                       aria-label="큰 카테고리 이름"
-                      onChange={(e) => renameGroup(group, e.target.value)}
+                      onChange={(e) => renameGroup(kind, group, e.target.value)}
                       className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-2 py-1 text-[15px] font-bold text-gray-900 hover:border-brand-100 focus:border-brand-500 focus:bg-white outline-none"
                     />
                     <span className="text-xs text-gray-500 whitespace-nowrap">{groupItems.length}개 항목</span>
@@ -252,7 +281,7 @@ export default function BudgetPlanForm({
                   <div className="border-t border-gray-100 px-3 py-2">
                     <button
                       type="button"
-                      onClick={() => addItemToGroup(group)}
+                      onClick={() => addItemToGroup(kind, group)}
                       className="text-sm font-semibold text-brand-600"
                     >
                       + 이 카테고리에 항목 추가
@@ -263,18 +292,23 @@ export default function BudgetPlanForm({
             })}
           </div>
           <div className="flex items-center justify-between px-1">
-            <button type="button" onClick={addGroup} className="text-sm font-semibold text-brand-600">
-              + 카테고리 추가
+            <button type="button" onClick={() => addGroup(kind)} className="text-sm font-semibold text-brand-600">
+              + {KIND_LABEL[kind]} 카테고리 추가
             </button>
-            <span className="font-bold tabular-nums text-gray-900">합계 {won(total)}</span>
+            <span className="font-bold tabular-nums text-gray-900">
+              {KIND_LABEL[kind]} 합계 {won(totalOf(kind))}
+            </span>
           </div>
 
-          {documentTotal !== null && documentTotal !== total && (
+          {documentTotals[kind] !== null && documentTotals[kind] !== totalOf(kind) && (
             <p className="text-sm text-amber-800 bg-amber-50 rounded-lg px-3 py-2">
-              ⚠ 문서에 적힌 총액({won(documentTotal)})과 항목 합계({won(total)})가 다릅니다. 항목을 확인해주세요.
-              (총 예산은 항목 합계로 저장됩니다)
+              ⚠ 문서에 적힌 {KIND_LABEL[kind]} 총액({won(documentTotals[kind]!)})과 항목 합계({won(totalOf(kind))})가
+              다릅니다. 항목을 확인해주세요. (예산은 항목 합계로 저장됩니다)
             </p>
           )}
+            </section>
+          ))}
+
           {existing && (
             <p className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
               이 회기 예산안이 이미 확정되어 있습니다. 확정하면 새 내용으로 교체됩니다. 카테고리나 항목명을 바꾸면 이미

@@ -12,15 +12,16 @@ create table if not exists budget_plans (
   confirmed_at timestamptz not null default now()
 );
 
--- 예산안 항목 (큰 카테고리 + 항목명 + 배정 금액)
+-- 예산안 항목 (지출/수입 + 큰 카테고리 + 항목명 + 배정 금액)
 create table if not exists budget_items (
   id bigint generated always as identity primary key,
   fiscal_year integer not null references budget_plans(fiscal_year) on delete cascade,
+  kind text not null default 'expense' check (kind in ('expense', 'income')),
   category_group text not null default '',
   category text not null,
   amount bigint not null check (amount >= 0),
   sort_order integer not null default 0,
-  unique (fiscal_year, category_group, category)
+  unique (fiscal_year, kind, category_group, category)
 );
 
 -- 월별 장부 (확정된 달만 존재). month 는 그 달 1일
@@ -33,12 +34,13 @@ create table if not exists ledger_months (
 
 create index if not exists ledger_months_fiscal_year_idx on ledger_months (fiscal_year);
 
--- 월별 장부의 지출 내역 (사용자가 확정한 항목)
+-- 월별 장부의 지출/수입 내역 (사용자가 확정한 항목)
 create table if not exists ledger_entries (
   id bigint generated always as identity primary key,
   month date not null references ledger_months(month) on delete cascade,
   entry_date date,
   description text not null default '',
+  kind text not null default 'expense' check (kind in ('expense', 'income')),
   category_group text not null default '',
   category text not null,
   amount bigint not null check (amount >= 0),
@@ -51,14 +53,23 @@ create index if not exists ledger_entries_month_idx on ledger_entries (month);
 alter table budget_items add column if not exists category_group text not null default '';
 alter table ledger_entries add column if not exists category_group text not null default '';
 alter table budget_items drop constraint if exists budget_items_fiscal_year_category_key;
+
+-- [업데이트] 지출/수입 구분(kind) 추가
+alter table budget_items add column if not exists kind text not null default 'expense';
+alter table ledger_entries add column if not exists kind text not null default 'expense';
+alter table budget_items drop constraint if exists budget_items_kind_check;
+alter table budget_items add constraint budget_items_kind_check check (kind in ('expense', 'income'));
+alter table ledger_entries drop constraint if exists ledger_entries_kind_check;
+alter table ledger_entries add constraint ledger_entries_kind_check check (kind in ('expense', 'income'));
+alter table budget_items drop constraint if exists budget_items_fiscal_year_category_group_category_key;
 do $$
 begin
   if not exists (
-    select 1 from pg_constraint where conname = 'budget_items_fiscal_year_category_group_category_key'
+    select 1 from pg_constraint where conname = 'budget_items_fiscal_year_kind_category_group_category_key'
   ) then
     alter table budget_items
-      add constraint budget_items_fiscal_year_category_group_category_key
-      unique (fiscal_year, category_group, category);
+      add constraint budget_items_fiscal_year_kind_category_group_category_key
+      unique (fiscal_year, kind, category_group, category);
   end if;
 end $$;
 
@@ -85,7 +96,8 @@ create policy "authenticated full access" on ledger_entries
   for all to authenticated using (true) with check (true);
 
 -- 예산안 확정: 해당 회기의 예산안을 통째로 교체 (한 트랜잭션)
--- p_items: [{"category_group": "...", "category": "...", "amount": 123}, ...]
+-- p_items: [{"kind": "expense" | "income", "category_group": "...", "category": "...", "amount": 123}, ...]
+-- total_amount 는 지출 예산 합계
 create or replace function save_budget(
   p_fiscal_year integer,
   p_source_filename text,
@@ -98,7 +110,8 @@ begin
   insert into budget_plans (fiscal_year, total_amount, source_filename, confirmed_at)
   values (
     p_fiscal_year,
-    (select coalesce(sum((x->>'amount')::bigint), 0) from jsonb_array_elements(p_items) x),
+    (select coalesce(sum((x->>'amount')::bigint), 0) from jsonb_array_elements(p_items) x
+      where coalesce(x->>'kind', 'expense') = 'expense'),
     p_source_filename,
     now()
   )
@@ -109,15 +122,16 @@ begin
 
   delete from budget_items where fiscal_year = p_fiscal_year;
 
-  insert into budget_items (fiscal_year, category_group, category, amount, sort_order)
-  select p_fiscal_year, trim(coalesce(x.category_group, '')), trim(x.category), x.amount, (x.ord - 1)::integer
-  from rows from (jsonb_to_recordset(p_items) as (category_group text, category text, amount bigint))
-    with ordinality as x(category_group, category, amount, ord);
+  insert into budget_items (fiscal_year, kind, category_group, category, amount, sort_order)
+  select p_fiscal_year, coalesce(x.kind, 'expense'), trim(coalesce(x.category_group, '')), trim(x.category), x.amount,
+    (x.ord - 1)::integer
+  from rows from (jsonb_to_recordset(p_items) as (kind text, category_group text, category text, amount bigint))
+    with ordinality as x(kind, category_group, category, amount, ord);
 end;
 $$;
 
 -- 월별 장부 확정: 해당 월의 내역을 통째로 교체 (한 트랜잭션)
--- p_month: 그 달 1일. p_entries: [{"entry_date": "2026-08-03" | null, "description": "...", "category_group": "...", "category": "...", "amount": 123}, ...]
+-- p_month: 그 달 1일. p_entries: [{"entry_date": "2026-08-03" | null, "description": "...", "kind": "expense" | "income", "category_group": "...", "category": "...", "amount": 123}, ...]
 -- p_fiscal_year: 이 장부를 반영할 회기. 비우면 날짜 기준 회기.
 --   회기 시작 전에 다음 회기 예산을 미리 쓴 경우(예: 2026년 7월에 26-27 예산 사용) 다음 회기로 지정 가능
 drop function if exists save_ledger_month(date, text, jsonb);
@@ -152,13 +166,13 @@ begin
 
   delete from ledger_entries where month = p_month;
 
-  insert into ledger_entries (month, entry_date, description, category_group, category, amount, sort_order)
-  select p_month, x.entry_date, coalesce(x.description, ''), trim(coalesce(x.category_group, '')), trim(x.category),
-    x.amount, (x.ord - 1)::integer
+  insert into ledger_entries (month, entry_date, description, kind, category_group, category, amount, sort_order)
+  select p_month, x.entry_date, coalesce(x.description, ''), coalesce(x.kind, 'expense'),
+    trim(coalesce(x.category_group, '')), trim(x.category), x.amount, (x.ord - 1)::integer
   from rows from (
     jsonb_to_recordset(p_entries)
-      as (entry_date date, description text, category_group text, category text, amount bigint)
-  ) with ordinality as x(entry_date, description, category_group, category, amount, ord);
+      as (entry_date date, description text, kind text, category_group text, category text, amount bigint)
+  ) with ordinality as x(entry_date, description, kind, category_group, category, amount, ord);
 end;
 $$;
 

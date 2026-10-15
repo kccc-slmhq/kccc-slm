@@ -45,6 +45,7 @@ Next.js 16 (App Router) · Supabase (Postgres + Auth) · Recharts · Gemini API 
 NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 GEMINI_API_KEY=발급받은-키          # https://aistudio.google.com/apikey , 여러 개면 쉼표로 구분
+EDIT_PASSWORD=재정담당자-비밀번호   # 확정된 월별 장부 수정·삭제할 때 확인
 ```
 
 ### 3. 로컬 실행
@@ -63,7 +64,7 @@ PRS 대시보드와 **별도의 Vercel 프로젝트**로 만듭니다.
 
 1. [vercel.com](https://vercel.com) 에서 **Add New → Project** → `kccc-slmhq/kccc-slm` 저장소 Import
 2. **Root Directory** 를 `budget` 으로 지정 (중요 — 지정하지 않으면 PRS 앱이 배포됨)
-3. **Environment Variables** 에 위 세 값(`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `GEMINI_API_KEY`) 등록
+3. **Environment Variables** 에 위 값들(`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `GEMINI_API_KEY`, `EDIT_PASSWORD`) 등록
 4. **Deploy**
 
 이후 기본 브랜치에 푸시할 때마다 자동으로 재배포됩니다.

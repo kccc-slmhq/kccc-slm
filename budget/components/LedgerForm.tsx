@@ -7,13 +7,15 @@ import { createClient } from "@/lib/supabase/client";
 import { currentMonthKst, fiscalYearLabel, fiscalYearOf, monthLabel, monthToDate } from "@/lib/budget/fiscal";
 import { won } from "@/lib/budget/summary";
 import type { BudgetItem, BudgetPlan, ItemRef, LedgerEntry, LedgerMonth, ParsedLedger } from "@/lib/budget/types";
-import { UNCATEGORIZED, UNCATEGORIZED_REF, itemKey } from "@/lib/budget/types";
+import { KIND_LABEL, UNCATEGORIZED, itemKey, kindOf, uncategorizedRef, type Kind } from "@/lib/budget/types";
 import { AmountInput, AnalyzeFile, Card } from "./shared";
+import { EDIT_NOTICE, useEditLock } from "./EditLock";
 
 type Row = {
   key: number;
   entry_date: string;
   description: string;
+  kind: Kind;
   category_group: string;
   category: string;
   amount: number;
@@ -26,6 +28,7 @@ function toRows(entries: LedgerEntry[]): Row[] {
     key: nextKey++,
     entry_date: e.entry_date ?? "",
     description: e.description ?? "",
+    kind: kindOf(e),
     category_group: e.category_group ?? "",
     category: e.category,
     amount: e.amount,
@@ -94,14 +97,17 @@ export default function LedgerForm({
     setDetectedMonth(null);
   }
 
+  const editLock = useEditLock();
+
   async function deleteMonth() {
-    if (!window.confirm(`${monthLabel(month)} 장부를 삭제할까요? 이 달의 지출 내역이 모두 지워집니다.`)) return;
+    if (!window.confirm(`${monthLabel(month)} 장부를 삭제할까요? 이 달의 내역이 모두 지워집니다.`)) return;
     setBusy(true);
     setError(null);
-    const { error } = await createClient().from("ledger_months").delete().eq("month", monthToDate(month));
+    const res = await fetch(`/api/ledger?month=${month}`, { method: "DELETE" }).catch(() => null);
     setBusy(false);
-    if (error) {
-      setError(`삭제에 실패했습니다: ${error.message}`);
+    if (!res?.ok) {
+      const body = await res?.json().catch(() => ({}));
+      setError(body?.error ?? "삭제에 실패했습니다.");
       return;
     }
     setRows(null);
@@ -111,26 +117,46 @@ export default function LedgerForm({
   const budgetRefs: ItemRef[] = items
     .filter((i) => i.fiscal_year === fiscalYear)
     .sort((a, b) => a.sort_order - b.sort_order)
-    .map((i) => ({ category_group: i.category_group, category: i.category }));
-  const optionGroupMap = new Map<string, ItemRef[]>();
-  for (const r of budgetRefs) {
-    if (!optionGroupMap.has(r.category_group)) optionGroupMap.set(r.category_group, []);
-    optionGroupMap.get(r.category_group)!.push(r);
-  }
-  const optionGroups = [...optionGroupMap.entries()];
-  const validKeys = new Set([...budgetRefs, UNCATEGORIZED_REF].map(itemKey));
-  const firstRef = budgetRefs[0] ?? UNCATEGORIZED_REF;
+    .map((i) => ({ kind: kindOf(i), category_group: i.category_group, category: i.category }));
+  // 지출/수입별 선택지 (큰 카테고리로 묶음)
+  const optionGroupsOf = (kind: Kind) => {
+    const map = new Map<string, ItemRef[]>();
+    for (const r of budgetRefs) {
+      if (r.kind !== kind) continue;
+      if (!map.has(r.category_group)) map.set(r.category_group, []);
+      map.get(r.category_group)!.push(r);
+    }
+    return [...map.entries()];
+  };
+  const allRefs = [...budgetRefs, uncategorizedRef("expense"), uncategorizedRef("income")];
+  const validKeys = new Set(allRefs.map(itemKey));
+  const firstRefOf = (kind: Kind): ItemRef => budgetRefs.find((r) => r.kind === kind) ?? uncategorizedRef(kind);
+  const newRow = (kind: Kind): Row => {
+    const ref = firstRefOf(kind);
+    return {
+      key: nextKey++,
+      entry_date: "",
+      description: "",
+      kind,
+      category_group: ref.category_group,
+      category: ref.category,
+      amount: 0,
+    };
+  };
   const alreadyConfirmed = months.some((m) => m.month.slice(0, 7) === month);
 
-  const total = (rows ?? []).reduce((s, r) => s + r.amount, 0);
-  // 큰 카테고리별 합계 (미분류는 따로)
+  const totalOf = (kind: Kind) => (rows ?? []).filter((r) => r.kind === kind).reduce((s, r) => s + r.amount, 0);
+  // 지출/수입 × 큰 카테고리별 합계 (미분류는 따로)
   const byGroup = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, { kind: Kind; group: string; amount: number }>();
     for (const r of rows ?? []) {
-      const label = r.category === UNCATEGORIZED && !r.category_group ? UNCATEGORIZED : r.category_group || "기타";
-      map.set(label, (map.get(label) ?? 0) + r.amount);
+      const group = r.category === UNCATEGORIZED && !r.category_group ? UNCATEGORIZED : r.category_group || "기타";
+      const key = `${r.kind}:${group}`;
+      const cur = map.get(key) ?? { kind: r.kind, group, amount: 0 };
+      cur.amount += r.amount;
+      map.set(key, cur);
     }
-    return [...map.entries()].map(([group, amount]) => ({ group, amount }));
+    return [...map.values()];
   }, [rows]);
 
   const problems = [
@@ -140,28 +166,43 @@ export default function LedgerForm({
     rows && rows.some((r) => r.entry_date && !r.entry_date.startsWith(month)) && "대상 월과 다른 날짜의 행이 있습니다.",
   ].filter(Boolean) as string[];
 
-  async function confirm() {
+  function confirm() {
     if (!rows || problems.length > 0) return;
-    if (alreadyConfirmed && !window.confirm(`${monthLabel(month)} 장부가 이미 확정되어 있습니다. 새 내용으로 교체할까요?`)) {
+    if (!alreadyConfirmed) {
+      void save();
       return;
     }
+    // 이미 확정된 달을 다시 확정하는 것은 '수정'이라 재정 담당자 확인이 필요
+    editLock.requireUnlock(() => {
+      if (window.confirm(`${monthLabel(month)} 장부가 이미 확정되어 있습니다. 새 내용으로 교체할까요?`)) void save();
+    });
+  }
+
+  async function save() {
+    if (!rows) return;
     setSaving(true);
     setError(null);
-    const { error } = await createClient().rpc("save_ledger_month", {
-      p_month: monthToDate(month),
-      p_fiscal_year: fiscalYear,
-      p_source_filename: filename,
-      p_entries: rows.map((r) => ({
-        entry_date: r.entry_date || null,
-        description: r.description.trim(),
-        category_group: r.category_group,
-        category: r.category,
-        amount: r.amount,
-      })),
-    });
+    const res = await fetch("/api/ledger", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        month,
+        fiscal_year: fiscalYear,
+        source_filename: filename,
+        entries: rows.map((r) => ({
+          entry_date: r.entry_date || null,
+          description: r.description.trim(),
+          kind: r.kind,
+          category_group: r.category_group,
+          category: r.category,
+          amount: r.amount,
+        })),
+      }),
+    }).catch(() => null);
     setSaving(false);
-    if (error) {
-      setError(`저장에 실패했습니다: ${error.message}`);
+    if (!res?.ok) {
+      const body = await res?.json().catch(() => ({}));
+      setError(body?.error ?? "저장에 실패했습니다.");
       return;
     }
     router.push(`/?fy=${fiscalYear}`);
@@ -173,6 +214,7 @@ export default function LedgerForm({
 
   return (
     <div className="space-y-6">
+      {editLock.dialog}
       <Card title="1. 월별 장부 분석">
         <label className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
           <span className="text-gray-600 whitespace-nowrap">대상 월</span>
@@ -208,9 +250,10 @@ export default function LedgerForm({
             <span className="text-gray-700">
               {monthLabel(month)} 장부는 이미 확정되어 있습니다 ({fiscalYearLabel(existingMonth.fiscal_year)}).
             </span>
+            <span className="w-full text-xs text-gray-500">🔒 {EDIT_NOTICE}</span>
             <button
               type="button"
-              onClick={() => loadConfirmed(month)}
+              onClick={() => editLock.requireUnlock(() => void loadConfirmed(month))}
               disabled={busy}
               className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand-600 ring-1 ring-brand-100 disabled:opacity-50"
             >
@@ -218,7 +261,7 @@ export default function LedgerForm({
             </button>
             <button
               type="button"
-              onClick={deleteMonth}
+              onClick={() => editLock.requireUnlock(() => void deleteMonth())}
               disabled={busy}
               className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-red-600 ring-1 ring-red-200 disabled:opacity-50"
             >
@@ -240,7 +283,7 @@ export default function LedgerForm({
           <>
             <AnalyzeFile
               label="장부 파일 (PDF 또는 사진)"
-              hint={`AI가 지출 내역을 한 건씩 뽑아 예산 항목으로 분류합니다 (${optionGroups.map(([g]) => g || "기타").join(", ")}). 수입·잔액은 제외됩니다.`}
+              hint="AI가 수입·지출 거래를 한 건씩 뽑아 예산 항목으로 분류합니다. 전월 이월금·잔액·합계 행은 제외됩니다."
               extraFields={() => ({ kind: "ledger", categories: JSON.stringify(budgetRefs) })}
               onParsed={(result, file) => {
                 const parsed = result as ParsedLedger;
@@ -249,6 +292,7 @@ export default function LedgerForm({
                     key: nextKey++,
                     entry_date: i.entry_date ?? "",
                     description: i.description,
+                    kind: i.kind,
                     category_group: i.category_group,
                     category: i.category,
                     amount: i.amount,
@@ -262,7 +306,7 @@ export default function LedgerForm({
             <button
               type="button"
               onClick={() => {
-                setRows([{ key: nextKey++, entry_date: "", description: "", ...firstRef, amount: 0 }]);
+                setRows([newRow("expense")]);
                 setFilename(null);
                 setDetectedMonth(null);
               }}
@@ -275,7 +319,7 @@ export default function LedgerForm({
       </Card>
 
       {rows && hasPlan && (
-        <Card title={`2. ${monthLabel(month)} 지출 항목 확인 및 수정`}>
+        <Card title={`2. ${monthLabel(month)} 수입·지출 내역 확인 및 수정`}>
           {detectedMonth && detectedMonth !== month && (
             <div className="flex flex-wrap items-center gap-2 text-sm text-amber-800 bg-amber-50 rounded-lg px-3 py-2">
               <span>
@@ -293,10 +337,11 @@ export default function LedgerForm({
           )}
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[760px]">
+            <table className="w-full text-sm min-w-[860px]">
               <thead className="bg-gray-50 text-gray-500 text-xs">
                 <tr>
                   <th className="text-left px-2 py-1.5 w-36">날짜</th>
+                  <th className="text-left px-2 py-1.5 w-24">구분</th>
                   <th className="text-left px-2 py-1.5">내용</th>
                   <th className="text-left px-2 py-1.5 w-60">예산 항목</th>
                   <th className="text-right px-2 py-1.5 w-36">금액(원)</th>
@@ -319,6 +364,23 @@ export default function LedgerForm({
                       />
                     </td>
                     <td className="px-2 py-1.5">
+                      <select
+                        value={r.kind}
+                        aria-label={`${i + 1}번째 구분`}
+                        onChange={(e) => {
+                          const kind = e.target.value as Kind;
+                          const ref = firstRefOf(kind);
+                          updateRow(r.key, { kind, category_group: ref.category_group, category: ref.category });
+                        }}
+                        className={`w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm font-medium ${
+                          r.kind === "income" ? "text-emerald-700" : "text-gray-800"
+                        }`}
+                      >
+                        <option value="expense">{KIND_LABEL.expense}</option>
+                        <option value="income">{KIND_LABEL.income}</option>
+                      </select>
+                    </td>
+                    <td className="px-2 py-1.5">
                       <input
                         value={r.description}
                         aria-label={`${i + 1}번째 내용`}
@@ -331,13 +393,13 @@ export default function LedgerForm({
                         value={itemKey(r)}
                         aria-label={`${i + 1}번째 예산 항목`}
                         onChange={(e) => {
-                          const ref = [...budgetRefs, UNCATEGORIZED_REF].find((x) => itemKey(x) === e.target.value);
+                          const ref = allRefs.find((x) => itemKey(x) === e.target.value);
                           if (ref) updateRow(r.key, { category_group: ref.category_group, category: ref.category });
                         }}
                         className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm"
                       >
                         {!validKeys.has(itemKey(r)) && <option value={itemKey(r)}>{r.category}</option>}
-                        {optionGroups.map(([group, refs]) => (
+                        {optionGroupsOf(r.kind).map(([group, refs]) => (
                           <optgroup key={group} label={group || "기타"}>
                             {refs.map((ref) => (
                               <option key={itemKey(ref)} value={itemKey(ref)}>
@@ -346,7 +408,7 @@ export default function LedgerForm({
                             ))}
                           </optgroup>
                         ))}
-                        <option value={itemKey(UNCATEGORIZED_REF)}>{UNCATEGORIZED}</option>
+                        <option value={itemKey(uncategorizedRef(r.kind))}>{UNCATEGORIZED}</option>
                       </select>
                       {r.category_group && (
                         <div className="mt-0.5 px-1 text-[11px] text-gray-400">{r.category_group}</div>
@@ -373,29 +435,27 @@ export default function LedgerForm({
                 ))}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-2 py-6 text-center text-gray-400">
-                      지출 내역이 없습니다. 지출이 없는 달이면 그대로 확정해도 됩니다.
+                    <td colSpan={6} className="px-2 py-6 text-center text-gray-400">
+                      내역이 없습니다. 거래가 없는 달이면 그대로 확정해도 됩니다.
                     </td>
                   </tr>
                 )}
               </tbody>
               <tfoot>
                 <tr>
-                  <td className="px-2 py-2" colSpan={3}>
+                  <td className="px-2 py-2" colSpan={4}>
                     <button
                       type="button"
-                      onClick={() =>
-                        setRows([
-                          ...rows,
-                          { key: nextKey++, entry_date: "", description: "", ...firstRef, amount: 0 },
-                        ])
-                      }
+                      onClick={() => setRows([...rows, newRow("expense")])}
                       className="text-sm font-semibold text-brand-600"
                     >
                       + 행 추가
                     </button>
                   </td>
-                  <td className="px-2 py-2 text-right font-semibold tabular-nums">합계 {won(total)}</td>
+                  <td className="px-2 py-2 text-right text-xs tabular-nums whitespace-nowrap">
+                    <div className="font-semibold text-gray-900">지출 {won(totalOf("expense"))}</div>
+                    <div className="font-semibold text-emerald-700">수입 {won(totalOf("income"))}</div>
+                  </td>
                   <td />
                 </tr>
               </tfoot>
@@ -407,8 +467,17 @@ export default function LedgerForm({
               <div className="text-xs font-medium text-gray-500 mb-1">카테고리별 합계</div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                 {byGroup.map((c) => (
-                  <span key={c.group} className={c.group === UNCATEGORIZED ? "text-orange-800" : "text-gray-700"}>
-                    {c.group} <span className="tabular-nums font-medium">{won(c.amount)}</span>
+                  <span
+                    key={`${c.kind}:${c.group}`}
+                    className={
+                      c.group === UNCATEGORIZED
+                        ? "text-orange-800"
+                        : c.kind === "income"
+                          ? "text-emerald-700"
+                          : "text-gray-700"
+                    }
+                  >
+                    [{KIND_LABEL[c.kind]}] {c.group} <span className="tabular-nums font-medium">{won(c.amount)}</span>
                   </span>
                 ))}
               </div>
