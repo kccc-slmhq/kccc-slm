@@ -1,9 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { BudgetItem, BudgetPlan, LedgerEntry, LedgerMonth } from "@/lib/budget/types";
 import BudgetPlanForm from "./BudgetPlanForm";
 import LedgerForm from "./LedgerForm";
+import { PasswordGate } from "./EditLock";
 
 type Tab = "budget" | "ledger";
 
@@ -26,7 +28,20 @@ export default function BudgetUpload({
   months: LedgerMonth[];
   error?: string;
 }) {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>(initialTab);
+  // 업로드 화면은 재정 담당자만 (들어올 때마다 비밀번호 확인, 기억하지 않음)
+  const [password, setPassword] = useState<string | null>(null);
+
+  if (!password) {
+    return (
+      <PasswordGate
+        notice="업로드 화면은 SLM HQ 재정 담당자만 들어갈 수 있습니다."
+        onCancel={() => (window.history.length > 1 ? router.back() : router.push("/"))}
+        onVerified={setPassword}
+      />
+    );
+  }
 
   if (error) {
     return <div className="bg-white rounded-2xl p-5 text-sm text-gray-600">데이터를 불러오지 못했습니다: {error}</div>;
@@ -58,9 +73,16 @@ export default function BudgetUpload({
       </div>
 
       {tab === "budget" ? (
-        <BudgetPlanForm plans={plans} items={items} editFiscalYear={editFiscalYear} />
+        <BudgetPlanForm plans={plans} items={items} editFiscalYear={editFiscalYear} password={password} />
       ) : (
-        <LedgerForm plans={plans} items={items} months={months} editMonth={editMonth} editEntries={editEntries} />
+        <LedgerForm
+          plans={plans}
+          items={items}
+          months={months}
+          editMonth={editMonth}
+          editEntries={editEntries}
+          password={password}
+        />
       )}
     </div>
   );
