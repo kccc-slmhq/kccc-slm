@@ -56,10 +56,12 @@ export default function BudgetPlanForm({
   plans,
   items,
   editFiscalYear,
+  password,
 }: {
   plans: BudgetPlan[];
   items: BudgetItem[];
-  editFiscalYear: number | null; // 대시보드의 '예산안 수정'으로 들어오면 그 회기를 바로 불러옴
+  editFiscalYear: number | null; // 예산안 화면의 '예산안 수정'으로 들어오면 그 회기를 바로 불러옴
+  password: string; // 업로드 화면에 들어올 때 확인한 재정 담당자 비밀번호
 }) {
   const router = useRouter();
   const current = fiscalYearOf(currentMonthKst());
@@ -75,8 +77,8 @@ export default function BudgetPlanForm({
   const [documentTotals, setDocumentTotals] = useState<Record<Kind, number | null>>({ expense: null, income: null });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // 대시보드의 '예산안 수정'에서 입력한 비밀번호는 이 회기 확정까지 이어서 씀
-  const lock = usePassword(editing ? `budget:${editFiscalYear}` : null);
+  // 업로드 화면에 들어올 때 입력한 비밀번호로 첫 작업(분석·입력 → 확정)을 이어서 함. 확정 후 다음 작업은 다시 물어봄
+  const lock = usePassword(password);
 
   const existing = plans.find((p) => p.fiscal_year === fiscalYear);
   const yearOptions = Array.from(
@@ -199,7 +201,7 @@ export default function BudgetPlanForm({
           label="예산안 파일 (PDF 또는 사진)"
           hint="AI가 지출·수입 예산의 큰 카테고리와 세부 항목, 금액을 뽑아냅니다. 결과는 아래에서 확인·수정한 뒤 확정해야 저장됩니다."
           extraFields={() => ({ kind: "budget" })}
-          authorize={(run) => lock.ask(run)}
+          authorize={(run) => lock.ask(run, { continueFlow: true })}
           onParsed={(result, file) => {
             const parsed = result as ParsedBudget;
             setRows(toRows(parsed.items));
@@ -213,18 +215,21 @@ export default function BudgetPlanForm({
           <button
             type="button"
             onClick={() =>
-              lock.ask(() => {
-                setRows(toRows([{ kind: "expense", category_group: "", category: "", amount: 0 }]));
-                setFilename(null);
-                setDocumentTotals({ expense: null, income: null });
-              })
+              lock.ask(
+                () => {
+                  setRows(toRows([{ kind: "expense", category_group: "", category: "", amount: 0 }]));
+                  setFilename(null);
+                  setDocumentTotals({ expense: null, income: null });
+                },
+                { continueFlow: true }
+              )
             }
             className="text-gray-600 underline"
           >
             AI 없이 직접 입력
           </button>
           {existing && (
-            <button type="button" onClick={() => lock.ask(loadExisting)} className="text-gray-600 underline">
+            <button type="button" onClick={() => lock.ask(loadExisting, { continueFlow: true })} className="text-gray-600 underline">
               확정된 {fiscalYear}년 회기 예산안 불러와서 수정
             </button>
           )}

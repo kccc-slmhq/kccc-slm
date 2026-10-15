@@ -28,7 +28,7 @@ import {
 import { KIND_LABEL, isCarryoverEntry, isCarryoverItem, itemKey, kindOf, type Kind, type LedgerEntry } from "@/lib/budget/types";
 import BudgetInsights from "./BudgetInsights";
 import { showMobileView, useMobileView, type MobileView } from "./BudgetNav";
-import { EDIT_NOTICE, handOffPassword, passwordHeader, usePassword } from "./EditLock";
+import { EDIT_NOTICE, passwordHeader, usePassword } from "./EditLock";
 import type { BudgetData } from "@/lib/budget/data";
 
 // 차트 색: 사용액 = 강조(파랑), 예산 = 기준(회색). 상태색은 아이콘+라벨과 함께만 사용
@@ -131,15 +131,6 @@ export default function BudgetDashboard({
   // 수정·삭제할 때마다 재정 담당자 비밀번호를 물어봄
   const lock = usePassword();
 
-  // 수정 화면으로 갈 때 입력한 비밀번호는 그 화면의 확정까지 한 번만 이어서 씀
-  function openEditor(target: string, href: string) {
-    lock.ask((pw) => {
-      lock.forget();
-      handOffPassword(target, pw);
-      router.push(href);
-    });
-  }
-
   async function deleteMonth(m: string, password: string) {
     lock.forget();
     if (!window.confirm(`${monthLabel(m)} 장부를 삭제할까요? 이 달의 내역이 모두 지워집니다.`)) return;
@@ -224,15 +215,8 @@ export default function BudgetDashboard({
             </option>
           ))}
         </select>
-        {hasPlan && (
-          <button
-            type="button"
-            onClick={() => openEditor(`budget:${fiscalYear}`, `/upload?tab=budget&edit=${fiscalYear}`)}
-            className="ml-auto rounded-full px-3 py-1.5 text-sm font-semibold text-brand-600 hover:bg-brand-50"
-          >
-            🔒 예산안 수정
-          </button>
-        )}
+        {/* PC: 지출/수입 보기 전환은 위쪽 오른편 (모바일은 카테고리 화면 안) */}
+        {hasPlan && hasIncome && <KindToggle view={view} onChange={setView} className="hidden md:flex ml-auto" />}
       </div>
 
       {!hasPlan ? (
@@ -290,28 +274,7 @@ export default function BudgetDashboard({
 
           {/* 지출 / 수입 보기 전환 */}
           <div className={`space-y-6 ${only("category")}`}>
-          {hasIncome && (
-            <div className="flex gap-1.5" role="tablist" aria-label="지출·수입 보기">
-              {(["expense", "income"] as const).map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  role="tab"
-                  aria-selected={view === k}
-                  onClick={() => setView(k)}
-                  className={`rounded-full border px-4 py-1.5 text-sm font-semibold ${
-                    view === k
-                      ? k === "income"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : "bg-brand-50 text-brand-600 border-brand-100"
-                      : "bg-white text-gray-600 border-gray-200"
-                  }`}
-                >
-                  {KIND_LABEL[k]}
-                </button>
-              ))}
-            </div>
-          )}
+          {hasIncome && <KindToggle view={view} onChange={setView} className="md:hidden" />}
 
           {/* 항목별 예산 대비 사용액 */}
           <Panel
@@ -411,7 +374,7 @@ export default function BudgetDashboard({
                         </button>
                         <button
                           type="button"
-                          onClick={() => openEditor(`ledger:${m}`, `/upload?tab=ledger&month=${m}`)}
+                          onClick={() => router.push(`/upload?tab=ledger&month=${m}`)}
                           className="rounded-full px-3 py-1 text-xs font-semibold text-brand-600 ring-1 ring-brand-100 hover:bg-brand-50"
                         >
                           수정
@@ -1156,6 +1119,39 @@ function ProgressBar({ ratio, marker, color }: { ratio: number; marker?: number;
 }
 
 // 금액은 한 줄로, 보조 설명은 줄마다 끊어서 (화면이 좁아도 숫자 중간에서 줄이 바뀌지 않게)
+function KindToggle({
+  view,
+  onChange,
+  className,
+}: {
+  view: Kind;
+  onChange: (k: Kind) => void;
+  className?: string;
+}) {
+  return (
+    <div className={`flex gap-1.5 ${className ?? ""}`} role="tablist" aria-label="지출·수입 보기">
+      {(["expense", "income"] as const).map((k) => (
+        <button
+          key={k}
+          type="button"
+          role="tab"
+          aria-selected={view === k}
+          onClick={() => onChange(k)}
+          className={`rounded-full border px-4 py-1.5 text-sm font-semibold ${
+            view === k
+              ? k === "income"
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-brand-50 text-brand-600 border-brand-100"
+              : "bg-white text-gray-600 border-gray-200"
+          }`}
+        >
+          {KIND_LABEL[k]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function Kpi({ label, value, tone, sub }: { label: string; value: string; tone?: string; sub?: string[] }) {
   return (
     <div className={KPI_CARD}>

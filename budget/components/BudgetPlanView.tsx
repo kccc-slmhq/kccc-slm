@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { fiscalYearLabel } from "@/lib/budget/fiscal";
-import { won } from "@/lib/budget/summary";
+import { shortWon, won } from "@/lib/budget/summary";
 import type { BudgetItem, BudgetPlan, BudgetTransfer } from "@/lib/budget/types";
 import { KIND_LABEL, isCarryoverItem, kindOf, type Kind } from "@/lib/budget/types";
-import { handOffPassword, usePassword } from "./EditLock";
+import { usePassword } from "./EditLock";
 import { TRANSFER_KEEP_NOTICE, TransferDialog, TransferHistory } from "./BudgetTransfer";
 
 const KINDS: Kind[] = ["expense", "income"];
@@ -45,26 +45,32 @@ export default function BudgetPlanView({
   const lock = usePassword();
   // 용도변경 창에 넘길 비밀번호 (창을 열 때 한 번 확인)
   const [transferPassword, setTransferPassword] = useState<string | null>(null);
+  const [view, setView] = useState<PlanView>("items");
   const plan = plans.find((p) => p.fiscal_year === fiscalYear);
   const fyItems = items.filter((i) => i.fiscal_year === fiscalYear).sort((a, b) => a.sort_order - b.sort_order);
 
+  // 업로드 화면에서 재정 담당자 비밀번호를 확인함
   function openEditor() {
-    lock.ask((pw) => {
-      lock.forget();
-      handOffPassword(`budget:${fiscalYear}`, pw);
-      router.push(`/upload?tab=budget&edit=${fiscalYear}`);
-    });
+    router.push(`/upload?tab=budget&edit=${fiscalYear}`);
   }
 
   if (error) return <Notice>데이터를 불러오지 못했습니다: {error}</Notice>;
 
+  const expenseItems = fyItems.filter((i) => kindOf(i) === "expense");
+  const totalOf = (kind: Kind) =>
+    fyItems.filter((i) => kindOf(i) === kind && !isCarryoverItem(i)).reduce((sum, i) => sum + i.amount, 0);
+  const expenseTotal = totalOf("expense");
+  const incomeTotal = totalOf("income");
+  // 모바일에서는 화면을 나눠서 (데스크톱은 전부 표시)
+  const only = (v: PlanView) => (view === v ? "" : "hidden md:block");
+
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="space-y-6">
       {lock.dialog}
       {transferPassword && (
         <TransferDialog
           fiscalYear={fiscalYear}
-          items={fyItems.filter((i) => kindOf(i) === "expense")}
+          items={expenseItems}
           password={transferPassword}
           onClose={() => setTransferPassword(null)}
           onDone={() => {
@@ -90,29 +96,29 @@ export default function BudgetPlanView({
           </select>
         )}
         <span className="ml-auto flex gap-1">
-        {plan && transfersReady && (
-          <button
-            type="button"
-            onClick={() =>
-              lock.ask((pw) => {
-                lock.forget();
-                setTransferPassword(pw);
-              })
-            }
-            className="rounded-full px-3 py-1.5 text-sm font-semibold text-brand-600 hover:bg-brand-50"
-          >
-            🔒 용도변경
-          </button>
-        )}
-        {plan && (
-          <button
-            type="button"
-            onClick={openEditor}
-            className="rounded-full px-3 py-1.5 text-sm font-semibold text-brand-600 hover:bg-brand-50"
-          >
-            🔒 예산안 수정
-          </button>
-        )}
+          {plan && transfersReady && (
+            <button
+              type="button"
+              onClick={() =>
+                lock.ask((pw) => {
+                  lock.forget();
+                  setTransferPassword(pw);
+                })
+              }
+              className="rounded-full px-3 py-1.5 text-sm font-semibold text-brand-600 hover:bg-brand-50"
+            >
+              🔒 용도변경
+            </button>
+          )}
+          {plan && (
+            <button
+              type="button"
+              onClick={openEditor}
+              className="rounded-full px-3 py-1.5 text-sm font-semibold text-brand-600 hover:bg-brand-50"
+            >
+              🔒 예산안 수정
+            </button>
+          )}
         </span>
       </div>
 
@@ -126,94 +132,194 @@ export default function BudgetPlanView({
         </Notice>
       ) : (
         <>
-          <section className="grid grid-cols-2 gap-3">
-            {KINDS.map((kind) => {
-              const total = fyItems
-                .filter((i) => kindOf(i) === kind && !isCarryoverItem(i))
-                .reduce((sum, i) => sum + i.amount, 0);
-              return (
-                <div key={kind} className="min-w-0 rounded-2xl bg-white p-4 sm:p-5 shadow-[0_1px_3px_rgba(17,24,39,0.04)]">
-                  <div className="text-xs text-gray-500">{KIND_LABEL[kind]} 예산 합계</div>
-                  <div
-                    className={`whitespace-nowrap font-bold tabular-nums text-[clamp(1rem,4.6vw,1.5rem)] md:text-2xl ${
-                      kind === "income" ? "text-emerald-700" : "text-gray-900"
-                    }`}
-                  >
-                    {won(total)}
-                  </div>
-                </div>
-              );
-            })}
-          </section>
+          {/* 모바일: 화면 나누기 */}
+          <div className="md:hidden flex gap-1 rounded-full bg-white p-1 shadow-[0_1px_3px_rgba(17,24,39,0.04)]" role="tablist">
+            {PLAN_VIEWS.map((v) => (
+              <button
+                key={v.key}
+                type="button"
+                role="tab"
+                aria-selected={view === v.key}
+                onClick={() => setView(v.key)}
+                className={`flex-1 rounded-full py-2 text-sm font-semibold ${
+                  view === v.key ? "bg-brand-600 text-white" : "text-gray-500"
+                }`}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
 
-          {KINDS.map((kind) => {
-            const kindItems = fyItems.filter((i) => kindOf(i) === kind);
-            if (kindItems.length === 0) return null;
-            const total = kindItems.filter((i) => !isCarryoverItem(i)).reduce((sum, i) => sum + i.amount, 0);
-            return (
-              <section key={kind}>
-                <h2 className="mb-2 flex items-center gap-2 px-1 text-[15px] font-bold text-gray-900">
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs ${
-                      kind === "income" ? "bg-emerald-50 text-emerald-700" : "bg-brand-50 text-brand-700"
-                    }`}
-                  >
-                    {KIND_LABEL[kind]}
-                  </span>
-                  {KIND_LABEL[kind]} 예산
-                </h2>
-                <div className="space-y-3">
-                  {groupsOf(kindItems).map(({ group, rows, total: subtotal }) => (
-                    <div key={group} className="overflow-hidden rounded-2xl bg-white shadow-[0_1px_3px_rgba(17,24,39,0.04)]">
-                      <div className="flex items-baseline gap-2 bg-brand-50/50 px-4 py-2.5">
-                        <span className="min-w-0 font-bold text-gray-900">{group || "기타"}</span>
-                        <span className="text-xs text-gray-400">{rows.length}</span>
-                        <span className="ml-auto whitespace-nowrap text-sm font-semibold tabular-nums text-gray-900">
-                          {won(subtotal)}
-                        </span>
-                        {total > 0 && !rows.every(isCarryoverItem) && (
-                          <span className="w-11 text-right text-xs tabular-nums text-gray-400">
-                            {Math.round((subtotal / total) * 100)}%
-                          </span>
-                        )}
-                      </div>
-                      <ul className="divide-y divide-gray-100">
-                        {rows.map((r) => (
-                          <li key={r.id} className="flex items-baseline gap-3 px-4 py-2 text-sm">
-                            <span className="min-w-0 text-gray-700">
-                              {r.category}
-                            </span>
-                            <span className="ml-auto shrink-0 whitespace-nowrap tabular-nums text-gray-900">
-                              {won(r.amount)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
+          <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-6 xl:items-start space-y-6 xl:space-y-0">
+            {/* 왼쪽: 합계 + 항목 */}
+            <div className={`min-w-0 space-y-6 ${only("items")}`}>
+              <section className="grid grid-cols-2 gap-3">
+                {KINDS.map((kind) => (
+                  <div key={kind} className="min-w-0 rounded-2xl bg-white p-4 sm:p-5 shadow-[0_1px_3px_rgba(17,24,39,0.04)]">
+                    <div className="text-xs text-gray-500">{KIND_LABEL[kind]} 예산 합계</div>
+                    <div
+                      className={`whitespace-nowrap font-bold tabular-nums text-[clamp(1rem,4.6vw,1.5rem)] md:text-2xl ${
+                        kind === "income" ? "text-emerald-700" : "text-gray-900"
+                      }`}
+                    >
+                      {won(kind === "income" ? incomeTotal : expenseTotal)}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </section>
-            );
-          })}
 
-          {transfersReady && (
-            <section>
-              <h2 className="mb-2 flex flex-col gap-0.5 px-1 sm:flex-row sm:items-baseline sm:gap-2">
-                <span className="text-[15px] font-bold text-gray-900">용도변경 내역</span>
-                <span className="text-xs text-gray-500">{TRANSFER_KEEP_NOTICE}</span>
-              </h2>
-              <div className="rounded-2xl bg-white px-4 py-1 shadow-[0_1px_3px_rgba(17,24,39,0.04)]">
-                <TransferHistory transfers={transfers} />
+              {KINDS.map((kind) => {
+                const kindItems = fyItems.filter((i) => kindOf(i) === kind);
+                if (kindItems.length === 0) return null;
+                const total = kind === "income" ? incomeTotal : expenseTotal;
+                return (
+                  <section key={kind}>
+                    <h2 className="mb-2 flex items-center gap-2 px-1 text-[15px] font-bold text-gray-900">
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-xs ${
+                          kind === "income" ? "bg-emerald-50 text-emerald-700" : "bg-brand-50 text-brand-700"
+                        }`}
+                      >
+                        {KIND_LABEL[kind]}
+                      </span>
+                      {KIND_LABEL[kind]} 예산
+                    </h2>
+                    <div className="space-y-3">
+                      {groupsOf(kindItems).map(({ group, rows, total: subtotal }) => (
+                        <div key={group} className="overflow-hidden rounded-2xl bg-white shadow-[0_1px_3px_rgba(17,24,39,0.04)]">
+                          <div className="flex items-baseline gap-2 bg-brand-50/50 px-4 py-2.5">
+                            <span className="min-w-0 font-bold text-gray-900">{group || "기타"}</span>
+                            <span className="text-xs text-gray-400">{rows.length}</span>
+                            <span className="ml-auto whitespace-nowrap text-sm font-semibold tabular-nums text-gray-900">
+                              {won(subtotal)}
+                            </span>
+                            {total > 0 && !rows.every(isCarryoverItem) && (
+                              <span className="w-11 text-right text-xs tabular-nums text-gray-400">
+                                {Math.round((subtotal / total) * 100)}%
+                              </span>
+                            )}
+                          </div>
+                          <ul className="divide-y divide-gray-100">
+                            {rows.map((r) => (
+                              <li key={r.id} className="flex items-baseline gap-3 px-4 py-2 text-sm">
+                                <span className="min-w-0 text-gray-700">{r.category}</span>
+                                <span className="ml-auto shrink-0 whitespace-nowrap tabular-nums text-gray-900">
+                                  {won(r.amount)}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+
+              <p className="px-1 text-xs text-gray-400">
+                {plan.source_filename ? `원본 파일: ${plan.source_filename} · ` : ""}확정일{" "}
+                {new Date(plan.confirmed_at).toLocaleDateString("ko-KR")}
+              </p>
+            </div>
+
+            {/* 오른쪽: 예산 구성 · 큰 항목 · 용도변경 */}
+            <aside className="space-y-4 xl:sticky xl:top-6" aria-label="예산 한눈에 보기">
+              <div className={`space-y-4 ${only("overview")}`}>
+                <SideCard title="예산 구성">
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <Figure label="수입 예산" value={shortWon(incomeTotal)} tone="text-emerald-700" />
+                    <Figure label="지출 예산" value={shortWon(expenseTotal)} />
+                    <Figure
+                      label="차액"
+                      value={`${incomeTotal - expenseTotal < 0 ? "−" : "+"}${shortWon(Math.abs(incomeTotal - expenseTotal))}`}
+                      tone={incomeTotal - expenseTotal < 0 ? "text-red-700" : "text-gray-900"}
+                    />
+                  </div>
+                  <div className="space-y-2.5 pt-2">
+                    {groupsOf(expenseItems)
+                      .sort((a, b) => b.total - a.total)
+                      .map(({ group, total }) => (
+                        <ShareBar key={group} label={group || "기타"} amount={total} ratio={expenseTotal > 0 ? total / expenseTotal : 0} />
+                      ))}
+                  </div>
+                </SideCard>
+
+                <SideCard title="규모가 큰 항목 TOP 5">
+                  <ul className="space-y-2.5">
+                    {[...expenseItems]
+                      .sort((a, b) => b.amount - a.amount)
+                      .slice(0, 5)
+                      .map((r, idx) => (
+                        <li key={r.id} className="flex items-baseline gap-2 text-sm">
+                          <span className="w-4 shrink-0 font-semibold text-brand-600">{idx + 1}</span>
+                          <span className="min-w-0 text-gray-800">
+                            {r.category}
+                            <span className="ml-1 text-xs text-gray-400">{r.category_group}</span>
+                          </span>
+                          <span className="ml-auto shrink-0 whitespace-nowrap tabular-nums text-gray-900">{shortWon(r.amount)}</span>
+                        </li>
+                      ))}
+                  </ul>
+                </SideCard>
               </div>
-            </section>
-          )}
 
-          <p className="px-1 text-xs text-gray-400">
-            {plan.source_filename ? `원본 파일: ${plan.source_filename} · ` : ""}확정일{" "}
-            {new Date(plan.confirmed_at).toLocaleDateString("ko-KR")}
-          </p>
+              {transfersReady && (
+                <div className={only("transfers")}>
+                  <SideCard title="용도변경 내역">
+                    <p className="text-xs text-gray-500">
+                      {transfers.length > 0
+                        ? `${transfers.length}건 · 총 ${won(transfers.reduce((sum, t) => sum + t.amount, 0))} 이동`
+                        : "아직 용도변경이 없습니다."}
+                    </p>
+                    {transfers.length > 0 && <TransferHistory transfers={transfers} />}
+                    <p className="rounded-xl bg-brand-50/60 px-3 py-2 text-xs text-brand-700">📁 {TRANSFER_KEEP_NOTICE}</p>
+                  </SideCard>
+                </div>
+              )}
+            </aside>
+          </div>
         </>
       )}
+    </div>
+  );
+}
+
+type PlanView = "items" | "overview" | "transfers";
+const PLAN_VIEWS: { key: PlanView; label: string }[] = [
+  { key: "items", label: "항목" },
+  { key: "overview", label: "구성" },
+  { key: "transfers", label: "용도변경" },
+];
+
+function SideCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3 rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(17,24,39,0.04)]">
+      <h3 className="text-sm font-bold text-gray-900">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+function Figure({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  return (
+    <div className="min-w-0 rounded-xl bg-gray-50 px-2 py-2">
+      <div className="text-[11px] text-gray-500">{label}</div>
+      <div className={`whitespace-nowrap text-sm font-bold tabular-nums ${tone ?? "text-gray-900"}`}>{value}</div>
+    </div>
+  );
+}
+
+function ShareBar({ label, amount, ratio }: { label: string; amount: number; ratio: number }) {
+  return (
+    <div>
+      <div className="flex items-baseline gap-2 text-sm">
+        <span className="min-w-0 text-gray-800">{label}</span>
+        <span className="ml-auto shrink-0 whitespace-nowrap tabular-nums text-gray-900">{shortWon(amount)}</span>
+        <span className="w-9 shrink-0 text-right text-xs tabular-nums text-gray-400">{Math.round(ratio * 100)}%</span>
+      </div>
+      <div className="mt-1 h-1.5 rounded-full bg-gray-100">
+        <div className="h-1.5 rounded-full bg-brand-600" style={{ width: `${Math.min(100, ratio * 100)}%` }} />
+      </div>
     </div>
   );
 }

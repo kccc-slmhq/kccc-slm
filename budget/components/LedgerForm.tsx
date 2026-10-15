@@ -46,12 +46,14 @@ export default function LedgerForm({
   months,
   editMonth,
   editEntries,
+  password,
 }: {
   plans: BudgetPlan[];
   items: BudgetItem[];
   months: LedgerMonth[];
   editMonth: string | null; // 대시보드의 '수정'으로 들어오면 그 달 확정된 장부를 바로 불러옴
   editEntries: LedgerEntry[] | null; // editMonth 의 확정된 지출 내역 (서버에서 미리 읽음)
+  password: string; // 업로드 화면에 들어올 때 확인한 재정 담당자 비밀번호
 }) {
   const router = useRouter();
   const [month, setMonthState] = useState(editMonth ?? previousMonth(currentMonthKst()));
@@ -97,8 +99,8 @@ export default function LedgerForm({
     setDetectedMonth(null);
   }
 
-  // 대시보드의 '수정'에서 입력한 비밀번호는 이 달 확정까지 이어서 씀
-  const lock = usePassword(editMonth ? `ledger:${editMonth}` : null);
+  // 업로드 화면에 들어올 때 입력한 비밀번호로 첫 작업(분석·입력 → 확정)을 이어서 함. 확정 후 다음 작업은 다시 물어봄
+  const lock = usePassword(password);
 
   async function deleteMonth(password: string) {
     lock.forget();
@@ -257,7 +259,7 @@ export default function LedgerForm({
             <span className="w-full text-xs text-gray-500">🔒 {EDIT_NOTICE}</span>
             <button
               type="button"
-              onClick={() => lock.ask(() => void loadConfirmed(month))}
+              onClick={() => lock.ask(() => void loadConfirmed(month), { continueFlow: true })}
               disabled={busy}
               className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand-600 ring-1 ring-brand-100 disabled:opacity-50"
             >
@@ -293,7 +295,7 @@ export default function LedgerForm({
                 // 이월금 항목은 AI 분류 대상에서 뺌 (실제 수입이 이월금으로 잘못 들어가지 않게)
                 categories: JSON.stringify(budgetRefs.filter((r) => !isCarryoverItem(r))),
               })}
-              authorize={(run) => lock.ask(run)}
+              authorize={(run) => lock.ask(run, { continueFlow: true })}
               onParsed={(result, file) => {
                 const parsed = result as ParsedLedger;
                 setRows(
@@ -315,11 +317,14 @@ export default function LedgerForm({
             <button
               type="button"
               onClick={() =>
-                lock.ask(() => {
-                  setRows([newRow("expense")]);
-                  setFilename(null);
-                  setDetectedMonth(null);
-                })
+                lock.ask(
+                  () => {
+                    setRows([newRow("expense")]);
+                    setFilename(null);
+                    setDetectedMonth(null);
+                  },
+                  { continueFlow: true }
+                )
               }
               className="text-sm text-gray-600 underline"
             >
