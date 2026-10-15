@@ -27,7 +27,8 @@ import {
 } from "@/lib/budget/summary";
 import { KIND_LABEL, itemKey, kindOf, type Kind } from "@/lib/budget/types";
 import BudgetInsights from "./BudgetInsights";
-import { EDIT_NOTICE, useEditLock } from "./EditLock";
+import { showMobileView, useMobileView, type MobileView } from "./BudgetNav";
+import { EDIT_NOTICE, handOffPassword, passwordHeader, usePassword } from "./EditLock";
 import type { BudgetData } from "@/lib/budget/data";
 
 // 차트 색: 사용액 = 강조(파랑), 예산 = 기준(회색). 상태색은 아이콘+라벨과 함께만 사용
@@ -73,6 +74,9 @@ export default function BudgetDashboard({
   error,
 }: BudgetData & { fiscalYear: number }) {
   const router = useRouter();
+  // 모바일에서는 아래쪽 탭으로 한 화면씩 (데스크톱은 전부 표시)
+  const mobileView = useMobileView();
+  const only = (v: MobileView) => (mobileView === v ? "" : "hidden md:block");
 
   // 이 회기로 확정된 달 (회기 시작 전에 미리 쓴 달 포함)
   const confirmedMonths = useMemo(
@@ -85,9 +89,8 @@ export default function BudgetDashboard({
   );
   const monthName = (m: string) => `${monthLabel(m)}${isBeforeFiscalStart(fiscalYear, m) ? " (사전)" : ""}`;
   const latestConfirmed = confirmedMonths.length > 0 ? confirmedMonths[confirmedMonths.length - 1] : null;
-  const [throughMonth, setThroughMonth] = useState<string | null>(latestConfirmed);
-  // 회기를 바꾸면 기준월을 그 회기의 마지막 확정월로
-  const effectiveThrough = throughMonth && confirmedMonths.includes(throughMonth) ? throughMonth : latestConfirmed;
+  // 항상 그 회기의 마지막 확정월까지 누적 (특정 달은 세부 내역에서 골라 봄)
+  const effectiveThrough = latestConfirmed;
 
   const summary = useMemo(
     () => summarize(fiscalYear, items, entries, confirmedMonths, effectiveThrough, "expense"),
@@ -107,12 +110,26 @@ export default function BudgetDashboard({
   const [detailMonth, setDetailMonth] = useState<string>("");
   const [deletingMonth, setDeletingMonth] = useState<string | null>(null);
 
-  const editLock = useEditLock();
+  // 수정·삭제할 때마다 재정 담당자 비밀번호를 물어봄
+  const lock = usePassword();
 
-  async function deleteMonth(m: string) {
+  // 수정 화면으로 갈 때 입력한 비밀번호는 그 화면의 확정까지 한 번만 이어서 씀
+  function openEditor(target: string, href: string) {
+    lock.ask((pw) => {
+      lock.forget();
+      handOffPassword(target, pw);
+      router.push(href);
+    });
+  }
+
+  async function deleteMonth(m: string, password: string) {
+    lock.forget();
     if (!window.confirm(`${monthLabel(m)} 장부를 삭제할까요? 이 달의 내역이 모두 지워집니다.`)) return;
     setDeletingMonth(m);
-    const res = await fetch(`/api/ledger?month=${m}`, { method: "DELETE" }).catch(() => null);
+    const res = await fetch(`/api/ledger?month=${m}`, {
+      method: "DELETE",
+      headers: passwordHeader(password),
+    }).catch(() => null);
     setDeletingMonth(null);
     if (!res?.ok) {
       const body = await res?.json().catch(() => ({}));
@@ -177,27 +194,14 @@ export default function BudgetDashboard({
             </option>
           ))}
         </select>
-        {confirmedMonths.length > 0 && (
-          <select
-            value={effectiveThrough ?? ""}
-            onChange={(e) => setThroughMonth(e.target.value)}
-            className="h-9 rounded-xl border border-gray-200 bg-white px-2 text-sm"
-            aria-label="기준월 선택"
-          >
-            {[...confirmedMonths].reverse().map((m) => (
-              <option key={m} value={m}>
-                {monthName(m)}까지 누적
-              </option>
-            ))}
-          </select>
-        )}
         {hasPlan && (
-          <Link
-            href={`/upload?tab=budget&edit=${fiscalYear}`}
+          <button
+            type="button"
+            onClick={() => openEditor(`budget:${fiscalYear}`, `/upload?tab=budget&edit=${fiscalYear}`)}
             className="ml-auto rounded-full px-3 py-1.5 text-sm font-semibold text-brand-600 hover:bg-brand-50"
           >
-            예산안 수정
-          </Link>
+            🔒 예산안 수정
+          </button>
         )}
       </div>
 
@@ -222,7 +226,7 @@ export default function BudgetDashboard({
           )}
 
           {/* 핵심 지표 */}
-          <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <section className={`grid grid-cols-2 lg:grid-cols-4 gap-3 ${mobileView === "summary" ? "" : "hidden md:grid"}`}>
             <Kpi
               label={effectiveThrough ? `누적 지출 (~${shortMonthLabel(effectiveThrough)})` : "누적 지출"}
               value={won(summary.totalSpent)}
@@ -259,6 +263,7 @@ export default function BudgetDashboard({
           </section>
 
           {/* 지출 / 수입 보기 전환 */}
+          <div className={`space-y-6 ${only("category")}`}>
           {hasIncome && (
             <div className="flex gap-1.5" role="tablist" aria-label="지출·수입 보기">
               {(["expense", "income"] as const).map((k) => (
@@ -301,7 +306,9 @@ export default function BudgetDashboard({
           >
             <GroupTable key={view} groups={viewSummary.groups} elapsedRatio={summary.elapsedRatio} kind={view} />
           </Panel>
+          </div>
 
+          <div className={`space-y-6 ${only("monthly")}`}>
           {/* 월별 누적 추이 */}
           <Panel title="월별 누적 지출·수입" subtitle="점선 = 지출 예산을 12개월에 균등하게 쓸 때의 기준선">
             <MonthlyChart data={summary.monthly} income={hasIncome ? incomeSummary.monthly : null} />
@@ -337,7 +344,6 @@ export default function BudgetDashboard({
             <p className="mb-3 flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-600">
               <span aria-hidden>🔒</span>
               {EDIT_NOTICE}
-              {editLock.unlocked && <span className="ml-auto font-semibold text-emerald-700">확인됨</span>}
             </p>
             {confirmedMonths.length === 0 ? (
               <p className="text-sm text-gray-400">확정된 장부가 없습니다.</p>
@@ -359,7 +365,8 @@ export default function BudgetDashboard({
                           onClick={() => {
                             setDetailMonth(m);
                             setDetailFilter("");
-                            document.getElementById("detail")?.scrollIntoView({ behavior: "smooth" });
+                            if (window.matchMedia("(max-width: 767px)").matches) showMobileView("detail");
+                            else document.getElementById("detail")?.scrollIntoView({ behavior: "smooth" });
                           }}
                           className="rounded-full px-3 py-1 text-xs font-semibold text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50"
                         >
@@ -367,14 +374,14 @@ export default function BudgetDashboard({
                         </button>
                         <button
                           type="button"
-                          onClick={() => editLock.requireUnlock(() => router.push(`/upload?tab=ledger&month=${m}`))}
+                          onClick={() => openEditor(`ledger:${m}`, `/upload?tab=ledger&month=${m}`)}
                           className="rounded-full px-3 py-1 text-xs font-semibold text-brand-600 ring-1 ring-brand-100 hover:bg-brand-50"
                         >
                           수정
                         </button>
                         <button
                           type="button"
-                          onClick={() => editLock.requireUnlock(() => deleteMonth(m))}
+                          onClick={() => lock.ask((pw) => void deleteMonth(m, pw))}
                           disabled={deletingMonth === m}
                           className="rounded-full px-3 py-1 text-xs font-semibold text-red-600 ring-1 ring-red-200 hover:bg-red-50 disabled:opacity-50"
                         >
@@ -388,8 +395,11 @@ export default function BudgetDashboard({
             )}
           </Panel>
 
+          </div>
+
           {/* 세부 지출 내역 */}
           {effectiveThrough && (
+            <div className={only("detail")}>
             <Panel title="세부 내역" subtitle={`${monthName(effectiveThrough)}까지`}>
               <div id="detail" className="flex flex-wrap gap-2 mb-2">
               <select
@@ -479,13 +489,16 @@ export default function BudgetDashboard({
                 </table>
               </div>
             </Panel>
+            </div>
           )}
         </>
       )}
     </div>
-    {editLock.dialog}
+    {lock.dialog}
     {hasPlan && effectiveThrough && (
-      <BudgetInsights expense={summary} income={hasIncome ? incomeSummary : null} throughLabel={monthName(effectiveThrough)} />
+      <div className={`${only("summary")} xl:sticky xl:top-6`}>
+        <BudgetInsights expense={summary} income={hasIncome ? incomeSummary : null} throughLabel={monthName(effectiveThrough)} />
+      </div>
     )}
     </div>
   );

@@ -9,7 +9,7 @@ import { won } from "@/lib/budget/summary";
 import type { BudgetItem, BudgetPlan, ItemRef, LedgerEntry, LedgerMonth, ParsedLedger } from "@/lib/budget/types";
 import { KIND_LABEL, UNCATEGORIZED, itemKey, kindOf, uncategorizedRef, type Kind } from "@/lib/budget/types";
 import { AmountInput, AnalyzeFile, Card } from "./shared";
-import { EDIT_NOTICE, useEditLock } from "./EditLock";
+import { EDIT_NOTICE, passwordHeader, usePassword } from "./EditLock";
 
 type Row = {
   key: number;
@@ -97,13 +97,18 @@ export default function LedgerForm({
     setDetectedMonth(null);
   }
 
-  const editLock = useEditLock();
+  // 대시보드의 '수정'에서 입력한 비밀번호는 이 달 확정까지 이어서 씀
+  const lock = usePassword(editMonth ? `ledger:${editMonth}` : null);
 
-  async function deleteMonth() {
+  async function deleteMonth(password: string) {
+    lock.forget();
     if (!window.confirm(`${monthLabel(month)} 장부를 삭제할까요? 이 달의 내역이 모두 지워집니다.`)) return;
     setBusy(true);
     setError(null);
-    const res = await fetch(`/api/ledger?month=${month}`, { method: "DELETE" }).catch(() => null);
+    const res = await fetch(`/api/ledger?month=${month}`, {
+      method: "DELETE",
+      headers: passwordHeader(password),
+    }).catch(() => null);
     setBusy(false);
     if (!res?.ok) {
       const body = await res?.json().catch(() => ({}));
@@ -166,25 +171,22 @@ export default function LedgerForm({
     rows && rows.some((r) => r.entry_date && !r.entry_date.startsWith(month)) && "대상 월과 다른 날짜의 행이 있습니다.",
   ].filter(Boolean) as string[];
 
+  // 확정은 이번 작업에서 입력한 비밀번호로 진행 (없으면 물어봄)
   function confirm() {
     if (!rows || problems.length > 0) return;
-    if (!alreadyConfirmed) {
-      void save();
+    if (alreadyConfirmed && !window.confirm(`${monthLabel(month)} 장부가 이미 확정되어 있습니다. 새 내용으로 교체할까요?`)) {
       return;
     }
-    // 이미 확정된 달을 다시 확정하는 것은 '수정'이라 재정 담당자 확인이 필요
-    editLock.requireUnlock(() => {
-      if (window.confirm(`${monthLabel(month)} 장부가 이미 확정되어 있습니다. 새 내용으로 교체할까요?`)) void save();
-    });
+    lock.ask((password) => void save(password), { continueFlow: true });
   }
 
-  async function save() {
+  async function save(password: string) {
     if (!rows) return;
     setSaving(true);
     setError(null);
     const res = await fetch("/api/ledger", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...passwordHeader(password) },
       body: JSON.stringify({
         month,
         fiscal_year: fiscalYear,
@@ -202,9 +204,11 @@ export default function LedgerForm({
     setSaving(false);
     if (!res?.ok) {
       const body = await res?.json().catch(() => ({}));
+      if (res?.status === 403) lock.forget();
       setError(body?.error ?? "저장에 실패했습니다.");
       return;
     }
+    lock.forget();
     router.push(`/?fy=${fiscalYear}`);
     router.refresh();
   }
@@ -214,7 +218,7 @@ export default function LedgerForm({
 
   return (
     <div className="space-y-6">
-      {editLock.dialog}
+      {lock.dialog}
       <Card title="1. 월별 장부 분석">
         <label className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
           <span className="text-gray-600 whitespace-nowrap">대상 월</span>
@@ -253,7 +257,7 @@ export default function LedgerForm({
             <span className="w-full text-xs text-gray-500">🔒 {EDIT_NOTICE}</span>
             <button
               type="button"
-              onClick={() => editLock.requireUnlock(() => void loadConfirmed(month))}
+              onClick={() => lock.ask(() => void loadConfirmed(month))}
               disabled={busy}
               className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand-600 ring-1 ring-brand-100 disabled:opacity-50"
             >
@@ -261,7 +265,7 @@ export default function LedgerForm({
             </button>
             <button
               type="button"
-              onClick={() => editLock.requireUnlock(() => void deleteMonth())}
+              onClick={() => lock.ask((pw) => void deleteMonth(pw))}
               disabled={busy}
               className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-red-600 ring-1 ring-red-200 disabled:opacity-50"
             >
@@ -285,6 +289,7 @@ export default function LedgerForm({
               label="장부 파일 (PDF 또는 사진)"
               hint="AI가 수입·지출 거래를 한 건씩 뽑아 예산 항목으로 분류합니다. 전월 이월금·잔액·합계 행은 제외됩니다."
               extraFields={() => ({ kind: "ledger", categories: JSON.stringify(budgetRefs) })}
+              authorize={(run) => lock.ask(run)}
               onParsed={(result, file) => {
                 const parsed = result as ParsedLedger;
                 setRows(
@@ -305,11 +310,13 @@ export default function LedgerForm({
             />
             <button
               type="button"
-              onClick={() => {
-                setRows([newRow("expense")]);
-                setFilename(null);
-                setDetectedMonth(null);
-              }}
+              onClick={() =>
+                lock.ask(() => {
+                  setRows([newRow("expense")]);
+                  setFilename(null);
+                  setDetectedMonth(null);
+                })
+              }
               className="text-sm text-gray-600 underline"
             >
               AI 없이 직접 입력

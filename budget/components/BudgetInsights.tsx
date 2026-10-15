@@ -35,7 +35,7 @@ export default function BudgetInsights({
   const topMax = top[0]?.spent ?? 0;
 
   return (
-    <aside className="space-y-4 xl:sticky xl:top-6" aria-label="한눈에 보기">
+    <aside className="space-y-4" aria-label="한눈에 보기">
       <div className="px-1 text-xs font-medium text-gray-500">{throughLabel}까지 기준</div>
 
       {/* 재정 건전성 */}

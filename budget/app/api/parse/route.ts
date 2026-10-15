@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { checkRequest } from "@/lib/budget/editAuth";
 import { GeminiError, parseBudgetDocument, parseLedgerDocument } from "@/lib/budget/gemini";
 import type { ItemRef } from "@/lib/budget/types";
 import { MAX_UPLOAD_BYTES, detectUploadType, unsupportedUploadMessage } from "@/lib/budget/upload";
@@ -16,6 +17,9 @@ export async function POST(request: Request) {
   if (!userData.user) {
     return Response.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
+  // 업로드는 재정 담당자만
+  const denied = await checkRequest(request);
+  if (denied) return denied;
 
   let form: FormData;
   try {

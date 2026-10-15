@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { BottomTabs, PageHeader, Sidebar } from "@/components/BudgetNav";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -10,7 +11,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <main className="px-4 md:px-0 py-5 pb-24 md:pb-10">{children}</main>
         </div>
       </div>
-      <BottomTabs />
+      <Suspense fallback={null}>
+        <BottomTabs />
+      </Suspense>
     </div>
   );
 }

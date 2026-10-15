@@ -2,48 +2,81 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export const EDIT_NOTICE = "확정된 월별 장부의 수정과 삭제는 SLM HQ 재정 담당자만 할 수 있습니다.";
+export const EDIT_NOTICE = "업로드와 확정된 자료의 수정·삭제는 SLM HQ 재정 담당자만 할 수 있습니다.";
 
-// 수정·삭제 전에 재정 담당자 비밀번호를 확인. 비밀번호 검사는 서버에서만 함
-export function useEditLock() {
-  const [unlocked, setUnlocked] = useState(false);
-  const [pending, setPending] = useState<(() => void) | null>(null);
+export const EDIT_PASSWORD_HEADER = "x-edit-password";
+
+// 서버로 보낼 비밀번호 헤더 (한글 등도 안전하게)
+export const passwordHeader = (pw: string) => ({ [EDIT_PASSWORD_HEADER]: encodeURIComponent(pw) });
+
+// 대시보드의 '수정' → 업로드 화면으로 넘어갈 때 한 번만 비밀번호를 넘겨줌 (읽으면 바로 지움)
+const HANDOFF_KEY = "slm-edit-handoff";
+const HANDOFF_TTL_MS = 60_000;
+
+export function handOffPassword(target: string, pw: string) {
+  try {
+    sessionStorage.setItem(HANDOFF_KEY, JSON.stringify({ target, pw, at: Date.now() }));
+  } catch {
+    // 저장이 안 되면 다음 화면에서 다시 물어봄
+  }
+}
+
+function takeHandoff(target: string): string | null {
+  try {
+    const raw = sessionStorage.getItem(HANDOFF_KEY);
+    if (!raw) return null;
+    const h = JSON.parse(raw);
+    if (h?.target !== target) return null;
+    sessionStorage.removeItem(HANDOFF_KEY);
+    return typeof h.pw === "string" && Date.now() - h.at < HANDOFF_TTL_MS ? h.pw : null;
+  } catch {
+    return null;
+  }
+}
+
+// 업로드·수정·삭제할 때마다 재정 담당자 비밀번호를 물어봄 (기억하지 않음)
+// 단, 한 번의 작업 흐름(업로드 → 확인·수정 → 확정) 안에서는 처음 입력한 비밀번호로 확정까지 진행
+// 비밀번호 검사는 서버에서만 함
+export function usePassword(handoffTarget?: string | null) {
+  const held = useRef<string | null>(null);
+  const [pending, setPending] = useState<((pw: string) => void) | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    fetch("/api/edit-auth")
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled && d?.unlocked) setUnlocked(true);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    const pw = handoffTarget ? takeHandoff(handoffTarget) : null;
+    if (pw) held.current = pw;
+  }, [handoffTarget]);
 
-  // 잠금이 풀려 있으면 바로 실행, 아니면 비밀번호 창을 띄우고 확인 후 실행
-  function requireUnlock(action: () => void) {
-    if (unlocked) action();
-    else setPending(() => action);
+  // 비밀번호 창을 띄우고, 맞으면 action(비밀번호) 실행
+  // continueFlow: 이 작업 흐름에서 이미 입력한 비밀번호가 있으면 다시 묻지 않음 (확정 단계)
+  function ask(action: (pw: string) => void, opts?: { continueFlow?: boolean }) {
+    if (opts?.continueFlow && held.current) {
+      action(held.current);
+      return;
+    }
+    setPending(() => action);
+  }
+
+  // 작업 흐름 끝 (확정·삭제 완료, 다른 작업 시작)
+  function forget() {
+    held.current = null;
   }
 
   const dialog = pending ? (
     <PasswordDialog
       onCancel={() => setPending(null)}
-      onUnlocked={() => {
-        setUnlocked(true);
+      onVerified={(pw) => {
+        held.current = pw;
         const action = pending;
         setPending(null);
-        action();
+        action(pw);
       }}
     />
   ) : null;
 
-  return { unlocked, requireUnlock, dialog };
+  return { ask, forget, dialog };
 }
 
-function PasswordDialog({ onCancel, onUnlocked }: { onCancel: () => void; onUnlocked: () => void }) {
+function PasswordDialog({ onCancel, onVerified }: { onCancel: () => void; onVerified: (pw: string) => void }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
@@ -67,7 +100,7 @@ function PasswordDialog({ onCancel, onUnlocked }: { onCancel: () => void; onUnlo
     }).catch(() => null);
     setChecking(false);
     if (res?.ok) {
-      onUnlocked();
+      onVerified(password);
       return;
     }
     const body = await res?.json().catch(() => ({}));
