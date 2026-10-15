@@ -27,6 +27,16 @@ export function AmountInput({
   );
 }
 
+// 서버가 안내 문구 없이 실패했을 때 (시간 초과, 요청 크기 초과 등)
+function failureMessage(status: number): string {
+  if (status === 504 || status === 408) {
+    return "AI 분석이 너무 오래 걸려 중단되었습니다. AI 서버가 혼잡할 수 있으니 1~2분 뒤에 다시 시도해주세요.";
+  }
+  if (status === 413) return "파일이 너무 큽니다. 4MB 이하로 올려주세요.";
+  if (status === 401) return "로그인이 만료되었습니다. 새로고침 후 다시 로그인해주세요.";
+  return `문서 분석에 실패했습니다. 잠시 후 다시 시도해주세요. (오류 코드 ${status})`;
+}
+
 // 파일 선택 + AI 분석 요청
 export function AnalyzeFile({
   label,
@@ -60,7 +70,7 @@ export function AnalyzeFile({
       for (const [k, v] of Object.entries(extraFields?.() ?? {})) form.set(k, v);
       const res = await fetch("/api/parse", { method: "POST", body: form });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? "문서 분석에 실패했습니다.");
+      if (!res.ok) throw new Error(body.error ?? failureMessage(res.status));
       onParsed(body, file);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -90,7 +100,7 @@ export function AnalyzeFile({
           disabled={!file || disabled || loading}
           className="rounded-xl bg-brand-600 hover:bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
         >
-          {loading ? "AI 분석 중... (최대 1분)" : "AI로 항목 분석"}
+          {loading ? "AI 분석 중... (최대 2~3분)" : "AI로 항목 분석"}
         </button>
       </div>
       <p className="text-xs text-gray-500">{hint}</p>
