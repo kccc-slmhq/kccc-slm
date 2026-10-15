@@ -773,9 +773,23 @@ function GroupDetailDialog({
         <div className="flex items-start gap-3 border-b border-gray-100 px-5 pb-3 pt-5">
           <div className="min-w-0">
             <div className="text-xs text-gray-500">{KIND_LABEL[kind]} 카테고리</div>
-            <h2 id="group-detail-title" className="text-lg font-bold text-gray-900">
-              {group.group}
-            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 id="group-detail-title" className="text-lg font-bold text-gray-900">
+                {group.group}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setItemFilter(null)}
+                aria-pressed={itemFilter === null}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
+                  itemFilter === null
+                    ? "bg-brand-600 text-white ring-brand-600"
+                    : "bg-brand-50 text-brand-700 ring-brand-100 hover:bg-brand-100"
+                }`}
+              >
+                전체 보기
+              </button>
+            </div>
             <div className="mt-0.5 text-sm tabular-nums text-gray-600">
               {won(group.spent)} <span className="text-gray-400">/ {won(group.budget)}</span>
               <span className="ml-2 text-xs">{pct(group.ratio)}</span>
@@ -852,17 +866,7 @@ function GroupDetailDialog({
                 {itemFilter ? `${nameOf.get(itemFilter)} 사용 내역` : "사용 내역"}
                 <span className="ml-1.5 text-xs font-normal text-gray-400">{rows.length}건</span>
               </h3>
-              {itemFilter ? (
-                <button
-                  type="button"
-                  onClick={() => setItemFilter(null)}
-                  className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 ring-1 ring-brand-100 hover:bg-brand-100"
-                >
-                  ← {group.group} 전체 보기
-                </button>
-              ) : (
-                <span className="text-xs text-gray-400">항목을 누르면 그 항목만</span>
-              )}
+              {!itemFilter && <span className="text-xs text-gray-400">항목을 누르면 그 항목만</span>}
             </div>
             {rows.length === 0 ? (
               <p className="py-4 text-center text-sm text-gray-400">사용 내역이 없습니다.</p>
