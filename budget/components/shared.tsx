@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { MAX_UPLOAD_BYTES, UPLOAD_ACCEPT } from "@/lib/budget/upload";
+import { passwordHeader } from "./EditLock";
 
 // 원 단위 금액 입력 (쉼표 자동 표시)
 export function AmountInput({
@@ -43,12 +44,15 @@ export function AnalyzeFile({
   hint,
   disabled,
   extraFields,
+  authorize,
   onParsed,
 }: {
   label: string;
   hint: string;
   disabled?: boolean;
   extraFields?: () => Record<string, string>;
+  // 재정 담당자 비밀번호를 받아 분석을 시작 (업로드는 재정 담당자만)
+  authorize: (run: (password: string) => void) => void;
   onParsed: (result: unknown, file: File) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -56,19 +60,23 @@ export function AnalyzeFile({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function analyze() {
+  function analyze() {
     if (!file) return;
     if (file.size > MAX_UPLOAD_BYTES) {
       setError("파일이 너무 큽니다. 4MB 이하로 올려주세요.");
       return;
     }
+    authorize((password) => void run(file, password));
+  }
+
+  async function run(file: File, password: string) {
     setLoading(true);
     setError(null);
     try {
       const form = new FormData();
       form.set("file", file);
       for (const [k, v] of Object.entries(extraFields?.() ?? {})) form.set(k, v);
-      const res = await fetch("/api/parse", { method: "POST", body: form });
+      const res = await fetch("/api/parse", { method: "POST", body: form, headers: passwordHeader(password) });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? failureMessage(res.status));
       onParsed(body, file);

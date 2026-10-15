@@ -1,10 +1,13 @@
 import "server-only";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 
-// 확정된 장부 수정·삭제용 비밀번호. 코드에 넣지 않고 Vercel 환경변수로만 받음
-//   EDIT_PASSWORD  (필수) — 없으면 수정·삭제 잠금 해제 불가
-export const EDIT_COOKIE = "edit_auth";
-export const EDIT_COOKIE_MAX_AGE = 60 * 60 * 8; // 8시간
+// 재정 담당자 비밀번호. 코드에 넣지 않고 Vercel 환경변수로만 받음
+//   EDIT_PASSWORD  (필수) — 없으면 업로드·수정·삭제 불가
+// 로그인 세션처럼 기억하지 않고, 업로드·수정·삭제 요청마다 비밀번호를 함께 받아 확인함
+export const EDIT_PASSWORD_HEADER = "x-edit-password";
+
+export const EDIT_NOTICE_SERVER =
+  "업로드와 확정된 자료의 수정·삭제는 SLM HQ 재정 담당자만 할 수 있습니다. 비밀번호를 입력해주세요.";
 
 function password(): string | null {
   const p = process.env.EDIT_PASSWORD?.trim();
@@ -13,12 +16,6 @@ function password(): string | null {
 
 export function isEditPasswordConfigured(): boolean {
   return password() !== null;
-}
-
-// 쿠키에는 비밀번호 대신 비밀번호로 서명한 값만 저장 (비밀번호가 바뀌면 자동으로 무효)
-export function editToken(): string | null {
-  const p = password();
-  return p ? createHmac("sha256", p).update("slm-budget-edit").digest("hex") : null;
 }
 
 function safeEqual(a: string, b: string): boolean {
@@ -32,7 +29,33 @@ export function checkPassword(input: string): boolean {
   return p !== null && safeEqual(input.trim(), p);
 }
 
-export function checkToken(token: string | undefined): boolean {
-  const t = editToken();
-  return !!token && t !== null && safeEqual(token, t);
+// 요청 헤더의 비밀번호 확인. 통과하면 null, 아니면 돌려줄 오류 응답
+export async function passwordError(input: string | null): Promise<Response | null> {
+  if (!isEditPasswordConfigured()) {
+    return Response.json(
+      { error: "재정 담당자 비밀번호가 아직 설정되지 않았습니다. 관리자에게 문의해주세요. (EDIT_PASSWORD)" },
+      { status: 503 }
+    );
+  }
+  if (input !== null && checkPassword(input)) return null;
+  // 무작위 대입을 늦추기 위해 잠깐 기다렸다가 응답
+  await new Promise((r) => setTimeout(r, 800));
+  return Response.json(
+    { error: input ? "비밀번호가 맞지 않습니다." : EDIT_NOTICE_SERVER, locked: true },
+    { status: 403 }
+  );
+}
+
+export function requestPassword(request: Request): string | null {
+  const raw = request.headers.get(EDIT_PASSWORD_HEADER);
+  if (!raw) return null;
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
+export function checkRequest(request: Request): Promise<Response | null> {
+  return passwordError(requestPassword(request));
 }

@@ -2,12 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { currentMonthKst, fiscalYearLabel, fiscalYearOf } from "@/lib/budget/fiscal";
 import { won } from "@/lib/budget/summary";
 import type { BudgetItem, BudgetPlan, ParsedBudget } from "@/lib/budget/types";
 import { KIND_LABEL, UNCATEGORIZED, itemKey, itemLabel, kindOf, type Kind } from "@/lib/budget/types";
 import { AmountInput, AnalyzeFile, Card } from "./shared";
+import { passwordHeader, usePassword } from "./EditLock";
 
 type Row = { key: number; kind: Kind; category_group: string; category: string; amount: number; one_time: boolean };
 
@@ -75,6 +75,8 @@ export default function BudgetPlanForm({
   const [documentTotals, setDocumentTotals] = useState<Record<Kind, number | null>>({ expense: null, income: null });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 대시보드의 '예산안 수정'에서 입력한 비밀번호는 이 회기 확정까지 이어서 씀
+  const lock = usePassword(editing ? `budget:${editFiscalYear}` : null);
 
   const existing = plans.find((p) => p.fiscal_year === fiscalYear);
   const yearOptions = Array.from(
@@ -123,7 +125,8 @@ export default function BudgetPlanForm({
     setDocumentTotals({ expense: null, income: null });
   }
 
-  async function deletePlan() {
+  async function deletePlan(password: string) {
+    lock.forget();
     if (
       !window.confirm(
         `${fiscalYearLabel(fiscalYear)} 예산안을 삭제할까요?\n확정된 월별 장부는 남아 있지만, 예산이 없어 대시보드에 표시되지 않습니다.`
@@ -133,10 +136,14 @@ export default function BudgetPlanForm({
     }
     setDeleting(true);
     setError(null);
-    const { error } = await createClient().from("budget_plans").delete().eq("fiscal_year", fiscalYear);
+    const res = await fetch(`/api/budget?fiscal_year=${fiscalYear}`, {
+      method: "DELETE",
+      headers: passwordHeader(password),
+    }).catch(() => null);
     setDeleting(false);
-    if (error) {
-      setError(`삭제에 실패했습니다: ${error.message}`);
+    if (!res?.ok) {
+      const body = await res?.json().catch(() => ({}));
+      setError(body?.error ?? "삭제에 실패했습니다.");
       return;
     }
     setRows(null);
@@ -144,40 +151,55 @@ export default function BudgetPlanForm({
     router.refresh();
   }
 
-  async function confirm() {
+  // 확정은 이번 작업에서 입력한 비밀번호로 진행 (없으면 물어봄)
+  function confirm() {
     if (!rows || problems.length > 0) return;
     if (existing && !window.confirm(`${fiscalYearLabel(fiscalYear)} 예산안이 이미 있습니다. 새 내용으로 교체할까요?`)) {
       return;
     }
+    lock.ask((password) => void save(password), { continueFlow: true });
+  }
+
+  async function save(password: string) {
+    if (!rows) return;
     setSaving(true);
     setError(null);
-    const { error } = await createClient().rpc("save_budget", {
-      p_fiscal_year: fiscalYear,
-      p_source_filename: filename,
-      p_items: rows.map((r) => ({
-        kind: r.kind,
-        category_group: r.category_group.trim(),
-        category: r.category.trim(),
-        amount: r.amount,
-        one_time: r.kind === "expense" && r.one_time,
-      })),
-    });
+    const res = await fetch("/api/budget", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...passwordHeader(password) },
+      body: JSON.stringify({
+        fiscal_year: fiscalYear,
+        source_filename: filename,
+        items: rows.map((r) => ({
+          kind: r.kind,
+          category_group: r.category_group.trim(),
+          category: r.category.trim(),
+          amount: r.amount,
+          one_time: r.kind === "expense" && r.one_time,
+        })),
+      }),
+    }).catch(() => null);
     setSaving(false);
-    if (error) {
-      setError(`저장에 실패했습니다: ${error.message}`);
+    if (!res?.ok) {
+      const body = await res?.json().catch(() => ({}));
+      if (res?.status === 403) lock.forget();
+      setError(body?.error ?? "저장에 실패했습니다.");
       return;
     }
+    lock.forget();
     router.push(`/?fy=${fiscalYear}`);
     router.refresh();
   }
 
   return (
     <div className="space-y-6">
+      {lock.dialog}
       <Card title="1. 예산안 문서 분석">
         <AnalyzeFile
           label="예산안 파일 (PDF 또는 사진)"
           hint="AI가 지출·수입 예산의 큰 카테고리와 세부 항목, 금액을 뽑아냅니다. 결과는 아래에서 확인·수정한 뒤 확정해야 저장됩니다."
           extraFields={() => ({ kind: "budget" })}
+          authorize={(run) => lock.ask(run)}
           onParsed={(result, file) => {
             const parsed = result as ParsedBudget;
             setRows(toRows(parsed.items));
@@ -190,17 +212,19 @@ export default function BudgetPlanForm({
         <div className="flex flex-wrap gap-2 text-sm">
           <button
             type="button"
-            onClick={() => {
-              setRows(toRows([{ kind: "expense", category_group: "", category: "", amount: 0 }]));
-              setFilename(null);
-              setDocumentTotals({ expense: null, income: null });
-            }}
+            onClick={() =>
+              lock.ask(() => {
+                setRows(toRows([{ kind: "expense", category_group: "", category: "", amount: 0 }]));
+                setFilename(null);
+                setDocumentTotals({ expense: null, income: null });
+              })
+            }
             className="text-gray-600 underline"
           >
             AI 없이 직접 입력
           </button>
           {existing && (
-            <button type="button" onClick={loadExisting} className="text-gray-600 underline">
+            <button type="button" onClick={() => lock.ask(loadExisting)} className="text-gray-600 underline">
               확정된 {fiscalYear}년 회기 예산안 불러와서 수정
             </button>
           )}
@@ -365,7 +389,7 @@ export default function BudgetPlanForm({
             {existing && (
               <button
                 type="button"
-                onClick={deletePlan}
+                onClick={() => lock.ask((pw) => void deletePlan(pw))}
                 disabled={saving || deleting}
                 className="w-full sm:w-auto rounded-xl border border-red-200 px-5 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
               >

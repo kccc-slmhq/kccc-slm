@@ -46,3 +46,30 @@ export function ChartIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function BarsIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M4 20h16" />
+      <path d="M7 16V10m5 6V5m5 11v-4" />
+    </svg>
+  );
+}
+
+export function TrendIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M3 17l6-6 4 4 8-8" />
+      <path d="M15 7h6v6" />
+    </svg>
+  );
+}
+
+export function ListIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M9 6h11M9 12h11M9 18h11" />
+      <path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" strokeWidth={2.4} />
+    </svg>
+  );
+}

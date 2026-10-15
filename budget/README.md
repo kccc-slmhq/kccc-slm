@@ -45,7 +45,7 @@ Next.js 16 (App Router) · Supabase (Postgres + Auth) · Recharts · Gemini API 
 NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 GEMINI_API_KEY=발급받은-키          # https://aistudio.google.com/apikey , 여러 개면 쉼표로 구분
-EDIT_PASSWORD=재정담당자-비밀번호   # 확정된 월별 장부 수정·삭제할 때 확인
+EDIT_PASSWORD=재정담당자-비밀번호   # 업로드·확정·수정·삭제할 때마다 확인 (기억하지 않음)
 ```
 
 ### 3. 로컬 실행
