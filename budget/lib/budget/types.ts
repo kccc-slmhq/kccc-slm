@@ -51,8 +51,15 @@ export function kindOf(ref: { kind?: Kind | null }): Kind {
 }
 
 // 전년도 이월금: 수입으로 기록은 하되, 올해 예산안의 수입(달성률)과는 따로 셈
-export function isCarryover(ref: { kind?: Kind | null; category_group?: string | null; category: string }): boolean {
-  return kindOf(ref) === "income" && ((ref.category_group ?? "").includes("이월") || ref.category.includes("이월금"));
+// 예산 항목은 이름에 '이월금'이 있는 수입 항목
+export function isCarryoverItem(ref: { kind?: Kind | null; category: string }): boolean {
+  return kindOf(ref) === "income" && ref.category.includes("이월금");
+}
+
+// 장부 내역은 내용(적요)에 '이월금'이 적힌 수입만 이월금으로 봄
+// (같은 달·같은 카테고리에 들어온 다른 수입까지 빼지 않도록 카테고리로는 판단하지 않음)
+export function isCarryoverEntry(e: { kind?: Kind | null; description?: string | null }): boolean {
+  return kindOf(e) === "income" && (e.description ?? "").includes("이월금");
 }
 
 export function itemKey(ref: ItemRef): string {
