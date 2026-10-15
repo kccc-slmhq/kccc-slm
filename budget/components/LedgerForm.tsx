@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { currentMonthKst, fiscalYearLabel, fiscalYearOf, monthLabel, monthToDate } from "@/lib/budget/fiscal";
 import { won } from "@/lib/budget/summary";
 import type { BudgetItem, BudgetPlan, ItemRef, LedgerEntry, LedgerMonth, ParsedLedger } from "@/lib/budget/types";
-import { KIND_LABEL, UNCATEGORIZED, itemKey, kindOf, uncategorizedRef, type Kind } from "@/lib/budget/types";
+import { KIND_LABEL, UNCATEGORIZED, isCarryoverItem, itemKey, kindOf, uncategorizedRef, type Kind } from "@/lib/budget/types";
 import { AmountInput, AnalyzeFile, Card } from "./shared";
 import { EDIT_NOTICE, passwordHeader, usePassword } from "./EditLock";
 
@@ -288,7 +288,11 @@ export default function LedgerForm({
             <AnalyzeFile
               label="장부 파일 (PDF 또는 사진)"
               hint="AI가 수입·지출 거래를 한 건씩 뽑아 예산 항목으로 분류합니다. 전월 이월금·잔액·합계 행은 제외됩니다."
-              extraFields={() => ({ kind: "ledger", categories: JSON.stringify(budgetRefs) })}
+              extraFields={() => ({
+                kind: "ledger",
+                // 이월금 항목은 AI 분류 대상에서 뺌 (실제 수입이 이월금으로 잘못 들어가지 않게)
+                categories: JSON.stringify(budgetRefs.filter((r) => !isCarryoverItem(r))),
+              })}
               authorize={(run) => lock.ask(run)}
               onParsed={(result, file) => {
                 const parsed = result as ParsedLedger;

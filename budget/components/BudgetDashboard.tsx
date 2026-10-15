@@ -25,7 +25,7 @@ import {
   type CategoryStatus,
   type GroupRow,
 } from "@/lib/budget/summary";
-import { KIND_LABEL, isCarryover, itemKey, kindOf, type Kind } from "@/lib/budget/types";
+import { KIND_LABEL, isCarryoverEntry, isCarryoverItem, itemKey, kindOf, type Kind } from "@/lib/budget/types";
 import BudgetInsights from "./BudgetInsights";
 import { showMobileView, useMobileView, type MobileView } from "./BudgetNav";
 import { EDIT_NOTICE, handOffPassword, passwordHeader, usePassword } from "./EditLock";
@@ -101,8 +101,8 @@ export default function BudgetDashboard({
     () =>
       summarize(
         fiscalYear,
-        items.filter((i) => !isCarryover(i)),
-        entries.filter((e) => !isCarryover(e)),
+        items.filter((i) => !isCarryoverItem(i)),
+        entries.filter((e) => !isCarryoverEntry(e)),
         confirmedMonths,
         effectiveThrough,
         "income"
@@ -112,7 +112,7 @@ export default function BudgetDashboard({
   const carryover = useMemo(
     () =>
       entries
-        .filter((e) => isCarryover(e) && !!effectiveThrough && e.month.slice(0, 7) <= effectiveThrough)
+        .filter((e) => isCarryoverEntry(e) && !!effectiveThrough && e.month.slice(0, 7) <= effectiveThrough)
         .reduce((sum, e) => sum + e.amount, 0),
     [entries, effectiveThrough]
   );
