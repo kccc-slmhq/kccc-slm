@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { currentMonthKst, fiscalYearLabel, fiscalYearOf, monthLabel, monthToDate } from "@/lib/budget/fiscal";
 import { won } from "@/lib/budget/summary";
-import type { BudgetItem, BudgetPlan, ItemRef, LedgerMonth, ParsedLedger } from "@/lib/budget/types";
+import type { BudgetItem, BudgetPlan, ItemRef, LedgerEntry, LedgerMonth, ParsedLedger } from "@/lib/budget/types";
 import { UNCATEGORIZED, UNCATEGORIZED_REF, itemKey } from "@/lib/budget/types";
 import { AmountInput, AnalyzeFile, Card } from "./shared";
 
@@ -21,6 +21,17 @@ type Row = {
 
 let nextKey = 1;
 
+function toRows(entries: LedgerEntry[]): Row[] {
+  return entries.map((e) => ({
+    key: nextKey++,
+    entry_date: e.entry_date ?? "",
+    description: e.description ?? "",
+    category_group: e.category_group ?? "",
+    category: e.category,
+    amount: e.amount,
+  }));
+}
+
 function previousMonth(month: string): string {
   const [y, m] = month.split("-").map(Number);
   return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
@@ -30,42 +41,84 @@ export default function LedgerForm({
   plans,
   items,
   months,
+  editMonth,
+  editEntries,
 }: {
   plans: BudgetPlan[];
   items: BudgetItem[];
   months: LedgerMonth[];
+  editMonth: string | null; // 대시보드의 '수정'으로 들어오면 그 달 확정된 장부를 바로 불러옴
+  editEntries: LedgerEntry[] | null; // editMonth 의 확정된 지출 내역 (서버에서 미리 읽음)
 }) {
   const router = useRouter();
-  const [month, setMonth] = useState(previousMonth(currentMonthKst()));
-  const [rows, setRows] = useState<Row[] | null>(null);
-  const [filename, setFilename] = useState<string | null>(null);
+  const [month, setMonthState] = useState(editMonth ?? previousMonth(currentMonthKst()));
+  const [rows, setRows] = useState<Row[] | null>(() => (editEntries ? toRows(editEntries) : null));
+  const [filename, setFilename] = useState<string | null>(
+    () => months.find((m) => m.month.slice(0, 7) === editMonth)?.source_filename ?? null
+  );
   const [detectedMonth, setDetectedMonth] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 반영할 회기를 직접 고른 경우 (회기 시작 전에 다음 회기 예산을 미리 쓴 달)
+  const [fiscalChoice, setFiscalChoice] = useState<number | null>(null);
 
-  const fiscalYear = month ? fiscalYearOf(month) : null;
+  const existingMonth = months.find((m) => m.month.slice(0, 7) === month);
+  const naturalFiscalYear = month ? fiscalYearOf(month) : null;
+  const fiscalYear = fiscalChoice ?? existingMonth?.fiscal_year ?? naturalFiscalYear;
+  // 6·7월은 다음 회기(8월 시작) 예산을 미리 쓴 경우가 있어 다음 회기로도 반영할 수 있게 함
+  const canPrespend = naturalFiscalYear !== null && ["06", "07"].includes(month.slice(5, 7));
   const hasPlan = plans.some((p) => p.fiscal_year === fiscalYear);
-  // 이 회기 예산 항목 (큰 카테고리 › 세부 항목)
-  const budgetRefs: ItemRef[] = useMemo(
-    () =>
-      items
-        .filter((i) => i.fiscal_year === fiscalYear)
-        .sort((a, b) => a.sort_order - b.sort_order)
-        .map((i) => ({ category_group: i.category_group, category: i.category })),
-    [items, fiscalYear]
-  );
-  const optionGroups = useMemo(() => {
-    const map = new Map<string, ItemRef[]>();
-    for (const r of budgetRefs) {
-      if (!map.has(r.category_group)) map.set(r.category_group, []);
-      map.get(r.category_group)!.push(r);
+
+  function setMonth(next: string) {
+    setMonthState(next);
+    setFiscalChoice(null);
+  }
+
+  async function loadConfirmed(target: string) {
+    setBusy(true);
+    setError(null);
+    const { data, error } = await createClient()
+      .from("ledger_entries")
+      .select("*")
+      .eq("month", monthToDate(target))
+      .order("sort_order")
+      .order("id");
+    setBusy(false);
+    if (error) {
+      setError(`장부를 불러오지 못했습니다: ${error.message}`);
+      return;
     }
-    return [...map.entries()];
-  }, [budgetRefs]);
-  const validKeys = useMemo(
-    () => new Set([...budgetRefs, UNCATEGORIZED_REF].map(itemKey)),
-    [budgetRefs]
-  );
+    setRows(toRows((data ?? []) as LedgerEntry[]));
+    setFilename(months.find((m) => m.month.slice(0, 7) === target)?.source_filename ?? null);
+    setDetectedMonth(null);
+  }
+
+  async function deleteMonth() {
+    if (!window.confirm(`${monthLabel(month)} 장부를 삭제할까요? 이 달의 지출 내역이 모두 지워집니다.`)) return;
+    setBusy(true);
+    setError(null);
+    const { error } = await createClient().from("ledger_months").delete().eq("month", monthToDate(month));
+    setBusy(false);
+    if (error) {
+      setError(`삭제에 실패했습니다: ${error.message}`);
+      return;
+    }
+    setRows(null);
+    router.refresh();
+  }
+  // 이 회기 예산 항목 (큰 카테고리 › 세부 항목)
+  const budgetRefs: ItemRef[] = items
+    .filter((i) => i.fiscal_year === fiscalYear)
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((i) => ({ category_group: i.category_group, category: i.category }));
+  const optionGroupMap = new Map<string, ItemRef[]>();
+  for (const r of budgetRefs) {
+    if (!optionGroupMap.has(r.category_group)) optionGroupMap.set(r.category_group, []);
+    optionGroupMap.get(r.category_group)!.push(r);
+  }
+  const optionGroups = [...optionGroupMap.entries()];
+  const validKeys = new Set([...budgetRefs, UNCATEGORIZED_REF].map(itemKey));
   const firstRef = budgetRefs[0] ?? UNCATEGORIZED_REF;
   const alreadyConfirmed = months.some((m) => m.month.slice(0, 7) === month);
 
@@ -96,6 +149,7 @@ export default function LedgerForm({
     setError(null);
     const { error } = await createClient().rpc("save_ledger_month", {
       p_month: monthToDate(month),
+      p_fiscal_year: fiscalYear,
       p_source_filename: filename,
       p_entries: rows.map((r) => ({
         entry_date: r.entry_date || null,
@@ -128,8 +182,50 @@ export default function LedgerForm({
             onChange={(e) => setMonth(e.target.value)}
             className="h-9 rounded-xl border border-gray-200 bg-white px-2 text-sm"
           />
-          {fiscalYear !== null && <span className="text-xs text-gray-500">{fiscalYearLabel(fiscalYear)}</span>}
+          {fiscalYear !== null && !canPrespend && (
+            <span className="text-xs text-gray-500">{fiscalYearLabel(fiscalYear)}</span>
+          )}
         </label>
+
+        {canPrespend && naturalFiscalYear !== null && fiscalYear !== null && (
+          <label className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
+            <span className="text-gray-600 whitespace-nowrap">반영할 회기</span>
+            <select
+              value={fiscalYear}
+              onChange={(e) => setFiscalChoice(Number(e.target.value))}
+              className="h-9 rounded-xl border border-gray-200 bg-white px-2 text-sm"
+            >
+              <option value={naturalFiscalYear}>{fiscalYearLabel(naturalFiscalYear)}</option>
+              <option value={naturalFiscalYear + 1}>
+                {fiscalYearLabel(naturalFiscalYear + 1)} · 회기 시작 전 미리 쓴 지출
+              </option>
+            </select>
+          </label>
+        )}
+
+        {existingMonth && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl bg-brand-50/60 px-3 py-2 text-sm">
+            <span className="text-gray-700">
+              {monthLabel(month)} 장부는 이미 확정되어 있습니다 ({fiscalYearLabel(existingMonth.fiscal_year)}).
+            </span>
+            <button
+              type="button"
+              onClick={() => loadConfirmed(month)}
+              disabled={busy}
+              className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand-600 ring-1 ring-brand-100 disabled:opacity-50"
+            >
+              확정된 장부 불러와서 수정
+            </button>
+            <button
+              type="button"
+              onClick={deleteMonth}
+              disabled={busy}
+              className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-red-600 ring-1 ring-red-200 disabled:opacity-50"
+            >
+              이 달 장부 삭제
+            </button>
+          </div>
+        )}
 
         {!hasPlan ? (
           <p className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">

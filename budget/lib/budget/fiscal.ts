@@ -55,3 +55,19 @@ export function monthToDate(month: string): string {
 export function dateToMonth(date: string): string {
   return date.slice(0, 7);
 }
+
+// 회기 시작월(8월)부터 몇 번째 달인지. 회기 시작 전 달이면 0 이하
+function monthsFromFiscalStart(fiscalYear: number, month: string): number {
+  const [y, m] = month.split("-").map(Number);
+  return (y - fiscalYear) * 12 + (m - FISCAL_START_MONTH) + 1;
+}
+
+// 기준월까지 회기 경과율 (0~1). 회기 시작 전 달이면 0
+export function fiscalElapsedRatio(fiscalYear: number, month: string): number {
+  return Math.min(1, Math.max(0, monthsFromFiscalStart(fiscalYear, month) / 12));
+}
+
+// 회기 시작 전 달인지 (예: 2026년 회기에 반영한 2026년 7월 장부)
+export function isBeforeFiscalStart(fiscalYear: number, month: string): boolean {
+  return monthsFromFiscalStart(fiscalYear, month) <= 0;
+}

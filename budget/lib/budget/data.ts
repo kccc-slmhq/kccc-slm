@@ -5,7 +5,7 @@ export type BudgetData = {
   plans: BudgetPlan[];
   items: BudgetItem[];
   months: LedgerMonth[];
-  entries: LedgerEntry[]; // entriesFiscalYear 회기의 지출 내역만
+  entries: LedgerEntry[]; // entriesFiscalYear 회기로 확정된 장부의 지출 내역만
   error?: string;
 };
 
@@ -23,13 +23,18 @@ export async function loadBudgetData(entriesFiscalYear: number | null): Promise<
   let error = plans.error ?? items.error ?? months.error;
   const entries: LedgerEntry[] = [];
 
-  if (entriesFiscalYear !== null && !error) {
+  // 회기 시작 전에 미리 쓴 달(예: 7월)도 그 회기로 지정될 수 있어서, 날짜 범위가 아니라 장부의 회기로 고름
+  const fyMonths =
+    entriesFiscalYear === null
+      ? []
+      : ((months.data ?? []) as LedgerMonth[]).filter((m) => m.fiscal_year === entriesFiscalYear).map((m) => m.month);
+
+  if (fyMonths.length > 0 && !error) {
     for (let from = 0; ; from += PAGE) {
       const { data, error: entriesError } = await supabase
         .from("ledger_entries")
         .select("*")
-        .gte("month", `${entriesFiscalYear}-08-01`)
-        .lt("month", `${entriesFiscalYear + 1}-08-01`)
+        .in("month", fyMonths)
         .order("month")
         .order("sort_order")
         .order("id")
@@ -50,4 +55,16 @@ export async function loadBudgetData(entriesFiscalYear: number | null): Promise<
     entries,
     error: error?.message,
   };
+}
+
+// 한 달치 확정된 지출 내역 (장부 수정 화면용)
+export async function loadLedgerMonthEntries(month: string): Promise<LedgerEntry[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("ledger_entries")
+    .select("*")
+    .eq("month", `${month}-01`)
+    .order("sort_order")
+    .order("id");
+  return (data ?? []) as LedgerEntry[];
 }

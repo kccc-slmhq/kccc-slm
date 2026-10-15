@@ -25,13 +25,34 @@ function groupRows(rows: Row[]): { group: string; rows: Row[] }[] {
   return [...map.entries()].map(([group, rows]) => ({ group, rows }));
 }
 
-export default function BudgetPlanForm({ plans, items }: { plans: BudgetPlan[]; items: BudgetItem[] }) {
+function existingRows(items: BudgetItem[], fiscalYear: number): Row[] {
+  return toRows(
+    items
+      .filter((i) => i.fiscal_year === fiscalYear)
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((i) => ({ category_group: i.category_group, category: i.category, amount: i.amount }))
+  );
+}
+
+export default function BudgetPlanForm({
+  plans,
+  items,
+  editFiscalYear,
+}: {
+  plans: BudgetPlan[];
+  items: BudgetItem[];
+  editFiscalYear: number | null; // 대시보드의 '예산안 수정'으로 들어오면 그 회기를 바로 불러옴
+}) {
   const router = useRouter();
   const current = fiscalYearOf(currentMonthKst());
+  const editing = editFiscalYear !== null && plans.some((p) => p.fiscal_year === editFiscalYear);
 
-  const [fiscalYear, setFiscalYear] = useState(current);
-  const [rows, setRows] = useState<Row[] | null>(null);
-  const [filename, setFilename] = useState<string | null>(null);
+  const [fiscalYear, setFiscalYear] = useState(editFiscalYear ?? current);
+  const [rows, setRows] = useState<Row[] | null>(() => (editing ? existingRows(items, editFiscalYear!) : null));
+  const [filename, setFilename] = useState<string | null>(
+    () => (editing ? plans.find((p) => p.fiscal_year === editFiscalYear)?.source_filename ?? null : null)
+  );
+  const [deleting, setDeleting] = useState(false);
   const [documentTotal, setDocumentTotal] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,16 +93,30 @@ export default function BudgetPlanForm({ plans, items }: { plans: BudgetPlan[]; 
     });
 
   function loadExisting() {
-    setRows(
-      toRows(
-        items
-          .filter((i) => i.fiscal_year === fiscalYear)
-          .sort((a, b) => a.sort_order - b.sort_order)
-          .map((i) => ({ category_group: i.category_group, category: i.category, amount: i.amount }))
-      )
-    );
+    setRows(existingRows(items, fiscalYear));
     setFilename(existing?.source_filename ?? null);
     setDocumentTotal(null);
+  }
+
+  async function deletePlan() {
+    if (
+      !window.confirm(
+        `${fiscalYearLabel(fiscalYear)} 예산안을 삭제할까요?\n확정된 월별 장부는 남아 있지만, 예산이 없어 대시보드에 표시되지 않습니다.`
+      )
+    ) {
+      return;
+    }
+    setDeleting(true);
+    setError(null);
+    const { error } = await createClient().from("budget_plans").delete().eq("fiscal_year", fiscalYear);
+    setDeleting(false);
+    if (error) {
+      setError(`삭제에 실패했습니다: ${error.message}`);
+      return;
+    }
+    setRows(null);
+    router.push("/upload");
+    router.refresh();
   }
 
   async function confirm() {
@@ -253,14 +288,26 @@ export default function BudgetPlanForm({ plans, items }: { plans: BudgetPlan[]; 
           ))}
           {error && <p className="text-sm text-red-600">{error}</p>}
 
-          <button
-            type="button"
-            onClick={confirm}
-            disabled={saving || problems.length > 0}
-            className="w-full sm:w-auto rounded-xl bg-brand-600 hover:bg-brand-700 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
-          >
-            {saving ? "저장 중..." : `${fiscalYear}년 회기 예산안 확정`}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              type="button"
+              onClick={confirm}
+              disabled={saving || deleting || problems.length > 0}
+              className="w-full sm:w-auto rounded-xl bg-brand-600 hover:bg-brand-700 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {saving ? "저장 중..." : `${fiscalYear}년 회기 예산안 확정`}
+            </button>
+            {existing && (
+              <button
+                type="button"
+                onClick={deletePlan}
+                disabled={saving || deleting}
+                className="w-full sm:w-auto rounded-xl border border-red-200 px-5 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+              >
+                {deleting ? "삭제 중..." : "확정된 예산안 삭제"}
+              </button>
+            )}
+          </div>
         </Card>
       )}
     </div>

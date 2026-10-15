@@ -118,21 +118,30 @@ $$;
 
 -- 월별 장부 확정: 해당 월의 내역을 통째로 교체 (한 트랜잭션)
 -- p_month: 그 달 1일. p_entries: [{"entry_date": "2026-08-03" | null, "description": "...", "category_group": "...", "category": "...", "amount": 123}, ...]
+-- p_fiscal_year: 이 장부를 반영할 회기. 비우면 날짜 기준 회기.
+--   회기 시작 전에 다음 회기 예산을 미리 쓴 경우(예: 2026년 7월에 26-27 예산 사용) 다음 회기로 지정 가능
+drop function if exists save_ledger_month(date, text, jsonb);
 create or replace function save_ledger_month(
   p_month date,
   p_source_filename text,
-  p_entries jsonb
+  p_entries jsonb,
+  p_fiscal_year integer default null
 ) returns void
 language plpgsql
 security invoker
 as $$
 declare
+  v_natural integer;
   v_fiscal_year integer;
 begin
-  v_fiscal_year := case
+  v_natural := case
     when extract(month from p_month) >= 8 then extract(year from p_month)::integer
     else extract(year from p_month)::integer - 1
   end;
+  v_fiscal_year := coalesce(p_fiscal_year, v_natural);
+  if v_fiscal_year not in (v_natural, v_natural + 1) then
+    raise exception '이 달은 %년 또는 %년 회기에만 반영할 수 있습니다.', v_natural, v_natural + 1;
+  end if;
 
   insert into ledger_months (month, fiscal_year, source_filename, confirmed_at)
   values (p_month, v_fiscal_year, p_source_filename, now())
@@ -154,6 +163,6 @@ end;
 $$;
 
 revoke all on function save_budget(integer, text, jsonb) from public, anon;
-revoke all on function save_ledger_month(date, text, jsonb) from public, anon;
+revoke all on function save_ledger_month(date, text, jsonb, integer) from public, anon;
 grant execute on function save_budget(integer, text, jsonb) to authenticated;
-grant execute on function save_ledger_month(date, text, jsonb) to authenticated;
+grant execute on function save_ledger_month(date, text, jsonb, integer) to authenticated;

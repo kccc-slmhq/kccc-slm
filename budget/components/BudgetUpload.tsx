@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { BudgetItem, BudgetPlan, LedgerMonth } from "@/lib/budget/types";
+import type { BudgetItem, BudgetPlan, LedgerEntry, LedgerMonth } from "@/lib/budget/types";
 import BudgetPlanForm from "./BudgetPlanForm";
 import LedgerForm from "./LedgerForm";
 
@@ -9,12 +9,18 @@ type Tab = "budget" | "ledger";
 
 export default function BudgetUpload({
   initialTab,
+  editMonth,
+  editEntries,
+  editFiscalYear,
   plans,
   items,
   months,
   error,
 }: {
   initialTab: Tab;
+  editMonth: string | null;
+  editEntries: LedgerEntry[] | null;
+  editFiscalYear: number | null;
   plans: BudgetPlan[];
   items: BudgetItem[];
   months: LedgerMonth[];
@@ -52,9 +58,9 @@ export default function BudgetUpload({
       </div>
 
       {tab === "budget" ? (
-        <BudgetPlanForm plans={plans} items={items} />
+        <BudgetPlanForm plans={plans} items={items} editFiscalYear={editFiscalYear} />
       ) : (
-        <LedgerForm plans={plans} items={items} months={months} />
+        <LedgerForm plans={plans} items={items} months={months} editMonth={editMonth} editEntries={editEntries} />
       )}
     </div>
   );
