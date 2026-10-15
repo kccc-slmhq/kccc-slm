@@ -1,15 +1,28 @@
 import { fiscalMonthIndex, fiscalMonths } from "./fiscal";
-import type { BudgetItem, LedgerEntry } from "./types";
+import { itemKey, type BudgetItem, type LedgerEntry } from "./types";
 
 export type CategoryStatus = "over" | "fast" | "ok" | "unbudgeted";
 
 export type CategoryRow = {
+  key: string; // itemKey
+  category_group: string;
   category: string;
   budget: number;
   spent: number;
   remaining: number;
   ratio: number | null; // 집행률 (예산 0이면 null)
   status: CategoryStatus;
+};
+
+// 큰 카테고리 단위 합계 + 그 안의 세부 항목
+export type GroupRow = {
+  group: string; // 화면 표시용 이름 (큰 카테고리가 없으면 "예산 외" 또는 "항목")
+  budget: number;
+  spent: number;
+  remaining: number;
+  ratio: number | null;
+  status: CategoryStatus;
+  items: CategoryRow[];
 };
 
 export type MonthPoint = {
@@ -27,8 +40,20 @@ export type BudgetSummary = {
   usedRatio: number | null;
   elapsedRatio: number; // 기준월까지 회기 경과율 (n/12)
   rows: CategoryRow[];
+  groups: GroupRow[];
   monthly: MonthPoint[];
 };
+
+// 큰 카테고리가 없는 항목(예전 예산안 / 미분류)을 묶어 보여줄 이름
+export const NO_GROUP_LABEL = "기타";
+export const UNBUDGETED_GROUP_LABEL = "예산 외";
+
+function statusOf(budget: number, spent: number, elapsedRatio: number): CategoryStatus {
+  if (budget === 0) return spent > 0 ? "unbudgeted" : "ok";
+  if (spent > budget) return "over";
+  if (spent / budget > elapsedRatio + FAST_MARGIN) return "fast";
+  return "ok";
+}
 
 // 집행률이 회기 경과율보다 이만큼 이상 앞서면 "빠름"
 export const FAST_MARGIN = 0.1;
@@ -48,31 +73,63 @@ export function summarize(
   const totalBudget = fyItems.reduce((s, i) => s + i.amount, 0);
 
   const spentByMonth = new Map<string, number>();
-  const spentByCategory = new Map<string, number>();
+  const spentByItem = new Map<string, { category_group: string; category: string; amount: number }>();
   for (const e of entries) {
     const month = e.month.slice(0, 7);
     if (!months.includes(month)) continue;
     spentByMonth.set(month, (spentByMonth.get(month) ?? 0) + e.amount);
     if (throughMonth && month <= throughMonth) {
-      spentByCategory.set(e.category, (spentByCategory.get(e.category) ?? 0) + e.amount);
+      const key = itemKey(e);
+      const cur = spentByItem.get(key) ?? { category_group: e.category_group, category: e.category, amount: 0 };
+      cur.amount += e.amount;
+      spentByItem.set(key, cur);
     }
   }
 
-  const budgetCategories = new Set(fyItems.map((i) => i.category));
+  const budgetKeys = new Set(fyItems.map((i) => itemKey(i)));
   const rows: CategoryRow[] = [
-    ...fyItems.map((i) => ({ category: i.category, budget: i.amount })),
+    ...fyItems.map((i) => ({ category_group: i.category_group, category: i.category, budget: i.amount })),
     // 예산에 없는 항목으로 기록된 지출 (미분류 포함)
-    ...[...spentByCategory.keys()]
-      .filter((c) => !budgetCategories.has(c))
-      .map((c) => ({ category: c, budget: 0 })),
-  ].map(({ category, budget }) => {
-    const spent = spentByCategory.get(category) ?? 0;
-    const ratio = budget > 0 ? spent / budget : null;
-    let status: CategoryStatus = "ok";
-    if (budget === 0) status = spent > 0 ? "unbudgeted" : "ok";
-    else if (spent > budget) status = "over";
-    else if (ratio !== null && ratio > elapsedRatio + FAST_MARGIN) status = "fast";
-    return { category, budget, spent, remaining: budget - spent, ratio, status };
+    ...[...spentByItem.entries()]
+      .filter(([key]) => !budgetKeys.has(key))
+      .map(([, v]) => ({ category_group: v.category_group, category: v.category, budget: 0 })),
+  ].map(({ category_group, category, budget }) => {
+    const key = itemKey({ category_group, category });
+    const spent = spentByItem.get(key)?.amount ?? 0;
+    return {
+      key,
+      category_group,
+      category,
+      budget,
+      spent,
+      remaining: budget - spent,
+      ratio: budget > 0 ? spent / budget : null,
+      status: statusOf(budget, spent, elapsedRatio),
+    };
+  });
+
+  // 큰 카테고리별로 묶기 (예산안 순서 유지). 예산 큰 카테고리에 속하지 않는 지출은 "예산 외"로
+  const budgetGroups = new Set(fyItems.map((i) => i.category_group));
+  const groupMap = new Map<string, CategoryRow[]>();
+  for (const r of rows) {
+    const label = budgetGroups.has(r.category_group)
+      ? r.category_group || NO_GROUP_LABEL
+      : UNBUDGETED_GROUP_LABEL;
+    if (!groupMap.has(label)) groupMap.set(label, []);
+    groupMap.get(label)!.push(r);
+  }
+  const groups: GroupRow[] = [...groupMap.entries()].map(([group, items]) => {
+    const budget = items.reduce((sum, r) => sum + r.budget, 0);
+    const spent = items.reduce((sum, r) => sum + r.spent, 0);
+    return {
+      group,
+      budget,
+      spent,
+      remaining: budget - spent,
+      ratio: budget > 0 ? spent / budget : null,
+      status: statusOf(budget, spent, elapsedRatio),
+      items,
+    };
   });
 
   const totalSpent = rows.reduce((s, r) => s + r.spent, 0);
@@ -99,6 +156,7 @@ export function summarize(
     usedRatio: totalBudget > 0 ? totalSpent / totalBudget : null,
     elapsedRatio,
     rows,
+    groups,
     monthly,
   };
 }
