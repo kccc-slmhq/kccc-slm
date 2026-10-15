@@ -50,6 +50,11 @@ export function kindOf(ref: { kind?: Kind | null }): Kind {
   return ref.kind === "income" ? "income" : "expense";
 }
 
+// 전년도 이월금: 수입으로 기록은 하되, 올해 예산안의 수입(달성률)과는 따로 셈
+export function isCarryover(ref: { kind?: Kind | null; category_group?: string | null; category: string }): boolean {
+  return kindOf(ref) === "income" && ((ref.category_group ?? "").includes("이월") || ref.category.includes("이월금"));
+}
+
 export function itemKey(ref: ItemRef): string {
   return `${kindOf(ref)}\u0000${ref.category_group}\u0000${ref.category}`;
 }

@@ -25,7 +25,7 @@ import {
   type CategoryStatus,
   type GroupRow,
 } from "@/lib/budget/summary";
-import { KIND_LABEL, itemKey, kindOf, type Kind } from "@/lib/budget/types";
+import { KIND_LABEL, isCarryover, itemKey, kindOf, type Kind } from "@/lib/budget/types";
 import BudgetInsights from "./BudgetInsights";
 import { showMobileView, useMobileView, type MobileView } from "./BudgetNav";
 import { EDIT_NOTICE, handOffPassword, passwordHeader, usePassword } from "./EditLock";
@@ -96,11 +96,28 @@ export default function BudgetDashboard({
     () => summarize(fiscalYear, items, entries, confirmedMonths, effectiveThrough, "expense"),
     [fiscalYear, items, entries, confirmedMonths, effectiveThrough]
   );
+  // 수입 달성은 올해 예산안의 수입만으로 (전년도 이월금은 따로 표시)
   const incomeSummary = useMemo(
-    () => summarize(fiscalYear, items, entries, confirmedMonths, effectiveThrough, "income"),
+    () =>
+      summarize(
+        fiscalYear,
+        items.filter((i) => !isCarryover(i)),
+        entries.filter((e) => !isCarryover(e)),
+        confirmedMonths,
+        effectiveThrough,
+        "income"
+      ),
     [fiscalYear, items, entries, confirmedMonths, effectiveThrough]
   );
+  const carryover = useMemo(
+    () =>
+      entries
+        .filter((e) => isCarryover(e) && !!effectiveThrough && e.month.slice(0, 7) <= effectiveThrough)
+        .reduce((sum, e) => sum + e.amount, 0),
+    [entries, effectiveThrough]
+  );
   const hasIncome = incomeSummary.totalBudget > 0 || incomeSummary.totalSpent > 0;
+  const balance = incomeSummary.totalSpent - summary.totalSpent;
   // 카테고리 그래프·표를 지출/수입 중 무엇으로 볼지
   const [view, setView] = useState<Kind>("expense");
   const viewSummary = view === "income" ? incomeSummary : summary;
@@ -248,18 +265,25 @@ export default function BudgetDashboard({
               value={won(incomeSummary.totalSpent)}
               tone="text-emerald-700"
               sub={
-                incomeSummary.totalBudget > 0
-                  ? [`수입 예산 ${won(incomeSummary.totalBudget)}`, `달성 ${pct(incomeSummary.usedRatio)}`]
-                  : ["수입 예산 없음"]
+                [
+                  ...(incomeSummary.totalBudget > 0
+                    ? [`수입 예산 ${won(incomeSummary.totalBudget)}`, `달성 ${pct(incomeSummary.usedRatio)}`]
+                    : ["수입 예산 없음"]),
+                  ...(carryover > 0 ? [`이월금 ${won(carryover)} 별도`] : []),
+                ]
               }
             />
             <Kpi
               label="수입 − 지출"
-              value={`${incomeSummary.totalSpent - summary.totalSpent < 0 ? "−" : "+"}${won(
-                Math.abs(incomeSummary.totalSpent - summary.totalSpent)
-              )}`}
-              tone={incomeSummary.totalSpent - summary.totalSpent < 0 ? "text-red-700" : "text-gray-900"}
-              sub={["확정된 장부 기준", "이월금 제외"]}
+              value={`${balance < 0 ? "−" : "+"}${won(Math.abs(balance))}`}
+              tone={balance < 0 ? "text-red-700" : "text-gray-900"}
+              sub={[
+                "확정된 장부 기준",
+                "이월금 제외",
+                ...(carryover > 0
+                  ? [`이월금 포함 ${balance + carryover < 0 ? "−" : "+"}${won(Math.abs(balance + carryover))}`]
+                  : []),
+              ]}
             />
           </section>
 
@@ -466,7 +490,7 @@ export default function BudgetDashboard({
                         {" · "}
                         <span className={income ? "text-emerald-700" : ""}>{KIND_LABEL[kindOf(e)]}</span>
                         {" · "}
-                        {groupOfKey.get(itemKey(e)) ? `${groupOfKey.get(itemKey(e))} › ` : ""}
+                        {(groupOfKey.get(itemKey(e)) ?? e.category_group) ? `${groupOfKey.get(itemKey(e)) ?? e.category_group} › ` : ""}
                         {e.category}
                       </div>
                     </li>
@@ -501,7 +525,7 @@ export default function BudgetDashboard({
                           {KIND_LABEL[kindOf(e)]}
                         </td>
                         <td className="px-2 py-1.5 whitespace-nowrap text-gray-500">
-                          {groupOfKey.get(itemKey(e)) ?? ""}
+                          {groupOfKey.get(itemKey(e)) ?? e.category_group}
                         </td>
                         <td className="px-2 py-1.5 whitespace-nowrap">{e.category}</td>
                         <td className="px-2 py-1.5">{e.description}</td>
@@ -534,7 +558,7 @@ export default function BudgetDashboard({
     {lock.dialog}
     {hasPlan && effectiveThrough && (
       <div className={`${only("summary")} xl:sticky xl:top-6`}>
-        <BudgetInsights expense={summary} income={hasIncome ? incomeSummary : null} throughLabel={monthName(effectiveThrough)} />
+        <BudgetInsights expense={summary} income={hasIncome ? incomeSummary : null} carryover={carryover} throughLabel={monthName(effectiveThrough)} />
       </div>
     )}
     </div>
