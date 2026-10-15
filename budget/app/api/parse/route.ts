@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { GeminiError, parseBudgetDocument, parseLedgerDocument } from "@/lib/budget/gemini";
-import { ALLOWED_UPLOAD_TYPES, MAX_UPLOAD_BYTES } from "@/lib/budget/upload";
+import { MAX_UPLOAD_BYTES, detectUploadType, unsupportedUploadMessage } from "@/lib/budget/upload";
 
 export const maxDuration = 60;
 
@@ -27,17 +27,17 @@ export async function POST(request: Request) {
   if ((kind !== "budget" && kind !== "ledger") || !(file instanceof File)) {
     return Response.json({ error: "필수 값이 누락되었습니다." }, { status: 400 });
   }
-  if (!ALLOWED_UPLOAD_TYPES.includes(file.type)) {
-    return Response.json({ error: "PDF 또는 이미지(PNG/JPG) 파일만 올릴 수 있습니다." }, { status: 400 });
-  }
   if (file.size > MAX_UPLOAD_BYTES) {
     return Response.json({ error: "파일이 너무 큽니다. 4MB 이하로 올려주세요." }, { status: 413 });
   }
 
-  const inline = {
-    mimeType: file.type,
-    base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
-  };
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const mimeType = detectUploadType(bytes);
+  if (!mimeType) {
+    return Response.json({ error: unsupportedUploadMessage(bytes) }, { status: 400 });
+  }
+
+  const inline = { mimeType, base64: Buffer.from(bytes).toString("base64") };
 
   try {
     if (kind === "budget") {
