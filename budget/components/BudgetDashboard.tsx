@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -25,7 +25,7 @@ import {
   type CategoryStatus,
   type GroupRow,
 } from "@/lib/budget/summary";
-import { KIND_LABEL, isCarryoverEntry, isCarryoverItem, itemKey, kindOf, type Kind } from "@/lib/budget/types";
+import { KIND_LABEL, isCarryoverEntry, isCarryoverItem, itemKey, kindOf, type Kind, type LedgerEntry } from "@/lib/budget/types";
 import BudgetInsights from "./BudgetInsights";
 import { showMobileView, useMobileView, type MobileView } from "./BudgetNav";
 import { EDIT_NOTICE, handOffPassword, passwordHeader, usePassword } from "./EditLock";
@@ -117,7 +117,8 @@ export default function BudgetDashboard({
     [entries, effectiveThrough]
   );
   const hasIncome = incomeSummary.totalBudget > 0 || incomeSummary.totalSpent > 0;
-  const balance = incomeSummary.totalSpent - summary.totalSpent;
+  // 수입 − 지출 (전년도 이월금 포함)
+  const balance = incomeSummary.totalSpent + carryover - summary.totalSpent;
   // 카테고리 그래프·표를 지출/수입 중 무엇으로 볼지
   const [view, setView] = useState<Kind>("expense");
   const viewSummary = view === "income" ? incomeSummary : summary;
@@ -174,6 +175,18 @@ export default function BudgetDashboard({
     for (const g of [...summary.groups, ...incomeSummary.groups]) for (const r of g.items) map.set(r.key, g.group);
     return map;
   }, [summary.groups, incomeSummary.groups]);
+  // 집행률 표의 '상세보기' 창에 보여줄 내역 (기준월까지, 이월금 제외)
+  const tableEntries = useMemo(
+    () =>
+      entries.filter(
+        (e) =>
+          kindOf(e) === view &&
+          !isCarryoverEntry(e) &&
+          !!effectiveThrough &&
+          e.month.slice(0, 7) <= effectiveThrough
+      ),
+    [entries, view, effectiveThrough]
+  );
   const detailEntries = useMemo(
     () =>
       entries.filter((e) => {
@@ -265,25 +278,13 @@ export default function BudgetDashboard({
               value={won(incomeSummary.totalSpent)}
               tone="text-emerald-700"
               sub={
-                [
-                  ...(incomeSummary.totalBudget > 0
-                    ? [`수입 예산 ${won(incomeSummary.totalBudget)}`, `달성 ${pct(incomeSummary.usedRatio)}`]
-                    : ["수입 예산 없음"]),
-                  ...(carryover > 0 ? [`이월금 ${won(carryover)} 별도`] : []),
-                ]
+                incomeSummary.totalBudget > 0 ? [`수입 예산 ${won(incomeSummary.totalBudget)}`] : ["수입 예산 없음"]
               }
             />
             <Kpi
               label="수입 − 지출"
               value={`${balance < 0 ? "−" : "+"}${won(Math.abs(balance))}`}
               tone={balance < 0 ? "text-red-700" : "text-gray-900"}
-              sub={[
-                "확정된 장부 기준",
-                "이월금 제외",
-                ...(carryover > 0
-                  ? [`이월금 포함 ${balance + carryover < 0 ? "−" : "+"}${won(Math.abs(balance + carryover))}`]
-                  : []),
-              ]}
             />
           </section>
 
@@ -329,7 +330,13 @@ export default function BudgetDashboard({
                 : `세로선 = 회기 경과율 ${pct(summary.elapsedRatio)}. 집행률이 경과율보다 10%p 이상 높으면 '빠름'`
             }
           >
-            <GroupTable key={view} groups={viewSummary.groups} elapsedRatio={summary.elapsedRatio} kind={view} />
+            <GroupTable
+              key={view}
+              groups={viewSummary.groups}
+              elapsedRatio={summary.elapsedRatio}
+              kind={view}
+              entries={tableEntries}
+            />
           </Panel>
           </div>
 
@@ -632,8 +639,19 @@ function GroupBarChart({ groups, kind }: { groups: GroupRow[]; kind: Kind }) {
   );
 }
 
-function GroupTable({ groups, elapsedRatio, kind }: { groups: GroupRow[]; elapsedRatio: number; kind: Kind }) {
+function GroupTable({
+  groups,
+  elapsedRatio,
+  kind,
+  entries,
+}: {
+  groups: GroupRow[];
+  elapsedRatio: number;
+  kind: Kind;
+  entries: LedgerEntry[];
+}) {
   const [open, setOpen] = useState<Set<string>>(new Set());
+  const [detail, setDetail] = useState<GroupRow | null>(null);
   const allOpen = groups.length > 0 && groups.every((g) => open.has(g.group));
   const toggle = (group: string) =>
     setOpen((prev) => {
@@ -660,11 +678,12 @@ function GroupTable({ groups, elapsedRatio, kind }: { groups: GroupRow[]; elapse
           const isOpen = open.has(g.group);
           return (
             <li key={g.group} className="py-3">
+              <div className="flex items-center gap-2">
               <button
                 type="button"
                 aria-expanded={isOpen}
                 onClick={() => toggle(g.group)}
-                className="flex w-full items-center gap-1.5 text-left"
+                className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
               >
                 <span
                   aria-hidden
@@ -675,6 +694,8 @@ function GroupTable({ groups, elapsedRatio, kind }: { groups: GroupRow[]; elapse
                 <span className="font-bold text-gray-900">{g.group}</span>
                 <span className="text-xs text-gray-400">{g.items.length}</span>
               </button>
+                <DetailButton onClick={() => setDetail(g)} />
+              </div>
               <MobileMoney row={g} elapsedRatio={elapsedRatio} kind={kind} />
               {isOpen && (
                 <ul className="mt-3 space-y-3 rounded-xl bg-gray-50 px-3 py-3">
@@ -719,6 +740,7 @@ function GroupTable({ groups, elapsedRatio, kind }: { groups: GroupRow[]; elapse
                   g={g}
                   isOpen={isOpen}
                   onToggle={() => toggle(g.group)}
+                  onDetail={() => setDetail(g)}
                   elapsedRatio={elapsedRatio}
                   kind={kind}
                 />
@@ -726,6 +748,172 @@ function GroupTable({ groups, elapsedRatio, kind }: { groups: GroupRow[]; elapse
             })}
           </tbody>
         </table>
+      </div>
+      {detail && <GroupDetailDialog group={detail} kind={kind} entries={entries} onClose={() => setDetail(null)} />}
+    </div>
+  );
+}
+
+function DetailButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className="shrink-0 rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-brand-600 ring-1 ring-brand-100 hover:bg-brand-50"
+    >
+      상세보기
+    </button>
+  );
+}
+
+// 카테고리 상세 창: 세부 항목별 사용액 + 실제 거래 내역 (항목을 누르면 그 항목 거래만)
+function GroupDetailDialog({
+  group,
+  kind,
+  entries,
+  onClose,
+}: {
+  group: GroupRow;
+  kind: Kind;
+  entries: LedgerEntry[];
+  onClose: () => void;
+}) {
+  const [itemFilter, setItemFilter] = useState<string | null>(null);
+  const keys = new Set(group.items.map((r) => r.key));
+  const nameOf = new Map(group.items.map((r) => [r.key, r.category]));
+  const rows = entries
+    .filter((e) => keys.has(itemKey(e)) && (!itemFilter || itemKey(e) === itemFilter))
+    .sort((a, b) => (a.entry_date ?? a.month).localeCompare(b.entry_date ?? b.month));
+  const total = rows.reduce((sum, e) => sum + e.amount, 0);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = overflow;
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-gray-900/30 md:items-center md:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="group-detail-title"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[88vh] w-full flex-col rounded-t-3xl bg-white shadow-[0_8px_32px_rgba(17,24,39,0.12)] md:max-w-2xl md:rounded-3xl"
+      >
+        <div className="flex items-start gap-3 border-b border-gray-100 px-5 pb-3 pt-5">
+          <div className="min-w-0">
+            <div className="text-xs text-gray-500">{KIND_LABEL[kind]} 카테고리</div>
+            <h2 id="group-detail-title" className="text-lg font-bold text-gray-900">
+              {group.group}
+            </h2>
+            <div className="mt-0.5 text-sm tabular-nums text-gray-600">
+              {won(group.spent)} <span className="text-gray-400">/ {won(group.budget)}</span>
+              <span className="ml-2 text-xs">{pct(group.ratio)}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="닫기"
+            className="ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-full text-gray-500 hover:bg-gray-100"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="overflow-y-auto px-5 py-4 space-y-5">
+          <section>
+            <h3 className="mb-2 text-sm font-bold text-gray-900">세부 항목</h3>
+            <ul className="space-y-1">
+              {group.items.map((r) => {
+                const active = itemFilter === r.key;
+                return (
+                  <li key={r.key}>
+                    <button
+                      type="button"
+                      onClick={() => setItemFilter(active ? null : r.key)}
+                      className={`w-full rounded-xl px-3 py-2 text-left ${
+                        active ? "bg-brand-50 ring-1 ring-brand-200" : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="min-w-0 text-sm text-gray-800">
+                          {r.category}
+                          {r.oneTime && (
+                            <span className="ml-1.5 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                              일회성
+                            </span>
+                          )}
+                        </span>
+                        <span className="shrink-0 text-sm tabular-nums whitespace-nowrap">
+                          {won(r.spent)}
+                          <span className="text-xs text-gray-400"> / {won(r.budget)}</span>
+                        </span>
+                      </div>
+                      <div className="mt-1.5">
+                        <ProgressBar
+                          ratio={r.ratio ?? (r.spent > 0 ? 1 : 0)}
+                          color={statusMeta(kind, r.status).bar}
+                        />
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+
+          <section>
+            <div className="mb-2 flex items-baseline justify-between gap-2">
+              <h3 className="text-sm font-bold text-gray-900">
+                {itemFilter ? `${nameOf.get(itemFilter)} 사용 내역` : "사용 내역"}
+                <span className="ml-1.5 text-xs font-normal text-gray-400">{rows.length}건</span>
+              </h3>
+              {itemFilter ? (
+                <button type="button" onClick={() => setItemFilter(null)} className="text-xs font-semibold text-brand-600">
+                  전체 보기
+                </button>
+              ) : (
+                <span className="text-xs text-gray-400">항목을 누르면 그 항목만</span>
+              )}
+            </div>
+            {rows.length === 0 ? (
+              <p className="py-4 text-center text-sm text-gray-400">사용 내역이 없습니다.</p>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {rows.map((e) => (
+                  <li key={e.id} className="py-2.5">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="min-w-0 text-sm text-gray-900">{e.description || e.category}</span>
+                      <span className="shrink-0 text-sm font-semibold tabular-nums whitespace-nowrap">{won(e.amount)}</span>
+                    </div>
+                    <div className="mt-0.5 text-xs text-gray-500">
+                      <span className="tabular-nums">{e.entry_date ?? monthLabel(e.month.slice(0, 7))}</span>
+                      {!itemFilter && <> · {e.category}</>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+
+        <div className="flex items-center justify-between border-t border-gray-100 px-5 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] text-sm">
+          <span className="text-gray-500">합계</span>
+          <span className="font-bold tabular-nums text-gray-900">{won(total)}</span>
+        </div>
       </div>
     </div>
   );
@@ -735,12 +923,14 @@ function GroupRows({
   g,
   isOpen,
   onToggle,
+  onDetail,
   elapsedRatio,
   kind,
 }: {
   g: GroupRow;
   isOpen: boolean;
   onToggle: () => void;
+  onDetail: () => void;
   elapsedRatio: number;
   kind: Kind;
 }) {
@@ -758,6 +948,9 @@ function GroupRows({
             {g.group}
             <span className="text-xs font-medium text-gray-400">{g.items.length}</span>
           </button>
+          <span className="ml-2 inline-block align-middle">
+            <DetailButton onClick={onDetail} />
+          </span>
         </td>
         <MoneyCells row={g} elapsedRatio={elapsedRatio} kind={kind} bold />
       </tr>
