@@ -137,7 +137,8 @@ export default function BudgetInsights({
 
 function healthOf(s: BudgetSummary) {
   const over = s.rows.filter((r) => r.status === "over").length;
-  const pace = s.elapsedRatio > 0 ? (s.usedRatio ?? 0) / s.elapsedRatio : null;
+  // 일회성 행사(임명식 등 한 번에 쓰고 끝나는 항목)는 지출 속도 판단에서 뺌
+  const pace = s.elapsedRatio > 0 && s.recurring.ratio !== null ? s.recurring.ratio / s.elapsedRatio : null;
   if (s.remaining < 0 || over > 0) {
     return {
       label: "위험",
@@ -171,9 +172,11 @@ function healthOf(s: BudgetSummary) {
     badge: "bg-emerald-50 text-emerald-700",
     text: "text-emerald-700",
     reason:
-      pace === null
+      s.elapsedRatio === 0
         ? "회기 시작 전입니다."
-        : `집행률 ${pct(s.usedRatio)}, 회기 경과율 ${pct(s.elapsedRatio)}로 계획대로 쓰고 있습니다.`,
+        : pace === null
+          ? "정기 지출 예산이 없습니다."
+        : `정기 지출 집행률 ${pct(s.recurring.ratio)}, 회기 경과율 ${pct(s.elapsedRatio)}로 계획대로 쓰고 있습니다.`,
   };
 }
 

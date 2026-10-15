@@ -27,7 +27,9 @@ function models(): string[] {
   return [first, ...FALLBACK_MODELS.filter((m) => m !== first)];
 }
 
-async function generateJson(prompt: string, file: InlineFile, responseSchema: object): Promise<unknown> {
+type GenerateResult = { data: unknown; model: string; fallback: boolean };
+
+async function generateJson(prompt: string, file: InlineFile, responseSchema: object): Promise<GenerateResult> {
   const keys = apiKeys();
   if (keys.length === 0) {
     throw new GeminiError("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.");
@@ -40,6 +42,7 @@ async function generateJson(prompt: string, file: InlineFile, responseSchema: ob
   const deadline = Date.now() + DEADLINE_MS;
   let lastError: GeminiError | null = null;
   // Gemini 혼잡은 순간적인 경우가 많아서, 모든 모델이 혼잡하면 잠깐 쉬고 한 바퀴 더 시도
+  const primary = models()[0];
   const attempts = [...models(), ...models()];
   for (const [i, model] of attempts.entries()) {
     if (i === attempts.length / 2) await new Promise((r) => setTimeout(r, 3000));
@@ -49,7 +52,8 @@ async function generateJson(prompt: string, file: InlineFile, responseSchema: ob
         throw lastError ?? new BusyError(BUSY_MESSAGE);
       }
       try {
-        return await generateJsonWithKey(model, key, prompt, file, responseSchema, remaining);
+        const data = await generateJsonWithKey(model, key, prompt, file, responseSchema, remaining);
+        return { data, model, fallback: model !== primary };
       } catch (err) {
         if (err instanceof BusyError) {
           lastError = err;
@@ -156,7 +160,7 @@ export async function parseBudgetDocument(file: InlineFile): Promise<ParsedBudge
     "- fiscal_year: 회기 '시작 연도' (예: 2026년 8월~2027년 7월 회기면 2026). 알 수 없으면 null.",
     "- document_total: 문서에 적힌 지출 예산 총액(원, 아래 items 와 같은 금액 열 기준). 없으면 null.",
     "- document_income_total: 문서에 적힌 수입 예산 총액(원). 없으면 null.",
-    "- items: 예산의 세부 항목 하나씩. 각 항목은 kind, category_group, category, amount.",
+    "- items: 예산의 세부 항목 하나씩. 각 항목은 kind, category_group, category, amount, one_time.",
     "",
     "kind:",
     "- 지출 예산 항목은 'expense', 수입 예산 항목은 'income'.",
@@ -171,6 +175,10 @@ export async function parseBudgetDocument(file: InlineFile): Promise<ParsedBudge
     "- 큰 카테고리가 없는 문서면 category_group 은 빈 문자열로 둔다.",
     "- 수입 예산도 같은 방식이다 (예: 항목 열의 '수련회·CMS', '후원' 이 큰 카테고리, 세부내역 열이 항목).",
     "- '예비비'처럼 같은 이름의 세부 항목이 여러 큰 카테고리에 있으면 각각 따로 넣는다.",
+    "",
+    "one_time (지출 항목만 의미 있음, 수입은 false):",
+    "- 한 번 열리고 끝나는 행사·이벤트 예산이면 true. 예: 임명식, 포럼, 수련회, 컨퍼런스, 연 1회 행사, 횟수가 1인 행사성 항목.",
+    "- 매달·정기적으로 나가는 비용(식사·간식·교통·구독·공제·정기후원·격려금 등), 연회비·지원금처럼 일정 시점에 나가는 고정비, 예비비는 false.",
     "",
     "amount:",
     "- 금액 열이 여러 개면(예: '예산(안)'과 '물가인상율 반영') 가장 최종 금액인 오른쪽 열(물가인상 반영 등)을 쓴다.",
@@ -198,21 +206,24 @@ export async function parseBudgetDocument(file: InlineFile): Promise<ParsedBudge
             category_group: { type: "STRING" },
             category: { type: "STRING" },
             amount: { type: "NUMBER" },
+            one_time: { type: "BOOLEAN" },
           },
-          required: ["kind", "category_group", "category", "amount"],
+          required: ["kind", "category_group", "category", "amount", "one_time"],
         },
       },
     },
     required: ["items"],
   };
 
-  const raw = (await generateJson(prompt, file, schema)) as Record<string, unknown>;
+  const result = await generateJson(prompt, file, schema);
+  const raw = result.data as Record<string, unknown>;
   const items = (Array.isArray(raw.items) ? raw.items : [])
     .map((it: Record<string, unknown>) => ({
       kind: (it.kind === "income" ? "income" : "expense") as Kind,
       category_group: toStr(it.category_group),
       category: toStr(it.category),
       amount: toAmount(it.amount),
+      one_time: it.kind !== "income" && it.one_time === true,
     }))
     .filter((it) => it.category);
 
@@ -222,6 +233,8 @@ export async function parseBudgetDocument(file: InlineFile): Promise<ParsedBudge
     document_total: raw.document_total == null ? null : toAmount(raw.document_total),
     document_income_total: raw.document_income_total == null ? null : toAmount(raw.document_income_total),
     items,
+    model: result.model,
+    fallback: result.fallback,
   };
 }
 
@@ -234,7 +247,8 @@ const LEDGER_READING_RULES = [
   "- 지출: '80001 지원헌금(내부)' 줄의 '차변' 금액 — 다른 계정으로 '보냄'(공제, 적립금, 사용료, 행정비, 다른간사 후원, 재정이양, 대관비, 은행수수료 등). 내역에 '후원'이 있어도 차변이면 지출이다.",
   "- 수입: '41002 후원헌금' 줄의 '대변' 금액.",
   "- 수입: '80001 지원헌금(내부)' 줄의 '대변' 금액 — 다른 계정에서 '받음'(지원금 등).",
-  "- 금액이 음수(예: -2,000,000)인 줄은 부호를 뒤집어 반대로 본다: 대변 음수 → 그 금액만큼 지출, 차변 음수 → 그 금액만큼 수입.",
+  "- 금액이 음수(예: -2,000,000)인 줄은 부호를 뒤집어 반대로 본다: 대변 음수 → 그 금액만큼 지출(예: '사례 공제액'은 사례비로 나간 지출), 차변 음수 → 그 금액만큼 수입.",
+  "- 후원이 들어왔다가 다른 계정으로 '재정이양'되어 나간 돈도 수입과 지출로 각각 넣는다 (최종 판단은 사람이 확인 화면에서 함).",
   "- '10001 현금', '12301 선지급금' 줄은 짝이 되는 줄이므로 넣지 않는다. 현금↔선지급금끼리만 오가는 '선지급(금) 신청' 같은 거래도 넣지 않는다.",
   "- 날짜가 윗줄에 따로 찍혀 있으면 그 날짜를 그 아래 줄의 날짜로 쓴다. 날짜 형식 YYYYMMDD 는 YYYY-MM-DD 로 바꾼다.",
   "- 내역 앞의 '√' 표시(영수증 있음)는 내용에 넣지 않는다.",
@@ -304,7 +318,8 @@ export async function parseLedgerDocument(file: InlineFile, budgetItems: ItemRef
     required: ["items"],
   };
 
-  const raw = (await generateJson(prompt, file, schema)) as Record<string, unknown>;
+  const result = await generateJson(prompt, file, schema);
+  const raw = result.data as Record<string, unknown>;
   const items = (Array.isArray(raw.items) ? raw.items : [])
     .map((it: Record<string, unknown>) => {
       const date = toStr(it.entry_date);
@@ -321,5 +336,5 @@ export async function parseLedgerDocument(file: InlineFile, budgetItems: ItemRef
     .filter((it) => it.amount > 0);
 
   const month = toStr(raw.month);
-  return { month: MONTH_RE.test(month) ? month : null, items };
+  return { month: MONTH_RE.test(month) ? month : null, items, model: result.model, fallback: result.fallback };
 }

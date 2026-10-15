@@ -16,6 +16,7 @@ export type BudgetItem = {
   category_group: string; // 큰 카테고리 (예: 업무추진비)
   category: string; // 세부 항목 (예: 정기 부서 회의 식사비)
   amount: number;
+  one_time?: boolean; // 일회성 행사 (한 번에 쓰고 끝남 → 지출 속도 경고 안 함)
   sort_order: number;
 };
 
@@ -66,11 +67,15 @@ export type ParsedBudget = {
   fiscal_year: number | null;
   document_total: number | null; // 지출 예산 총액
   document_income_total: number | null;
-  items: { kind: Kind; category_group: string; category: string; amount: number }[];
+  items: { kind: Kind; category_group: string; category: string; amount: number; one_time: boolean }[];
+  model?: string; // 실제로 분석한 모델 (기본 모델이 혼잡하면 예비 모델)
+  fallback?: boolean;
 };
 
 export type ParsedLedger = {
   month: string | null; // "YYYY-MM"
+  model?: string;
+  fallback?: boolean;
   items: {
     entry_date: string | null;
     description: string;

@@ -20,6 +20,7 @@ create table if not exists budget_items (
   category_group text not null default '',
   category text not null,
   amount bigint not null check (amount >= 0),
+  one_time boolean not null default false, -- 일회성 행사 (한 번에 쓰고 끝남 → 지출 속도 경고 안 함)
   sort_order integer not null default 0,
   unique (fiscal_year, kind, category_group, category)
 );
@@ -53,6 +54,9 @@ create index if not exists ledger_entries_month_idx on ledger_entries (month);
 alter table budget_items add column if not exists category_group text not null default '';
 alter table ledger_entries add column if not exists category_group text not null default '';
 alter table budget_items drop constraint if exists budget_items_fiscal_year_category_key;
+
+-- [업데이트] 일회성 행사 표시
+alter table budget_items add column if not exists one_time boolean not null default false;
 
 -- [업데이트] 지출/수입 구분(kind) 추가
 alter table budget_items add column if not exists kind text not null default 'expense';
@@ -96,7 +100,7 @@ create policy "authenticated full access" on ledger_entries
   for all to authenticated using (true) with check (true);
 
 -- 예산안 확정: 해당 회기의 예산안을 통째로 교체 (한 트랜잭션)
--- p_items: [{"kind": "expense" | "income", "category_group": "...", "category": "...", "amount": 123}, ...]
+-- p_items: [{"kind": "expense" | "income", "category_group": "...", "category": "...", "amount": 123, "one_time": false}, ...]
 -- total_amount 는 지출 예산 합계
 create or replace function save_budget(
   p_fiscal_year integer,
@@ -122,11 +126,12 @@ begin
 
   delete from budget_items where fiscal_year = p_fiscal_year;
 
-  insert into budget_items (fiscal_year, kind, category_group, category, amount, sort_order)
+  insert into budget_items (fiscal_year, kind, category_group, category, amount, one_time, sort_order)
   select p_fiscal_year, coalesce(x.kind, 'expense'), trim(coalesce(x.category_group, '')), trim(x.category), x.amount,
-    (x.ord - 1)::integer
-  from rows from (jsonb_to_recordset(p_items) as (kind text, category_group text, category text, amount bigint))
-    with ordinality as x(kind, category_group, category, amount, ord);
+    coalesce(x.one_time, false), (x.ord - 1)::integer
+  from rows from (
+    jsonb_to_recordset(p_items) as (kind text, category_group text, category text, amount bigint, one_time boolean)
+  ) with ordinality as x(kind, category_group, category, amount, one_time, ord);
 end;
 $$;
 
