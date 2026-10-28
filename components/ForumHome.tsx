@@ -745,7 +745,7 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
                 <Field label="소속 지구" required>
                   <input value={form.district} onChange={e => set('district', e.target.value)} placeholder="서울지구" className={INPUT_CLS} />
                 </Field>
-                <Field label="주 사역 캠퍼스" required>
+                <Field label="사역 캠퍼스" required>
                   <input value={form.campus} onChange={e => set('campus', e.target.value)} placeholder="OO대학교" className={INPUT_CLS} />
                 </Field>
               </div>
