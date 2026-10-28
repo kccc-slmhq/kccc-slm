@@ -39,9 +39,6 @@ const todayKST = () => new Date().toLocaleDateString('sv', { timeZone: 'Asia/Seo
 
 const PACKING_ITEMS: { id: string; emoji: string; label: string }[] = []
 
-const GRADES = ['초1', '초2', '초3', '초4', '초5', '초6', '선생님', '봉사자']
-const STAFF_GRADES = ['선생님', '봉사자']
-const T_SIZES = ['110', '120', '130', '140', '150', 'SS', 'S', 'M', 'L', 'LL', '3L', '4L']
 
 const ACCOUNT = '3333-29-2677428'
 const BANK = '카카오뱅크'
@@ -66,12 +63,12 @@ export default function ForumHome() {
   return (
     <div className="min-h-screen bg-[#0f0830]">
       {/* Hero Banner */}
-      <div className="w-full overflow-hidden" style={{ maxHeight: '200px' }}>
+      <div className="relative w-full overflow-hidden" style={{ maxHeight: '220px' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/forum-banner.png" alt="교육간사 포럼"
-          className="w-full object-cover"
-          style={{ display: 'block' }}
+          className="w-full object-cover block"
           onError={e => (e.currentTarget.style.display = 'none')} />
+        <div className="absolute inset-x-0 bottom-0" style={{ height: '80px', background: 'linear-gradient(to bottom, transparent, #0f0830)' }} />
       </div>
 
       {/* Content */}
@@ -600,98 +597,101 @@ function Field({ label, required, hint, children }: { label: string; required?: 
   )
 }
 
-function ImageZoom({ src, alt }: { src: string; alt: string }) {
-  const [open, setOpen] = useState(false)
+const CHALLENGES = [
+  '순장/학생 리더십 발굴 및 제자화 적용의 어려움',
+  'Z세대/알파세대와의 소통 및 문화적 격차',
+  '교육 콘텐츠/교재의 노후화 및 미디어 활용의 어려움',
+  '개인의 영적·신체적 고갈(번아웃) 및 역량 개발 한계',
+]
+
+function SectionHeader({ label }: { label: string }) {
+  return <p className="text-[#a78bfa]/70 text-xs font-bold tracking-widest uppercase pt-1">{label}</p>
+}
+
+function RadioGroup({ options, value, onChange }: { options: string[]; value: string; onChange: (v: string) => void }) {
   return (
-    <>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt={alt}
-        onError={e => { if (e.currentTarget.parentElement) e.currentTarget.parentElement.style.display = 'none' }}
-        onClick={() => setOpen(true)}
-        className="w-full h-32 object-cover cursor-zoom-in active:scale-95 transition-all" />
-      {open && (
-        <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black/85" onClick={() => setOpen(false)}>
-          <p className="text-white/50 text-xs mb-3">화면을 탭하면 닫힙니다</p>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt={alt} className="max-w-full max-h-[80vh] object-contain rounded-xl px-4" />
-        </div>
-      )}
-    </>
+    <div className="space-y-2">
+      {options.map(opt => (
+        <label key={opt} className="flex items-center gap-3 cursor-pointer" onClick={() => onChange(opt)}>
+          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${value === opt ? 'border-[#7c5cfc]' : 'border-white/30'}`}>
+            {value === opt && <div className="w-2.5 h-2.5 rounded-full bg-[#7c5cfc]" />}
+          </div>
+          <span className="text-white/80 text-sm">{opt}</span>
+        </label>
+      ))}
+    </div>
   )
 }
 
-type Participant = { name: string; grade: string; tshirt_size: string; id_number: string; allergy: string; note: string }
-const EMPTY_PARTICIPANT: Participant = { name: '', grade: '초1', tshirt_size: '', id_number: '', allergy: '', note: '' }
+type ForumReg = {
+  name_cohort: string; district_campus: string; phone: string
+  attending: boolean | null
+  attendance_type: string; transportation: string; carpool_seats: string
+  gender: string; id_number: string; extra_note: string
+  challenges: string[]; challenge_other: string
+  desired_topic: string; questions: string
+  consent: boolean
+}
+const EMPTY_REG: ForumReg = {
+  name_cohort: '', district_campus: '', phone: '',
+  attending: null,
+  attendance_type: '', transportation: '', carpool_seats: '',
+  gender: '', id_number: '', extra_note: '',
+  challenges: [], challenge_other: '',
+  desired_topic: '', questions: '',
+  consent: false,
+}
 
 export function RegisterModal({ onClose }: { onClose: () => void }) {
-  const [isSibling, setIsSibling] = useState(false)
-  const [sibCount, setSibCount] = useState(2)
-  const [activeTab, setActiveTab] = useState(0)
-  const [participants, setParticipants] = useState<Participant[]>([{ ...EMPTY_PARTICIPANT }])
-  const [parent, setParent] = useState({ parent_name: '', parent_phone: '' })
-  const [agreed, setAgreed] = useState(false)
-  const [step, setStep] = useState('form')
+  const [form, setForm] = useState<ForumReg>({ ...EMPTY_REG })
+  const [step, setStep] = useState<'form' | 'done'>('form')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  function toggleSibling() {
-    const next = !isSibling
-    setIsSibling(next)
-    if (next) {
-      setParticipants(Array.from({ length: 2 }, () => ({ ...EMPTY_PARTICIPANT })))
-      setActiveTab(0)
-    } else {
-      setParticipants([{ ...EMPTY_PARTICIPANT }])
-      setActiveTab(0)
-    }
+  function set<K extends keyof ForumReg>(field: K, value: ForumReg[K]) {
+    setForm(prev => ({ ...prev, [field]: value }))
   }
 
-  function changeSibCount(n: number) {
-    setSibCount(n)
-    setParticipants(prev => {
-      const arr = [...prev]
-      while (arr.length < n) arr.push({ ...EMPTY_PARTICIPANT })
-      return arr.slice(0, n)
-    })
-    setActiveTab(t => Math.min(t, n - 1))
+  function toggleChallenge(val: string) {
+    setForm(prev => ({
+      ...prev,
+      challenges: prev.challenges.includes(val)
+        ? prev.challenges.filter(c => c !== val)
+        : [...prev.challenges, val],
+    }))
   }
-
-  function setP(idx: number, field: keyof Participant, value: string) {
-    setParticipants(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p))
-  }
-
-  const curP = participants[activeTab] || EMPTY_PARTICIPANT
-  const isStaff = STAFF_GRADES.includes(curP.grade)
 
   async function submit() {
-    for (let i = 0; i < participants.length; i++) {
-      const p = participants[i]
-      const label = isSibling ? `참석자 ${i + 1}` : '참석자'
-      if (!p.name.trim()) { setError(`${label} 이름을 입력해주세요`); setActiveTab(i); return }
-      if (!p.tshirt_size) { setError(`${label} 티셔츠 사이즈를 선택해주세요`); setActiveTab(i); return }
-      if (!p.id_number.trim()) { setError(`${label} 주민등록번호를 입력해주세요`); setActiveTab(i); return }
+    if (!form.name_cohort.trim()) { setError('이름/기수를 입력해주세요'); return }
+    if (!form.district_campus.trim()) { setError('소속 지구 및 캠퍼스를 입력해주세요'); return }
+    if (!form.phone.trim()) { setError('연락처를 입력해주세요'); return }
+    if (form.attending === null) { setError('참석 여부를 선택해주세요'); return }
+    if (form.attending) {
+      if (!form.attendance_type) { setError('참석 형태를 선택해주세요'); return }
+      if (!form.transportation) { setError('이동 수단을 선택해주세요'); return }
+      if (!form.gender) { setError('성별을 선택해주세요'); return }
+      if (!form.id_number.trim()) { setError('주민등록번호를 입력해주세요'); return }
+      if (!form.consent) { setError('개인정보 수집·이용에 동의해주세요'); return }
     }
-    if (!parent.parent_phone.trim()) { setError('연락처를 입력해주세요'); return }
-    if (!agreed) { setError('개인정보 수집·이용에 동의해주세요'); return }
     setError(''); setSubmitting(true)
-    const eligibleCount = participants.filter(p => !STAFF_GRADES.includes(p.grade)).length
-    const applyDiscount = isSibling && eligibleCount >= 2
-    const rows = participants.map(p => ({
-      name: p.name, grade: p.grade,
-      parent_name: parent.parent_name,
-      parent_phone: parent.parent_phone,
-      tshirt_size: p.tshirt_size,
-      id_number: p.id_number,
-      allergy: p.allergy, note: p.note,
-      sibling_discount: !STAFF_GRADES.includes(p.grade) && applyDiscount,
-      registered_at: new Date().toISOString(),
-    }))
+    const allChallenges = [...form.challenges, ...(form.challenge_other.trim() ? [form.challenge_other.trim()] : [])]
     const supabase = createClient()
-    const { error: err } = await supabase.from('students').insert(rows)
+    const { error: err } = await supabase.from('forum_registrations').insert([{
+      name_cohort: form.name_cohort, district_campus: form.district_campus, phone: form.phone,
+      attending: form.attending,
+      attendance_type: form.attendance_type, transportation: form.transportation,
+      carpool_seats: form.carpool_seats, gender: form.gender,
+      id_number: form.id_number, extra_note: form.extra_note,
+      challenges: allChallenges, desired_topic: form.desired_topic, questions: form.questions,
+      registered_at: new Date().toISOString(),
+    }])
     setSubmitting(false)
-    if (err) { setError('등록 중 오류가 발생했습니다. 다시 시도해주세요.') }
+    if (err) { setError('제출 중 오류가 발생했습니다. 다시 시도해주세요.') }
     else { setStep('done') }
   }
+
+  const isAttending = form.attending === true
+  const isCarpoolOk = form.transportation === '자차 이용 (카풀 가능)'
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center md:items-center"
@@ -707,123 +707,124 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
               </div>
               <button onClick={onClose} className="text-white/40 text-3xl leading-none pb-1">×</button>
             </div>
-            <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
-              <button type="button" onClick={toggleSibling}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${isSibling ? 'bg-[#2d1a6e] border-[#7c5cfc]/50' : 'bg-[#1a0f3a] border-[#7c5cfc]/20'}`}>
-                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all ${isSibling ? 'bg-[#7c5cfc] border-[#7c5cfc]' : 'border-white/20'}`}>
-                  {isSibling && <span className="text-white text-xs font-black">✓</span>}
-                </div>
-                <div>
-                  <p className={`text-sm font-bold ${isSibling ? 'text-[#a78bfa]' : 'text-white/60'}`}>👨‍👩‍👧‍👦 형제·자매 함께 등록 시 체크 (할인 적용)</p>
-                  <p className="text-xs text-white/40 mt-0.5">각 10,000원 할인 → 1인당 <span className={`font-bold ${isSibling ? 'text-[#a78bfa]' : ''}`}>{isSibling ? '40,000원' : '50,000원'}</span></p>
-                </div>
-              </button>
-              {isSibling && (
-                <div className="flex gap-2">
-                  {[2, 3].map(n => (
-                    <button key={n} onClick={() => changeSibCount(n)}
-                      className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${sibCount === n ? 'btn-gold' : 'bg-white/5 text-white/50 border border-white/10'}`}>{n}명 등록</button>
-                  ))}
-                </div>
-              )}
-              {isSibling && (
-                <div className="flex gap-1">
-                  {participants.map((_, i) => (
-                    <button key={i} onClick={() => setActiveTab(i)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === i ? 'bg-[#7c5cfc] text-white' : 'bg-white/5 text-white/50 border border-white/10'}`}>참석자 {i + 1}</button>
-                  ))}
-                </div>
-              )}
-              <p className="text-[#a78bfa]/70 text-xs font-bold tracking-widest uppercase">
-                {isSibling ? `참석자 ${activeTab + 1} 정보` : '참석자 정보'}
-              </p>
-              <Field label="이름" required>
-                <input value={curP.name} onChange={e => setP(activeTab, 'name', e.target.value)} placeholder="홍길동" className={INPUT_CLS} />
+            <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5">
+
+              <SectionHeader label="기본 정보" />
+              <Field label="이름 / 간사 기수" required>
+                <input value={form.name_cohort} onChange={e => set('name_cohort', e.target.value)} placeholder="홍길동 / 40기" className={INPUT_CLS} />
               </Field>
-              <Field label="학년" required>
-                <SelectDrop value={curP.grade} onChange={v => setP(activeTab, 'grade', v)} options={GRADES} placeholder="학년 선택" />
+              <Field label="소속 지구 및 주 사역 캠퍼스" required>
+                <input value={form.district_campus} onChange={e => set('district_campus', e.target.value)} placeholder="서울지구 / OO대학교" className={INPUT_CLS} />
               </Field>
-              <Field label="티셔츠 사이즈" required>
-                <div className="grid grid-cols-2 gap-2 mb-2 rounded-xl overflow-hidden border border-black/8">
-                  <ImageZoom src="/tshirt.jpg" alt="수련회 티셔츠" />
-                  <ImageZoom src="/sizechart.jpg" alt="사이즈 표" />
-                </div>
-                <p className="text-white/35 text-xs mb-2">👆 사진을 누르시면 자세히 볼 수 있습니다</p>
-                <SelectDrop value={curP.tshirt_size} onChange={v => setP(activeTab, 'tshirt_size', v)} options={T_SIZES} placeholder="사이즈 선택" />
+              <Field label="연락처" required>
+                <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="010-1234-5678" type="tel" className={INPUT_CLS} />
               </Field>
-              <Field label="알레르기 / 건강사항" hint="없으면 비워두세요">
-                <textarea value={curP.allergy} onChange={e => setP(activeTab, 'allergy', e.target.value)} placeholder="예) 땅콩 알레르기, 천식 등" rows={2} className={INPUT_CLS + ' resize-none'} />
-              </Field>
-              <Field label="주민등록번호" required hint="여행자 보험 가입용">
-                <input value={curP.id_number} onChange={e => setP(activeTab, 'id_number', e.target.value)} placeholder="000000-0000000" className={INPUT_CLS} />
-                <p className="text-white/25 text-xs mt-1">🔒 보험 처리 후 즉시 폐기됩니다</p>
-              </Field>
-              <Field label="기타 사항" hint="선택">
-                <textarea value={curP.note} onChange={e => setP(activeTab, 'note', e.target.value)} placeholder="담당 선생님께 전달할 내용" rows={2} className={INPUT_CLS + ' resize-none'} />
-              </Field>
-              {isSibling && activeTab < participants.length - 1 && (
-                <button onClick={() => setActiveTab(activeTab + 1)}
-                  className="w-full py-3 rounded-xl text-sm font-bold text-[#a78bfa] bg-purple-900/40 border border-[#7c5cfc]/25 transition-all">
-                  다음 참석자 {activeTab + 2} 정보 입력 →
-                </button>
-              )}
-              {(!isSibling || activeTab === participants.length - 1) && (
+
+              <SectionHeader label="참석 여부" />
+              <div className="grid grid-cols-2 gap-2">
+                {(['참석', '불참'] as const).map(opt => (
+                  <button key={opt} type="button"
+                    onClick={() => set('attending', opt === '참석')}
+                    className={`py-3 rounded-xl text-sm font-bold border transition-all ${form.attending === (opt === '참석') ? 'bg-[#7c5cfc] border-[#7c5cfc] text-white' : 'bg-white/5 border-white/10 text-white/50'}`}>
+                    {opt}
+                  </button>
+                ))}
+              </div>
+
+              {isAttending && (
                 <>
-                  <p className="text-[#a78bfa]/70 text-xs font-bold tracking-widest uppercase pt-2">
-                    {isStaff ? '연락처' : '보호자 정보'}
-                  </p>
-                  {!isStaff && (
-                    <Field label="보호자 이름">
-                      <input value={parent.parent_name} onChange={e => setParent(p => ({...p, parent_name: e.target.value}))} placeholder="김철수" className={INPUT_CLS} />
-                    </Field>
-                  )}
-                  <Field label={!isStaff ? '비상 연락처' : '연락처'} required>
-                    <input value={parent.parent_phone} onChange={e => setParent(p => ({...p, parent_phone: e.target.value}))} placeholder="010-0000-0000" type="tel" className={INPUT_CLS} />
+                  <SectionHeader label="참석자 상세 정보" />
+                  <Field label="참석 형태" required>
+                    <RadioGroup
+                      options={['전 일정(1박 2일) 참석', '23일(1일 차)만 참석', '24일(2일 차)만 참석']}
+                      value={form.attendance_type} onChange={v => set('attendance_type', v)} />
                   </Field>
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
-                    <p className="text-white/60 text-xs font-bold">📋 개인정보 수집·이용 동의</p>
-                    <p className="text-white/40 text-xs leading-relaxed">
-                      수집 항목: 이름, 학년, 보호자 연락처, 주민등록번호, 건강 정보{'\n'}
-                      수집 목적: 성경학교 운영, 여행자 보험 가입, 비상 연락{'\n'}
-                      보유 기간: 행사 종료 후 <span className="text-[#a78bfa] font-bold">즉시 폐기</span>
-                    </p>
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <div onClick={() => setAgreed(v => !v)}
-                        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${agreed ? 'bg-[#7c5cfc] border-[#7c5cfc]' : 'border-white/30 bg-transparent'}`}>
-                        {agreed && <span className="text-white text-xs font-black">✓</span>}
-                      </div>
-                      <span className="text-white/80 text-sm font-medium">위 내용을 확인하였으며 동의합니다</span>
-                    </label>
-                  </div>
+                  <Field label="이동 수단" required>
+                    <RadioGroup
+                      options={['대중교통 이용', '자차 이용 (카풀 가능)', '자차 이용 (카풀 불가)', '타 지구/동역자 차량 카풀']}
+                      value={form.transportation} onChange={v => set('transportation', v)} />
+                    {isCarpoolOk && (
+                      <input value={form.carpool_seats} onChange={e => set('carpool_seats', e.target.value)}
+                        placeholder="카풀 가능 인원 (예: 3명)" className={INPUT_CLS + ' mt-2'} />
+                    )}
+                  </Field>
+                  <Field label="성별" required hint="숙소 배정용">
+                    <div className="grid grid-cols-2 gap-2">
+                      {['남성', '여성'].map(opt => (
+                        <button key={opt} type="button" onClick={() => set('gender', opt)}
+                          className={`py-3 rounded-xl text-sm font-bold border transition-all ${form.gender === opt ? 'bg-[#7c5cfc] border-[#7c5cfc] text-white' : 'bg-white/5 border-white/10 text-white/50'}`}>
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
+                  <Field label="주민등록번호" required hint="여행자 보험 가입용">
+                    <input value={form.id_number} onChange={e => set('id_number', e.target.value)} placeholder="000000-0000000" className={INPUT_CLS} />
+                    <p className="text-white/25 text-xs mt-1">🔒 보험 처리 후 즉시 파기됩니다</p>
+                  </Field>
+                  <Field label="기타 사항" hint="선택 · 알레르기, 특이 질환, 룸메이트 조율 등">
+                    <textarea value={form.extra_note} onChange={e => set('extra_note', e.target.value)}
+                      placeholder="없으면 비워두세요" rows={2} className={INPUT_CLS + ' resize-none'} />
+                  </Field>
                 </>
+              )}
+
+              <SectionHeader label="현장 사역 진단 및 기대 (선택)" />
+              <Field label="현재 담당 사역지에서 겪는 가장 큰 고민 (복수 선택 가능)">
+                <div className="space-y-2">
+                  {CHALLENGES.map(c => (
+                    <label key={c} className="flex items-start gap-3 cursor-pointer" onClick={() => toggleChallenge(c)}>
+                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${form.challenges.includes(c) ? 'bg-[#7c5cfc] border-[#7c5cfc]' : 'border-white/30 bg-transparent'}`}>
+                        {form.challenges.includes(c) && <span className="text-white text-xs font-black">✓</span>}
+                      </div>
+                      <span className="text-white/70 text-sm leading-snug">{c}</span>
+                    </label>
+                  ))}
+                  <input value={form.challenge_other} onChange={e => set('challenge_other', e.target.value)}
+                    placeholder="기타 (직접 입력)" className={INPUT_CLS + ' mt-1'} />
+                </div>
+              </Field>
+              <Field label="이번 포럼에서 집중적으로 다루었으면 하는 주제" hint="선택">
+                <textarea value={form.desired_topic} onChange={e => set('desired_topic', e.target.value)}
+                  placeholder="자유롭게 서술해 주세요" rows={3} className={INPUT_CLS + ' resize-none'} />
+              </Field>
+              <Field label="본부 교육 리더십에게 미리 묻고 싶은 질문 또는 기대" hint="선택">
+                <textarea value={form.questions} onChange={e => set('questions', e.target.value)}
+                  placeholder="자유롭게 적어주세요" rows={3} className={INPUT_CLS + ' resize-none'} />
+              </Field>
+
+              {isAttending && (
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
+                  <p className="text-white/60 text-xs font-bold">📋 개인정보 수집·이용 동의 (필수)</p>
+                  <p className="text-white/40 text-xs leading-relaxed">
+                    수집 목적: 행사 운영, 비상 연락, 숙소/차량 배정{'\n'}
+                    수집 항목: 성명, 연락처, 성별, 주민등록번호{'\n'}
+                    보유 기간: 포럼 종료 후 <span className="text-[#a78bfa] font-bold">즉시 파기</span>
+                  </p>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <div onClick={() => set('consent', !form.consent)}
+                      className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${form.consent ? 'bg-[#7c5cfc] border-[#7c5cfc]' : 'border-white/30 bg-transparent'}`}>
+                      {form.consent && <span className="text-white text-xs font-black">✓</span>}
+                    </div>
+                    <span className="text-white/80 text-sm">위 내용을 확인하였으며 동의합니다</span>
+                  </label>
+                </div>
               )}
             </div>
             <div className="px-6 pb-8 pt-3 shrink-0 border-t border-white/5">
               {error && <p className="text-red-500 text-xs mb-2 text-center">{error}</p>}
-              {(!isSibling || activeTab === participants.length - 1) ? (
-                <button onClick={submit} disabled={submitting}
-                  className="w-full btn-gold py-4 rounded-2xl font-black text-base disabled:opacity-40">
-                  {submitting ? '등록 중...' : isSibling ? `${participants.length}명 등록 완료하기 →` : '등록 완료하기 →'}
-                </button>
-              ) : (
-                <button onClick={() => setActiveTab(activeTab + 1)}
-                  className="w-full btn-gold py-4 rounded-2xl font-black text-base">
-                  참석자 {activeTab + 2} 정보 입력 →
-                </button>
-              )}
+              <button onClick={submit} disabled={submitting}
+                className="w-full btn-gold py-4 rounded-2xl font-black text-base disabled:opacity-40">
+                {submitting ? '제출 중...' : '제출하기 →'}
+              </button>
             </div>
           </>
         ) : (
           <div className="text-center p-8 py-12">
             <div className="text-6xl mb-4">🎉</div>
-            <h2 className="text-[#a78bfa] font-black text-2xl mb-2">등록 완료!</h2>
-            <p className="text-white/70 text-sm leading-relaxed">
-              {isSibling
-                ? <><span className="font-bold">{participants.map(p => p.name).join(', ')}</span><br/>총 {participants.length}명 등록이 완료되었습니다.</>
-                : <><span className="font-bold">{participants[0]?.name}</span> 학생의 등록이 완료되었습니다.</>
-              }
-            </p>
-            <p className="text-white/30 text-xs mt-4">수집된 개인정보는 행사 종료 후 즉시 폐기됩니다.<br/>문의: 김양연 간사 010-9154-6113</p>
+            <h2 className="text-[#a78bfa] font-black text-2xl mb-2">제출 완료!</h2>
+            <p className="text-white/70 text-sm leading-relaxed">응답해주셔서 감사합니다.<br/>포럼에서 만나요!</p>
+            <p className="text-white/30 text-xs mt-4">수집된 개인정보는 포럼 종료 후 즉시 파기됩니다.<br/>문의: 김양연 간사 010-9154-6113</p>
             <button onClick={onClose} className="mt-6 btn-gold px-8 py-3 rounded-xl font-bold">확인</button>
           </div>
         )}
