@@ -115,23 +115,23 @@ export default function ForumHome() {
             <span>📍</span> 수련회 장소
           </h2>
           <div className="grid grid-cols-2 gap-3">
-            <a href="https://naver.me/5vJUGSbp"
-              target="_blank" rel="noopener noreferrer"
-              className="flex flex-col gap-2 card-dark rounded-2xl p-4 active:scale-95 transition-all">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-xl border border-purple-200">🏨</div>
-              <div>
-                <p className="text-white font-bold text-sm leading-snug">머무는 숙소</p>
-                <p className="text-white/40 text-xs mt-0.5">경기 수원시 팔달구 인계로 116</p>
-                <p className="text-[#4dd9ff] text-xs font-bold mt-1">네이버 지도 →</p>
-              </div>
-            </a>
             <a href="https://naver.me/FOR75yzX"
               target="_blank" rel="noopener noreferrer"
               className="flex flex-col gap-2 card-dark rounded-2xl p-4 active:scale-95 transition-all">
-              <div className="w-10 h-10 rounded-xl bg-purple-900/50 flex items-center justify-center text-xl border border-purple-500/30">🗺️</div>
+              <div className="w-10 h-10 rounded-xl bg-purple-900/50 flex items-center justify-center text-xl border border-purple-500/30">🏢</div>
               <div>
-                <p className="text-white font-bold text-sm leading-snug">한국대학생선교회 비전센터</p>
+                <p className="text-white font-bold text-sm leading-snug">수원CCC 회관</p>
                 <p className="text-white/40 text-xs mt-0.5">경기 수원시 권선구 새터로23번길 12-6</p>
+                <p className="text-[#4dd9ff] text-xs font-bold mt-1">네이버 지도 →</p>
+              </div>
+            </a>
+            <a href="https://naver.me/5vJUGSbp"
+              target="_blank" rel="noopener noreferrer"
+              className="flex flex-col gap-2 card-dark rounded-2xl p-4 active:scale-95 transition-all">
+              <div className="w-10 h-10 rounded-xl bg-purple-900/50 flex items-center justify-center text-xl border border-purple-500/30">🏨</div>
+              <div>
+                <p className="text-white font-bold text-sm leading-snug">숙소(홈스테이 수원)</p>
+                <p className="text-white/40 text-xs mt-0.5">경기 수원시 팔달구 인계로 116</p>
                 <p className="text-[#4dd9ff] text-xs font-bold mt-1">네이버 지도 →</p>
               </div>
             </a>
@@ -139,21 +139,7 @@ export default function ForumHome() {
         </section>
 
         {/* 포럼 아카이브 */}
-        <section>
-          <h2 className="text-[#a78bfa] font-bold text-lg mb-3 flex items-center gap-2">
-            <span>📁</span> 교육간사 포럼 아카이브
-          </h2>
-          <a href="https://drive.google.com/drive/folders/1PXEK9gk8eUhMXJqWHlppsUMrW5oHxO5r?usp=sharing"
-            target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-4 card-dark rounded-2xl p-5 active:scale-95 transition-all">
-            <div className="w-12 h-12 rounded-xl bg-purple-900/50 flex items-center justify-center shrink-0 text-2xl border border-purple-500/30">📂</div>
-            <div>
-              <p className="text-white font-bold">자료 보러 가기</p>
-              <p className="text-white/50 text-xs mt-0.5">포럼 자료 및 아카이브</p>
-              <p className="text-[#a78bfa] text-xs font-bold mt-1">드라이브 열기 →</p>
-            </div>
-          </a>
-        </section>
+        <ArchiveSection />
 
         {/* 여행자보험 */}
         <section>
@@ -162,7 +148,7 @@ export default function ForumHome() {
           </h2>
           <div className="card-dark rounded-2xl p-4 space-y-3">
             <div className="space-y-1.5">
-              <p className="text-white/80 text-sm font-medium">🛡️ 교회에서 단체 여행자보험에 가입해 드립니다.</p>
+              <p className="text-white/80 text-sm font-medium">🛡️ SLMHQ에서 단체 여행자보험에 가입해 드립니다.</p>
               <p className="text-white/55 text-sm">사고·부상 시 <span className="font-bold text-white">한화손보 모바일 앱</span>으로 보험금 신청 가능</p>
               <p className="text-white/35 text-xs">※ 보험 가입 여부는 등록 완료 후 개별 안내</p>
             </div>
@@ -214,6 +200,57 @@ export default function ForumHome() {
 
       {showModal && <RegisterModal onClose={() => setShowModal(false)} />}
     </div>
+  )
+}
+
+const ARCHIVE_OPEN = new Date('2026-11-23T12:00:00+09:00')
+const ARCHIVE_URL = 'https://drive.google.com/drive/folders/1PXEK9gk8eUhMXJqWHlppsUMrW5oHxO5r?usp=sharing'
+
+function ArchiveSection() {
+  const [locked, setLocked] = useState(new Date() < ARCHIVE_OPEN)
+  const [showMsg, setShowMsg] = useState(false)
+
+  useEffect(() => {
+    setLocked(new Date() < ARCHIVE_OPEN)
+  }, [])
+
+  function handleClick() {
+    if (locked) { setShowMsg(true); return }
+    window.open(ARCHIVE_URL, '_blank', 'noopener,noreferrer')
+  }
+
+  return (
+    <section>
+      <h2 className="text-[#a78bfa] font-bold text-lg mb-3 flex items-center gap-2">
+        <span>📁</span> 교육간사 포럼 아카이브
+      </h2>
+      <button onClick={handleClick}
+        className="w-full flex items-center gap-4 card-dark rounded-2xl p-5 active:scale-95 transition-all text-left">
+        <div className="w-12 h-12 rounded-xl bg-purple-900/50 flex items-center justify-center shrink-0 text-2xl border border-purple-500/30">
+          {locked ? '🔒' : '📂'}
+        </div>
+        <div>
+          <p className="text-white font-bold">자료 보러 가기</p>
+          <p className="text-white/50 text-xs mt-0.5">포럼 자료 및 아카이브</p>
+          <p className={`text-xs font-bold mt-1 ${locked ? 'text-white/30' : 'text-[#a78bfa]'}`}>
+            {locked ? '11월 23일 오후 12시부터 공개' : '드라이브 열기 →'}
+          </p>
+        </div>
+      </button>
+      {showMsg && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-5"
+          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}
+          onClick={() => setShowMsg(false)}>
+          <div className="rounded-3xl w-full max-w-sm p-7 text-center space-y-3" style={{ background: '#1a0f3a', border: '1px solid rgba(124,92,252,0.3)' }} onClick={e => e.stopPropagation()}>
+            <div className="text-5xl">🔒</div>
+            <p className="text-[#a78bfa] font-black text-xl">아직 공개 전이에요</p>
+            <p className="text-white/60 text-sm leading-relaxed">포럼이 시작되면 열려요<br /><span className="text-white/40 text-xs">11월 23일 오후 12시 이후 공개</span></p>
+            <button onClick={() => setShowMsg(false)}
+              className="w-full btn-gold py-3 rounded-2xl font-bold mt-2">확인</button>
+          </div>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -369,11 +406,16 @@ function InfoTabs({ activeDay, setActiveDay }: { activeDay: number; setActiveDay
       </div>
       {tab === 0 && (
         <div className="card-dark rounded-2xl p-5 space-y-3">
-          <InfoRow icon={<span>📅</span>} label="일시" value="2026년 11월 23일(월) ~ 24일(화)" />
-          <InfoRow icon={<span>📍</span>} label="장소" value="수원 CCC 회관" />
-          <InfoRow icon={<span>✝️</span>} label="주제" value={<>가르쳐 지키게 하라<br /><span className="text-white/40 text-xs font-normal">📖 마태복음 28:20a</span></>} />
-          <InfoRow icon={<span>👥</span>} label="대상" value="SLM 교육간사" />
-          <InfoRow icon={<span>💳</span>} label="회비" value="50,000원" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <InfoRow icon={<img src="/g7-logo.webp" alt="" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />} label="일시" value="2026년 11월 23일(월) ~ 24일(화)" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <InfoRow icon={<img src="/g7-logo.webp" alt="" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />} label="장소" value="수원 CCC 회관" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <InfoRow icon={<img src="/g7-logo.webp" alt="" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />} label="주제" value={<>가르쳐 지키게 하라<br /><span className="text-white/40 text-xs font-normal">📖 마태복음 28:20a</span></>} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <InfoRow icon={<img src="/g7-logo.webp" alt="" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />} label="대상" value="SLM 교육간사" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <InfoRow icon={<img src="/g7-logo.webp" alt="" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />} label="회비" value="50,000원" />
         </div>
       )}
       {tab === 1 && (

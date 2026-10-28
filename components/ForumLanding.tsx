@@ -179,7 +179,7 @@ export default function ForumLanding() {
                   animation: 'shimmer 2.5s infinite',
                 }} />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/g7-logo.webp" alt="" style={{ width: '1.75rem', height: '1.75rem', objectFit: 'contain' }} />
+                <img src="/g7-logo.webp" alt="" style={{ width: '5rem', height: '5rem', objectFit: 'contain' }} />
                 입장하기
               </button>
             </>
