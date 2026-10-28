@@ -65,30 +65,19 @@ export default function ForumHome() {
 
   return (
     <div className="min-h-screen bg-[#0f0830]">
-      {/* Hero Section - poster image */}
-      <div className="relative w-full" style={{ aspectRatio: '9/16', maxHeight: '60vw' }}>
+      {/* Hero Banner — 포스터 상단만 보이도록 */}
+      <div className="relative w-full overflow-hidden" style={{ height: '52vw', maxHeight: '280px' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/forum-poster.webp" alt="교육간사 포럼"
-          className="w-full h-full object-cover object-top"
+          className="absolute inset-0 w-full"
+          style={{ top: 0, objectFit: 'cover', objectPosition: 'top', height: '100%' }}
           onError={e => (e.currentTarget.style.display = 'none')} />
-        <div className="absolute bottom-0 left-0 right-0 h-24"
+        <div className="absolute bottom-0 left-0 right-0 h-16"
           style={{ background: 'linear-gradient(to bottom, transparent, #0f0830)' }} />
       </div>
 
       {/* Content */}
-      <div className="px-4 py-6 max-w-lg mx-auto space-y-5">
-
-        {/* 포럼 타이틀 */}
-        <section className="text-center pt-2 pb-1">
-          <p className="text-sm font-bold tracking-widest mb-1"
-            style={{ background: 'linear-gradient(90deg, #4dd9ff, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            CCC SLM 교육간사 포럼
-          </p>
-          <h1 className="font-black leading-tight text-white"
-            style={{ fontSize: 'clamp(2rem, 8vw, 3rem)', textShadow: '0 2px 20px rgba(124,92,252,0.6)' }}>
-            가르쳐 지키게 하라!!!
-          </h1>
-        </section>
+      <div className="px-4 py-4 max-w-lg mx-auto space-y-5">
 
         <AskAI />
 
