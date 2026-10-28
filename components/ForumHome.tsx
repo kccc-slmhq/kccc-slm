@@ -624,7 +624,7 @@ function RadioGroup({ options, value, onChange }: { options: string[]; value: st
 }
 
 type ForumReg = {
-  name_cohort: string; district_campus: string; phone: string
+  name: string; cohort: string; district: string; campus: string; phone: string
   attending: boolean | null
   absent_reason: string
   consent: boolean
@@ -635,7 +635,7 @@ type ForumReg = {
   desired_topic: string; questions: string
 }
 const EMPTY_REG: ForumReg = {
-  name_cohort: '', district_campus: '', phone: '',
+  name: '', cohort: '', district: '', campus: '', phone: '',
   attending: null,
   absent_reason: '',
   consent: false,
@@ -666,8 +666,10 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
   }
 
   async function submit() {
-    if (!form.name_cohort.trim()) { setError('이름/기수를 입력해주세요'); return }
-    if (!form.district_campus.trim()) { setError('소속 지구 및 캠퍼스를 입력해주세요'); return }
+    if (!form.name.trim()) { setError('이름을 입력해주세요'); return }
+    if (!form.cohort.trim()) { setError('간사 기수를 입력해주세요'); return }
+    if (!form.district.trim()) { setError('소속 지구를 입력해주세요'); return }
+    if (!form.campus.trim()) { setError('주 사역 캠퍼스를 입력해주세요'); return }
     if (!form.phone.trim()) { setError('연락처를 입력해주세요'); return }
     if (form.attending === null) { setError('참석 여부를 선택해주세요'); return }
     if (!form.attending) {
@@ -683,7 +685,7 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
     const allChallenges = [...form.challenges, ...(form.challenge_other.trim() ? [form.challenge_other.trim()] : [])]
     const supabase = createClient()
     const { error: err } = await supabase.from('forum_registrations').insert([{
-      name_cohort: form.name_cohort, district_campus: form.district_campus, phone: form.phone,
+      name: form.name, cohort: form.cohort, district: form.district, campus: form.campus, phone: form.phone,
       attending: form.attending, absent_reason: form.absent_reason,
       attendance_type: form.attendance_type, transportation: form.transportation,
       carpool_seats: form.carpool_seats, room_note: form.room_note,
@@ -717,12 +719,22 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
             <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5">
 
               <SectionHeader label="섹션 1 · 기본 정보 및 참석 여부" />
-              <Field label="이름 / 간사 기수" required>
-                <input value={form.name_cohort} onChange={e => set('name_cohort', e.target.value)} placeholder="홍길동 / 40기" className={INPUT_CLS} />
-              </Field>
-              <Field label="소속 지구 및 주 사역 캠퍼스" required>
-                <input value={form.district_campus} onChange={e => set('district_campus', e.target.value)} placeholder="서울지구 / OO대학교" className={INPUT_CLS} />
-              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="이름" required>
+                  <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="홍길동" className={INPUT_CLS} />
+                </Field>
+                <Field label="간사 기수" required>
+                  <input value={form.cohort} onChange={e => set('cohort', e.target.value)} placeholder="40기" className={INPUT_CLS} />
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="소속 지구" required>
+                  <input value={form.district} onChange={e => set('district', e.target.value)} placeholder="서울지구" className={INPUT_CLS} />
+                </Field>
+                <Field label="주 사역 캠퍼스" required>
+                  <input value={form.campus} onChange={e => set('campus', e.target.value)} placeholder="OO대학교" className={INPUT_CLS} />
+                </Field>
+              </div>
               <Field label="연락처" required>
                 <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="010-1234-5678" type="tel" className={INPUT_CLS} />
               </Field>
