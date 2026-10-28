@@ -179,8 +179,6 @@ export default function ForumLanding() {
                 background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%)',
                 animation: 'shimmer 2.5s infinite',
               }} />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/g7-logo.webp" alt="" style={{ width: '2.5rem', height: '2.5rem', objectFit: 'contain' }} />
               입장하기
             </button>
           </>
