@@ -129,7 +129,7 @@ export default function ForumLanding() {
   }
 
   function enterParent() {
-    window.location.href = '/home'
+    window.location.href = '/forum/home'
   }
 
   function enterTeacher() {
@@ -139,7 +139,7 @@ export default function ForumLanding() {
       if (FULL.includes(name)) {
         setMode('special')
       } else {
-        window.location.href = '/admin'
+        window.location.href = '/forum/admin'
       }
     } else {
       setMode('teacher')
@@ -346,7 +346,7 @@ function TeacherLogin({ onBack }: { onBack: () => void }) {
       return
     }
     saveAuth(name.trim())
-    window.location.href = '/admin'
+    window.location.href = '/forum/admin'
   }
 
   if (isNamiae) {
@@ -394,12 +394,12 @@ function SpecialMenu({ name, onBack }: { name: string; onBack: () => void }) {
         <p className="text-[#0369a1] font-black text-xl">👋 {name} {getHonorific(name)}</p>
         <p className="text-black/40 text-xs mt-1">어디로 이동할까요?</p>
       </div>
-      <button onClick={() => { window.location.href = '/admin' }}
+      <button onClick={() => { window.location.href = '/forum/admin' }}
         className="w-full bg-white py-5 rounded-2xl font-bold text-[#0369a1] text-base border border-[#0284c7]/25 hover:border-[#0284c7]/50 transition-all"
         style={{ boxShadow: '0 2px 8px rgba(3,105,161,0.1)' }}>
         ⚔️ 선생님 관리 페이지
       </button>
-      <button onClick={() => { window.location.href = '/ledger' }}
+      <button onClick={() => { window.location.href = '/forum/ledger' }}
         className="w-full py-5 rounded-2xl font-black text-base text-white"
         style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)', boxShadow: '0 4px 16px rgba(3,105,161,0.3)' }}>
         💰 회계선생님 전용

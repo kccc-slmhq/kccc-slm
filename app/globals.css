@@ -22,3 +22,11 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.text-gold { color: #c07d1a; }
+.bg-adventure { background: linear-gradient(135deg, #d0eaff 0%, #b8d9ff 50%, #d0eaff 100%); }
+.hero-gradient { background: linear-gradient(to bottom, transparent 0%, transparent 40%, rgba(12,26,38,0.7) 75%, #e8f4ff 100%); }
+.card-dark { background: #ffffff; border: 1px solid rgba(3,120,180,0.12); box-shadow: 0 2px 10px rgba(3,105,161,0.07); }
+.btn-gold { background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; font-weight: 700; }
+.btn-gold:hover { background: linear-gradient(135deg, #0ea5e9, #0284c7); }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
