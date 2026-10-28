@@ -147,73 +147,18 @@ export default function ForumLanding() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col"
-      style={{
-        opacity: visible ? 1 : 0, transition: 'opacity 0.5s ease',
-        background: 'linear-gradient(160deg, #1a0a4a 0%, #2d1b69 30%, #1e1060 60%, #0f0830 100%)',
-      }}>
-      {/* 네트워크 패턴 배경 */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 400 700" preserveAspectRatio="xMidYMid slice">
-          <defs>
-            <radialGradient id="dot1" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#4dd9ff" stopOpacity="0.8"/>
-              <stop offset="100%" stopColor="#4dd9ff" stopOpacity="0"/>
-            </radialGradient>
-          </defs>
-          {/* 연결선들 */}
-          <line x1="50" y1="80" x2="200" y2="150" stroke="#4dd9ff" strokeWidth="0.5" opacity="0.4"/>
-          <line x1="200" y1="150" x2="350" y2="60" stroke="#4dd9ff" strokeWidth="0.5" opacity="0.4"/>
-          <line x1="350" y1="60" x2="380" y2="200" stroke="#4dd9ff" strokeWidth="0.5" opacity="0.3"/>
-          <line x1="50" y1="80" x2="100" y2="280" stroke="#4dd9ff" strokeWidth="0.5" opacity="0.3"/>
-          <line x1="100" y1="280" x2="200" y2="150" stroke="#4dd9ff" strokeWidth="0.5" opacity="0.3"/>
-          <line x1="200" y1="150" x2="300" y2="320" stroke="#4dd9ff" strokeWidth="0.5" opacity="0.25"/>
-          <line x1="380" y1="200" x2="300" y2="320" stroke="#4dd9ff" strokeWidth="0.5" opacity="0.25"/>
-          <line x1="20" y1="500" x2="100" y2="280" stroke="#4dd9ff" strokeWidth="0.5" opacity="0.2"/>
-          <line x1="20" y1="500" x2="180" y2="580" stroke="#4dd9ff" strokeWidth="0.5" opacity="0.2"/>
-          <line x1="370" y1="480" x2="300" y2="320" stroke="#4dd9ff" strokeWidth="0.5" opacity="0.2"/>
-          <line x1="370" y1="480" x2="180" y2="580" stroke="#4dd9ff" strokeWidth="0.5" opacity="0.2"/>
-          {/* 원형 패턴 우상단 */}
-          <circle cx="340" cy="60" r="60" fill="none" stroke="#7c5cfc" strokeWidth="0.5" opacity="0.4"/>
-          <circle cx="340" cy="60" r="80" fill="none" stroke="#7c5cfc" strokeWidth="0.5" opacity="0.25"/>
-          <circle cx="340" cy="60" r="100" fill="none" stroke="#7c5cfc" strokeWidth="0.5" opacity="0.15"/>
-          {/* 원형 패턴 좌하단 */}
-          <circle cx="60" cy="640" r="60" fill="none" stroke="#7c5cfc" strokeWidth="0.5" opacity="0.3"/>
-          <circle cx="60" cy="640" r="80" fill="none" stroke="#7c5cfc" strokeWidth="0.5" opacity="0.2"/>
-          {/* 점들 */}
-          <circle cx="50" cy="80" r="3" fill="#4dd9ff" opacity="0.8"/>
-          <circle cx="200" cy="150" r="4" fill="#4dd9ff" opacity="0.9"/>
-          <circle cx="350" cy="60" r="3" fill="#4dd9ff" opacity="0.7"/>
-          <circle cx="380" cy="200" r="2.5" fill="#4dd9ff" opacity="0.6"/>
-          <circle cx="100" cy="280" r="2" fill="#4dd9ff" opacity="0.5"/>
-          <circle cx="300" cy="320" r="5" fill="#4dd9ff" opacity="0.9"/>
-          <circle cx="20" cy="500" r="4" fill="#4dd9ff" opacity="0.8"/>
-          <circle cx="370" cy="480" r="3" fill="#4dd9ff" opacity="0.7"/>
-          <circle cx="180" cy="580" r="2.5" fill="#4dd9ff" opacity="0.6"/>
-        </svg>
-      </div>
+    <div className="min-h-screen flex flex-col relative overflow-hidden"
+      style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.5s ease', background: '#0f0830' }}>
+      {/* 포스터 배경 이미지 */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/forum-poster.webp" alt="" className="absolute inset-0 w-full h-full object-cover object-center" />
+      {/* 하단 페이드 오버레이 */}
+      <div className="absolute inset-0" style={{
+        background: 'linear-gradient(to bottom, transparent 0%, transparent 50%, rgba(15,8,48,0.85) 75%, #0f0830 100%)'
+      }} />
 
       {/* 메인 콘텐츠 */}
-      <div className="relative z-10 flex flex-col flex-1 items-center justify-between px-6 py-12 max-w-sm mx-auto w-full">
-        {/* 상단 헤더 텍스트 */}
-        <div className="w-full text-center space-y-2 mt-4"
-          style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(-16px)', transition: 'all 0.7s ease 0.1s' }}>
-          <p className="text-white/60 text-xs tracking-[0.4em] font-medium uppercase">T E A C H I N G &nbsp; T H E M</p>
-          <p className="font-black text-lg"
-            style={{ background: 'linear-gradient(90deg, #4dd9ff 0%, #a78bfa 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            CCC SLM 교육간사 포럼
-          </p>
-        </div>
-
-        {/* 메인 타이틀 */}
-        <div className="text-center"
-          style={{ opacity: visible ? 1 : 0, transform: visible ? 'scale(1)' : 'scale(0.95)', transition: 'all 0.8s ease 0.2s' }}>
-          <h1 className="font-black text-white leading-none"
-            style={{ fontSize: 'clamp(64px, 22vw, 100px)', textShadow: '0 0 40px rgba(124,92,252,0.5)' }}>
-            가르쳐<br/>지키게<br/>하라!!!
-          </h1>
-        </div>
-
+      <div className="relative z-10 flex flex-col flex-1 items-center justify-end px-6 pb-12 max-w-sm mx-auto w-full">
         {/* 하단 영역 */}
         <div className="w-full space-y-4"
           style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(20px)', transition: 'all 0.7s ease 0.4s' }}>
@@ -233,12 +178,14 @@ export default function ForumLanding() {
                 </div>
               )}
               <button onClick={enterParent}
-                className="w-full py-5 rounded-2xl font-black text-lg relative overflow-hidden text-white"
+                className="w-full py-5 rounded-2xl font-black text-lg relative overflow-hidden text-white flex items-center justify-center gap-3"
                 style={{ background: 'linear-gradient(135deg, #7c5cfc, #4dd9ff)', boxShadow: '0 6px 32px rgba(124,92,252,0.5)' }}>
                 <span className="absolute inset-0 pointer-events-none" style={{
                   background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%)',
                   animation: 'shimmer 2.5s infinite',
                 }} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/g7-logo.webp" alt="" className="w-7 h-7 object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
                 입장하기
               </button>
 
