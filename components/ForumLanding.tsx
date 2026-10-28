@@ -147,26 +147,23 @@ export default function ForumLanding() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col"
+    <div className="fixed inset-0 flex flex-col"
       style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.5s ease', background: '#0f0830' }}>
 
-      {/* 포스터 이미지 — 비율 그대로 */}
+      {/* 포스터 이미지 — 화면 꽉 채우기, 비율 유지 */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/forum-poster.webp" alt="" className="w-full" style={{ display: 'block' }} />
+      <img src="/forum-poster.webp" alt="" className="w-full flex-1 min-h-0" style={{ display: 'block', objectFit: 'cover', objectPosition: 'top' }} />
 
       {/* 버튼 영역 */}
-      <div className="flex flex-col items-center px-6 py-8 max-w-sm mx-auto w-full">
-        {/* 하단 영역 */}
-        <div className="w-full space-y-4"
+      <div className="shrink-0 px-6 py-6 max-w-sm mx-auto w-full"
+        style={{ background: '#0f0830' }}>
+        <div className="w-full space-y-3"
           style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(20px)', transition: 'all 0.7s ease 0.4s' }}>
-          <p className="text-white/50 text-xs text-center leading-relaxed">
-            내가 너희에게 분부한 모든 것을 가르쳐 지키게 하라 (마 28:20a)
-          </p>
 
           {mode === 'home' ? (
             <>
               {regCount !== null && (
-                <div className="flex justify-center">
+                <div className="flex justify-center mb-1">
                   <div className="flex items-center gap-2 px-4 py-2 rounded-full" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
                     <span className="text-white/50 text-xs">현재 등록</span>
                     <span className="font-black text-sm" style={{ background: 'linear-gradient(90deg,#4dd9ff,#a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{regCount}명</span>
@@ -175,36 +172,16 @@ export default function ForumLanding() {
                 </div>
               )}
               <button onClick={enterParent}
-                className="w-full py-5 rounded-2xl font-black text-lg relative overflow-hidden text-white flex items-center justify-center gap-3"
-                style={{ background: 'linear-gradient(135deg, #7c5cfc, #4dd9ff)', boxShadow: '0 6px 32px rgba(124,92,252,0.5)' }}>
+                className="w-full py-5 rounded-2xl font-black relative overflow-hidden text-white flex items-center justify-center gap-3"
+                style={{ background: 'linear-gradient(135deg, #7c5cfc, #4dd9ff)', boxShadow: '0 6px 32px rgba(124,92,252,0.5)', fontSize: '1.75rem' }}>
                 <span className="absolute inset-0 pointer-events-none" style={{
                   background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%)',
                   animation: 'shimmer 2.5s infinite',
                 }} />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/g7-logo.webp" alt="" className="w-7 h-7 object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
+                <img src="/g7-logo.webp" alt="" style={{ width: '1.75rem', height: '1.75rem', objectFit: 'contain' }} />
                 입장하기
               </button>
-
-              {!isInstalled && (
-                (isAndroid && installPrompt) ? (
-                  <>
-                    <button onClick={async () => {
-                      installPrompt.prompt()
-                      const result = await installPrompt.userChoice
-                      if (result.outcome === 'accepted') setInstallPrompt(null)
-                    }}
-                      className="w-full py-3 rounded-2xl text-sm font-bold text-white/50 bg-white/10 border border-white/15 flex items-center justify-center gap-2">
-                      📲 앱으로 설치하기
-                    </button>
-                  </>
-                ) : isIOS ? (
-                  <button onClick={() => setShowIOSGuide(true)}
-                    className="w-full py-3 rounded-2xl text-sm font-bold text-white/50 bg-white/10 border border-white/15 flex items-center justify-center gap-2">
-                    📲 앱으로 설치하기
-                  </button>
-                ) : null
-              )}
             </>
           ) : mode === 'special' ? (
             <SpecialMenu name={typeof window !== 'undefined' ? localStorage.getItem('teacher_name') || '' : ''} onBack={() => setMode('home')} />
