@@ -34,32 +34,18 @@ const SCHEDULE = [
   },
 ]
 
-const DEADLINE = new Date('2026-11-23T00:00:00+09:00')
+const DEADLINE = new Date('2026-11-15T00:00:00+09:00')
 const todayKST = () => new Date().toLocaleDateString('sv', { timeZone: 'Asia/Seoul' })
 
-const PACKING_ITEMS = [
-  { id: 'bible',     emoji: '📖', label: '성경' },
-  { id: 'pen',       emoji: '✏️', label: '필기구' },
-  { id: 'clothes',   emoji: '👕', label: '1박 2일 갈아입을 옷' },
-  { id: 'pajamas',   emoji: '🌙', label: '잠옷' },
-  { id: 'wash',      emoji: '🧴', label: '세면도구 · 수건 2개' },
-  { id: 'bedding',   emoji: '🛏️', label: '개인 침구류' },
-  { id: 'meds',      emoji: '💊', label: '개인약 (개인적으로 먹고 있는 약)' },
-  { id: 'hat',       emoji: '🧢', label: '캡모자 · 선크림 ⭐ 수영장 필수' },
-  { id: 'jacket',    emoji: '🧥', label: '얇은 점퍼' },
-  { id: 'shoes',     emoji: '👟', label: '운동화' },
-  { id: 'aquashoes', emoji: '👡', label: '아쿠아슈즈 ⭐ 수영장 필수' },
-  { id: 'swimsuit',  emoji: '🩱', label: '야외 수영복' },
-  { id: 'charger',   emoji: '🔋', label: '충전기 · 보조 배터리' },
-]
+const PACKING_ITEMS: { id: string; emoji: string; label: string }[] = []
 
 const GRADES = ['초1', '초2', '초3', '초4', '초5', '초6', '선생님', '봉사자']
 const STAFF_GRADES = ['선생님', '봉사자']
 const T_SIZES = ['110', '120', '130', '140', '150', 'SS', 'S', 'M', 'L', 'LL', '3L', '4L']
 
-const ACCOUNT = '7942-10-91370'
+const ACCOUNT = '3333-29-2677428'
 const BANK = '카카오뱅크'
-const HOLDER = '나미애'
+const HOLDER = '박예찬'
 
 const INPUT_CLS = "w-full bg-black/5 border border-black/10 rounded-xl px-4 py-3 text-[#0c1a26] placeholder-black/30 outline-none focus:border-[#d4a843]/50 text-sm"
 
@@ -123,24 +109,6 @@ export default function ForumHome() {
         <InfoTabs activeDay={activeDay} setActiveDay={setActiveDay} />
         <FeeCard />
 
-        {/* 송리스트 */}
-        <section>
-          <h2 className="text-[#0369a1] font-bold text-lg mb-3 flex items-center gap-2">
-            <span>🎵</span> 2026 Songlist
-          </h2>
-          <a href="https://www.youtube.com/playlist?list=PLIJ1EDx19fb1ogApZgNYxa_JDql49InXl"
-            target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-4 card-dark rounded-2xl p-5 active:scale-95 transition-all">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-2xl"
-              style={{ background: 'rgba(255,0,0,0.12)', border: '1px solid rgba(255,0,0,0.25)' }}>🎵</div>
-            <div>
-              <p className="text-[#0c1a26] font-bold">다윗 어드벤처 찬양 모음</p>
-              <p className="text-black/50 text-xs mt-0.5">2026 여름성경학교 Songlist</p>
-              <p className="text-red-500 text-xs font-bold mt-1">YouTube 재생목록 열기 →</p>
-            </div>
-          </a>
-        </section>
-
         {/* 수련회 장소 */}
         <section>
           <h2 className="text-[#0369a1] font-bold text-lg mb-3 flex items-center gap-2">
@@ -160,18 +128,18 @@ export default function ForumHome() {
           </div>
         </section>
 
-        {/* 사진 갤러리 */}
+        {/* 포럼 아카이브 */}
         <section>
           <h2 className="text-[#0369a1] font-bold text-lg mb-3 flex items-center gap-2">
-            <span>📸</span> 사진 갤러리
+            <span>📁</span> 교육간사 포럼 아카이브
           </h2>
-          <a href="https://drive.google.com/drive/folders/1loXVaFR2sBQ--DYFhZPWPtWapXjEYN7y?usp=sharing"
+          <a href="https://drive.google.com/drive/folders/1PXEK9gk8eUhMXJqWHlppsUMrW5oHxO5r?usp=sharing"
             target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-4 card-dark rounded-2xl p-5 active:scale-95 transition-all">
-            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center shrink-0 text-2xl border border-blue-200">🖼️</div>
+            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center shrink-0 text-2xl border border-blue-200">📂</div>
             <div>
-              <p className="text-[#0c1a26] font-bold">현장 사진 보러 가기</p>
-              <p className="text-black/50 text-xs mt-0.5">Google Drive에서 확인하세요</p>
+              <p className="text-[#0c1a26] font-bold">자료 보러 가기</p>
+              <p className="text-black/50 text-xs mt-0.5">포럼 자료 및 아카이브</p>
               <p className="text-[#0369a1] text-xs font-bold mt-1">드라이브 열기 →</p>
             </div>
           </a>
@@ -209,8 +177,8 @@ export default function ForumHome() {
         <NoticeSection />
 
         <footer className="text-center text-black/30 text-xs pb-24 pt-4">
-          <p>2026 별내오륜교회 유초등부</p>
-          <p className="mt-1">문의: 박예찬 목사 010-9062-3349</p>
+          <p>2026 CCC SLM 교육간사 포럼</p>
+          <p className="mt-1">문의: 김양연 간사 010-9154-6113</p>
         </footer>
       </div>
 
@@ -224,10 +192,10 @@ export default function ForumHome() {
             <div className="text-5xl">🔒</div>
             <p className="text-[#0369a1] font-black text-xl">등록이 마감되었습니다</p>
             <p className="text-black/60 text-sm leading-relaxed">
-              2026년 7월 25일자로 등록이 마감되었습니다.<br />
-              추가 등록은 담당 선생님께 문의해주세요.
+              2026년 11월 15일자로 등록이 마감되었습니다.<br />
+              추가 등록을 원하시면 김양연 간사에게 문의해주세요.
             </p>
-            <p className="text-[#0369a1] font-bold text-sm">박예찬 목사 · 010-9062-3349</p>
+            <p className="text-[#0369a1] font-bold text-sm">김양연 간사 · 010-9154-6113</p>
             <button onClick={() => setShowClosed(false)}
               className="w-full btn-gold py-3 rounded-2xl font-bold mt-2">확인</button>
           </div>
@@ -309,18 +277,13 @@ function FeeCard() {
           </div>
           <div className="text-right">
             <p className="text-[#0369a1] font-black text-xl">50,000원</p>
-            <p className="text-black/35 text-xs">1인 기준</p>
           </div>
-        </div>
-        <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5">
-          <p className="text-[#0369a1] font-bold text-sm">👨‍👩‍👧‍👦 형제·자매 함께 등록 시</p>
-          <p className="text-black/60 text-xs mt-0.5">각 10,000원 할인 → <span className="text-[#0369a1] font-bold">1인당 40,000원</span></p>
         </div>
         <button onClick={copyAccount}
           className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${copied ? 'bg-green-500 text-white' : 'bg-[#0369a1] text-white'}`}>
           {copied ? <><span>✓</span> 복사됐어요!</> : <><span>📋</span> 계좌번호 복사</>}
         </button>
-        <p className="text-black/25 text-xs text-center">입금자명을 학생 이름으로 해주세요</p>
+        <p className="text-black/25 text-xs text-center">입금자명을 참여자 이름으로 해주세요</p>
       </div>
     </section>
   )
@@ -399,42 +362,12 @@ function InfoTabs({ activeDay, setActiveDay }: { activeDay: number; setActiveDay
           <InfoRow icon={<span>📅</span>} label="일시" value="2026년 11월 23일(월) ~ 24일(화)" />
           <InfoRow icon={<span>📍</span>} label="장소" value="수원 CCC 회관" />
           <InfoRow icon={<span>✝️</span>} label="주제" value={<>가르쳐 지키게 하라<br /><span className="text-black/40 text-xs font-normal">📖 마태복음 28:20a</span></>} />
+          <InfoRow icon={<span>👥</span>} label="대상" value="SLM 교육간사" />
+          <InfoRow icon={<span>💳</span>} label="회비" value="50,000원" />
         </div>
       )}
       {tab === 1 && (
         <div className="space-y-4">
-          <div className="card-dark rounded-2xl px-4 py-4">
-            <p className="text-black/40 text-xs font-bold mb-3 tracking-widest">전체 일정 한눈에 보기</p>
-            <div className="flex items-start">
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-8 h-8 rounded-full bg-[#e8f4ff] border-2 border-[#0284c7]/30 flex items-center justify-center text-sm">🎬</div>
-                <p className="text-[#0369a1] font-bold text-[10px] mt-1 text-center">8/1</p>
-                <p className="text-black/40 text-[9px] text-center">토</p>
-                <p className="text-black/60 text-[9px] text-center leading-tight mt-0.5">다윗 영화<br/>시청</p>
-              </div>
-              <div className="flex-1 h-px bg-[#0284c7]/20 mt-4" />
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-8 h-8 rounded-full bg-[#e8f4ff] border-2 border-[#0284c7]/30 flex items-center justify-center text-sm">📖</div>
-                <p className="text-[#0369a1] font-bold text-[10px] mt-1 text-center">8/2</p>
-                <p className="text-black/40 text-[9px] text-center">주일</p>
-                <p className="text-black/60 text-[9px] text-center leading-tight mt-0.5">다윗<br/>1과</p>
-              </div>
-              <div className="flex-1 h-px bg-[#0284c7]/20 mt-4" />
-              <div className="flex flex-col items-center" style={{flex: 1.5}}>
-                <div className="w-12 h-8 rounded-full btn-gold flex items-center justify-center text-sm font-black">⛺</div>
-                <p className="text-[#0369a1] font-black text-[10px] mt-1 text-center">8/7~8</p>
-                <p className="text-black/40 text-[9px] text-center">금·토</p>
-                <p className="text-[#0369a1] text-[9px] text-center font-bold leading-tight mt-0.5">성경학교<br/>1박2일</p>
-              </div>
-              <div className="flex-1 h-px bg-[#0284c7]/20 mt-4" />
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-8 h-8 rounded-full bg-[#e8f4ff] border-2 border-[#0284c7]/30 flex items-center justify-center text-sm">📖</div>
-                <p className="text-[#0369a1] font-bold text-[10px] mt-1 text-center">8/9</p>
-                <p className="text-black/40 text-[9px] text-center">주일</p>
-                <p className="text-black/60 text-[9px] text-center leading-tight mt-0.5">다윗<br/>4과</p>
-              </div>
-            </div>
-          </div>
           <div className="flex gap-2">
             {SCHEDULE.map((s, i) => (
               <button key={i} onClick={() => setActiveDay(i)}
@@ -493,7 +426,7 @@ function AskAI() {
     <section>
       <div className="rounded-2xl p-4 space-y-3"
         style={{ background: 'linear-gradient(135deg, #0369a1, #0284c7)', boxShadow: '0 4px 20px rgba(3,105,161,0.25)' }}>
-        <p className="text-white font-black text-base">성경학교 AI — 무엇이든 물어보세요! ✨</p>
+        <p className="text-white font-black text-base">교육간사 포럼 AI — 무엇이든 물어보세요! ✨</p>
         <div className="flex gap-2 items-center">
           <input value={question} onChange={e => setQuestion(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && ask()}
@@ -572,8 +505,8 @@ function FloatingRegisterBtn({ onClick }: { onClick: () => void }) {
       <button onClick={onClick}
         className="w-full btn-gold py-4 rounded-2xl font-black text-lg flex flex-col items-center justify-center gap-0.5"
         style={{ boxShadow: '0 8px 36px rgba(2,132,199,0.45)' }}>
-        <span className="flex items-center gap-2"><span>✍️</span> 여름성경학교 등록하기</span>
-        <span className="text-xs font-semibold opacity-80">📅 등록 마감 7월 25일</span>
+        <span className="flex items-center gap-2"><span>✍️</span> 교육간사포럼 등록하기</span>
+        <span className="text-xs font-semibold opacity-80">📅 등록 마감 11월 15일</span>
       </button>
     </div>
   )
@@ -718,8 +651,8 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
           <>
             <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-black/5 shrink-0">
               <div>
-                <h2 className="text-[#0369a1] font-black text-xl">✍️ 여름성경학교 등록</h2>
-                <p className="text-black/40 text-xs mt-0.5">2026 다윗 어드벤처 · 별내오륜교회 유초등부</p>
+                <h2 className="text-[#0369a1] font-black text-xl">✍️ 교육간사포럼 등록</h2>
+                <p className="text-black/40 text-xs mt-0.5">2026 CCC SLM 교육간사 포럼</p>
               </div>
               <button onClick={onClose} className="text-black/40 text-3xl leading-none pb-1">×</button>
             </div>
@@ -839,7 +772,7 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
                 : <><span className="font-bold">{participants[0]?.name}</span> 학생의 등록이 완료되었습니다.</>
               }
             </p>
-            <p className="text-black/30 text-xs mt-4">수집된 개인정보는 행사 종료 후 즉시 폐기됩니다.<br/>문의: 박예찬 목사 010-9062-3349</p>
+            <p className="text-black/30 text-xs mt-4">수집된 개인정보는 행사 종료 후 즉시 폐기됩니다.<br/>문의: 김양연 간사 010-9154-6113</p>
             <button onClick={onClose} className="mt-6 btn-gold px-8 py-3 rounded-xl font-bold">확인</button>
           </div>
         )}
