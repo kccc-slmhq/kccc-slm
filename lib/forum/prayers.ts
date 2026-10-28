@@ -75,7 +75,7 @@ export function getTodayStr() {
 export function getDday() {
   const todayStr = getTodayStr()
   const todayMid = new Date(`${todayStr}T00:00:00`)
-  const target = new Date('2026-08-07T00:00:00')
+  const target = new Date('2026-11-23T00:00:00')
   const diff = Math.ceil((target.getTime() - todayMid.getTime()) / (1000 * 60 * 60 * 24))
   if (diff > 0) return `D-${diff}`
   if (diff === 0) return 'D-Day 🎉'

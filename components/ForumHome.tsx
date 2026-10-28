@@ -2,42 +2,40 @@
 
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { toggleBgm, isBgmPlaying, pauseBgm } from '@/lib/forum/audio'
 import { PRAYERS, getTodayStr, getDday } from '@/lib/forum/prayers'
 
 const SCHEDULE = [
   {
-    day: '1일차', date: '8월 7일 (금)',
+    day: '1일차', date: '11월 23일 (월)',
     items: [
-      { time: '11:30', label: '교회 출발 (점심 식사 후 집결)' },
-      { time: '13:00', label: '도착 및 숙소 배정' },
-      { time: '14:00', label: 'OT 및 개회예배 (다윗 2과)' },
-      { time: '15:30', label: '다윗 어드벤처' },
-      { time: '17:00', label: '저녁식사' },
-      { time: '19:30', label: '저녁예배 (다윗 3과)' },
-      { time: '21:00', label: '공과 및 간식' },
-      { time: '22:00', label: '셀러브레이션' },
-      { time: '23:00', label: '취침' },
+      { time: '12:00', label: '등록' },
+      { time: '14:00', label: '축복의 시간 & 찬양' },
+      { time: '14:20', label: '메시지' },
+      { time: '14:40', label: '캠퍼스 학생 현황 발표' },
+      { time: '15:30', label: '휴식 시간' },
+      { time: '15:50', label: '지구별 교육 커리 발표' },
+      { time: '16:50', label: '전국 SLM 교육 커리 요약 정리' },
+      { time: '17:30', label: '저녁 식사' },
+      { time: '19:00', label: '나눔 질문 및 설문 결과 발표' },
+      { time: '19:30', label: 'AI를 통한 교육 컨텐츠 개발' },
+      { time: '20:50', label: '광고 및 마무리' },
     ],
   },
   {
-    day: '2일차', date: '8월 8일 (토)',
+    day: '2일차', date: '11월 24일 (화)',
     items: [
-      { time: '07:30', label: '기상 미션' },
-      { time: '08:00', label: '반별 모임 및 식사' },
-      { time: '08:30', label: '떠날 준비' },
-      { time: '10:00', label: '수영장 🏊' },
-      { time: '15:00', label: '씻고 떠날 준비' },
-      { time: '16:00', label: '교회로 출발' },
-      { time: '17:00', label: '집으로!' },
+      { time: '08:00', label: '개인 경건의 시간 및 아침 식사' },
+      { time: '09:00', label: '나눔 및 설문 결과 발표' },
+      { time: '09:40', label: '순모임에 관한 강의' },
+      { time: '11:00', label: '휴식' },
+      { time: '11:20', label: 'Grow DiP' },
+      { time: '11:50', label: '기도 / 광고 및 마무리' },
     ],
   },
 ]
 
-const DEADLINE = new Date('2026-07-26T00:00:00+09:00')
+const DEADLINE = new Date('2026-11-23T00:00:00+09:00')
 const todayKST = () => new Date().toLocaleDateString('sv', { timeZone: 'Asia/Seoul' })
-
-const PROMO_VIDEO_ID = 'c1iILJZGy6Y'
 
 const PACKING_ITEMS = [
   { id: 'bible',     emoji: '📖', label: '성경' },
@@ -69,22 +67,15 @@ export default function ForumHome() {
   const [activeDay, setActiveDay] = useState(0)
   const [showModal, setShowModal] = useState(false)
   const [showClosed, setShowClosed] = useState(false)
-  const [playing, setPlaying] = useState(false)
   const [regOverride, setRegOverride] = useState(false)
 
   useEffect(() => {
-    setPlaying(isBgmPlaying())
     const supabase = createClient()
     supabase.from('announcements').select('content').eq('title', '__reg_open__').maybeSingle()
       .then(({ data }) => { if (data && data.content === todayKST()) setRegOverride(true) })
   }, [])
 
   const isClosed = !regOverride && new Date() >= DEADLINE
-
-  function handleToggleBgm() {
-    toggleBgm()
-    setPlaying(isBgmPlaying())
-  }
 
   return (
     <div className="min-h-screen bg-[#e8f4ff]">
@@ -102,18 +93,17 @@ export default function ForumHome() {
       <div className="px-4 py-6 max-w-lg mx-auto space-y-5">
 
         <AskAI />
-        <PromoVideo />
 
         {/* 디데이 + 오늘의 기도제목 */}
         <section className="card-dark rounded-2xl p-5 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-black/40 text-xs">여름성경학교까지</p>
+              <p className="text-black/40 text-xs">교육간사 포럼까지</p>
               <p className="text-[#0369a1] font-black text-3xl mt-0.5">{getDday()}</p>
             </div>
             <div className="text-right">
-              <p className="text-black/40 text-xs">2026년 8월 7일</p>
-              <p className="text-black/60 text-xs">춘천 CCC 아카데미하우스</p>
+              <p className="text-black/40 text-xs">2026년 11월 23일</p>
+              <p className="text-black/60 text-xs">수원 CCC 회관</p>
             </div>
           </div>
           {(() => {
@@ -157,24 +147,14 @@ export default function ForumHome() {
             <span>📍</span> 수련회 장소
           </h2>
           <div className="grid grid-cols-2 gap-3">
-            <a href="https://map.naver.com/v5/search/춘천%20CCC%20아카데미하우스"
+            <a href="https://map.naver.com/v5/search/수원%20CCC%20회관"
               target="_blank" rel="noopener noreferrer"
               className="flex flex-col gap-2 card-dark rounded-2xl p-4 active:scale-95 transition-all">
               <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-xl border border-green-200">🗺️</div>
               <div>
-                <p className="text-[#0c1a26] font-bold text-sm leading-snug">춘천 CCC<br/>아카데미하우스</p>
-                <p className="text-black/40 text-xs mt-0.5">강원도 춘천시 후평동</p>
+                <p className="text-[#0c1a26] font-bold text-sm leading-snug">수원 CCC 회관</p>
+                <p className="text-black/40 text-xs mt-0.5">경기도 수원시</p>
                 <p className="text-green-600 text-xs font-bold mt-1">네이버 지도 →</p>
-              </div>
-            </a>
-            <a href="https://map.naver.com/v5/search/엘리시안강촌%20수영장"
-              target="_blank" rel="noopener noreferrer"
-              className="flex flex-col gap-2 card-dark rounded-2xl p-4 active:scale-95 transition-all">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-xl border border-blue-200">🏊</div>
-              <div>
-                <p className="text-[#0c1a26] font-bold text-sm leading-snug">엘리시안 강촌<br/>수영장</p>
-                <p className="text-black/40 text-xs mt-0.5">강원도 춘천시 남산면</p>
-                <p className="text-blue-600 text-xs font-bold mt-1">네이버 지도 →</p>
               </div>
             </a>
           </div>
@@ -233,16 +213,6 @@ export default function ForumHome() {
           <p className="mt-1">문의: 박예찬 목사 010-9062-3349</p>
         </footer>
       </div>
-
-      {/* 음악 버튼 */}
-      <button onClick={handleToggleBgm}
-        className="fixed top-4 right-4 z-50 w-9 h-9 rounded-full flex items-center justify-center text-base transition-all"
-        style={{
-          background: 'rgba(0,0,0,0.35)',
-          backdropFilter: 'blur(6px)',
-          border: playing ? '1px solid rgba(212,168,67,0.6)' : '1px solid rgba(0,0,0,0.10)',
-          color: playing ? '#d4a843' : 'rgba(255,255,255,0.5)',
-        }}>♫</button>
 
       <FloatingRegisterBtn onClick={() => isClosed ? setShowClosed(true) : setShowModal(true)} />
 
@@ -426,11 +396,9 @@ function InfoTabs({ activeDay, setActiveDay }: { activeDay: number; setActiveDay
       </div>
       {tab === 0 && (
         <div className="card-dark rounded-2xl p-5 space-y-3">
-          <InfoRow icon={<span>👑</span>} label="일시" value="2026년 8월 7일(금) ~ 8일(토)" />
-          <InfoRow icon={<span>👑</span>} label="장소" value="춘천 CCC 아카데미하우스" />
-          <InfoRow icon={<span>👑</span>} label="주제" value={<>다윗 어드벤처 (Adventure)<br /><span className="text-black/40 text-xs font-normal">📖 사도행전 13:22</span></>} />
-          <InfoRow icon={<span>👑</span>} label="대상" value="초등학교 1학년 ~ 6학년" />
-          <InfoRow icon={<span>👑</span>} label="회비" value="50,000원" />
+          <InfoRow icon={<span>📅</span>} label="일시" value="2026년 11월 23일(월) ~ 24일(화)" />
+          <InfoRow icon={<span>📍</span>} label="장소" value="수원 CCC 회관" />
+          <InfoRow icon={<span>✝️</span>} label="주제" value={<>가르쳐 지키게 하라<br /><span className="text-black/40 text-xs font-normal">📖 마태복음 28:20a</span></>} />
         </div>
       )}
       {tab === 1 && (
@@ -555,22 +523,6 @@ function AskAI() {
   )
 }
 
-function PromoVideo() {
-  if (!PROMO_VIDEO_ID) return null
-  return (
-    <section>
-      <h2 className="text-[#0369a1] font-bold text-lg mb-3 flex items-center gap-2">
-        <span>🎬</span> 홍보 영상
-      </h2>
-      <div className="rounded-2xl overflow-hidden" style={{ aspectRatio: '16/9' }}>
-        <iframe className="w-full h-full"
-          src={`https://www.youtube.com/embed/${PROMO_VIDEO_ID}?rel=0&playsinline=1&modestbranding=1`}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen />
-      </div>
-    </section>
-  )
-}
 
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
   return (
