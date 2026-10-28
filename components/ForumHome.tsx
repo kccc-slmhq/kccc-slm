@@ -815,22 +815,6 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
                       placeholder="알레르기 식단, 특이 질환, 룸메이트 관련 사전 조율 요청 사항 (없으면 비워두세요)"
                       rows={3} className={INPUT_CLS + ' resize-none'} />
                   </Field>
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
-                    <p className="text-white/60 text-xs font-bold">📋 개인정보 수집·이용 동의 (필수)</p>
-                    <p className="text-white/40 text-xs leading-relaxed">
-                      수집 목적: 행사 운영, 비상 연락, 숙소/차량 배정{'\n'}
-                      수집 항목: 성명, 연락처 등{'\n'}
-                      보유 기간: 포럼 종료 후 <span className="text-[#a78bfa] font-bold">즉시 파기</span>
-                    </p>
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <div onClick={() => set('consent', !form.consent)}
-                        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${form.consent ? 'bg-[#7c5cfc] border-[#7c5cfc]' : 'border-white/30 bg-transparent'}`}>
-                        {form.consent && <span className="text-white text-xs font-black">✓</span>}
-                      </div>
-                      <span className="text-white/80 text-sm">동의합니다</span>
-                    </label>
-                    <p className="text-white/25 text-xs">* 동의하지 않으실 경우 참가가 제한됩니다</p>
-                  </div>
                 </>
               )}
 
@@ -856,6 +840,24 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
                     <textarea value={form.questions} onChange={e => set('questions', e.target.value)}
                       placeholder="자유롭게 적어주세요" rows={3} className={INPUT_CLS + ' resize-none'} />
                   </Field>
+                  {isAttending && (
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
+                      <p className="text-white/60 text-xs font-bold">📋 개인정보 수집·이용 동의 (필수)</p>
+                      <p className="text-white/40 text-xs leading-relaxed">
+                        수집 목적: 행사 운영, 비상 연락, 숙소/차량 배정{'\n'}
+                        수집 항목: 성명, 연락처 등{'\n'}
+                        보유 기간: 포럼 종료 후 <span className="text-[#a78bfa] font-bold">즉시 파기</span>
+                      </p>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <div onClick={() => set('consent', !form.consent)}
+                          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${form.consent ? 'bg-[#7c5cfc] border-[#7c5cfc]' : 'border-white/30 bg-transparent'}`}>
+                          {form.consent && <span className="text-white text-xs font-black">✓</span>}
+                        </div>
+                        <span className="text-white/80 text-sm">동의합니다</span>
+                      </label>
+                      <p className="text-white/25 text-xs">* 동의하지 않으실 경우 참가가 제한됩니다</p>
+                    </div>
+                  )}
                 </>
               )}
             </div>
