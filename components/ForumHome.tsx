@@ -53,10 +53,6 @@ function formatPhone(v: string) {
   return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7)
 }
 
-function formatCohort(v: string) {
-  const n = v.replace(/[^0-9]/g, '')
-  return n ? n + '기' : ''
-}
 
 export default function ForumHome() {
   const [activeDay, setActiveDay] = useState(0)
@@ -730,15 +726,21 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
             </div>
             <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5">
 
-              <SectionHeader label="섹션 1 · 기본 정보 및 참석 여부" />
+              <SectionHeader label="기본 정보 및 참석 여부" />
               <div className="grid grid-cols-2 gap-3">
                 <Field label="이름" required>
                   <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="홍길동" className={INPUT_CLS} />
                 </Field>
                 <Field label="간사 기수" required>
-                  <input value={form.cohort}
-                    onChange={e => set('cohort', formatCohort(e.target.value))}
-                    placeholder="40기" inputMode="numeric" className={INPUT_CLS} />
+                  <div className="relative">
+                    <input value={form.cohort}
+                      onChange={e => set('cohort', e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="40" inputMode="numeric" className={INPUT_CLS}
+                      style={form.cohort ? { paddingRight: '2.5rem' } : undefined} />
+                    {form.cohort && (
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-base pointer-events-none">기</span>
+                    )}
+                  </div>
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -749,11 +751,6 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
                   <input value={form.campus} onChange={e => set('campus', e.target.value)} placeholder="OO대학교" className={INPUT_CLS} />
                 </Field>
               </div>
-              <Field label="연락처" required>
-                <input value={form.phone}
-                  onChange={e => set('phone', formatPhone(e.target.value))}
-                  placeholder="010-1234-5678" type="tel" inputMode="numeric" className={INPUT_CLS} />
-              </Field>
               <Field label="이번 교육간사 포럼에 참석하십니까?" required>
                 <div className="grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => set('attending', true)}
@@ -769,7 +766,7 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
 
               {isAbsent && (
                 <>
-                  <SectionHeader label="섹션 2 · 불참 사유" />
+                  <SectionHeader label="불참 사유" />
                   <Field label="간략한 불참 사유를 남겨주세요" required hint="다음 포럼 기획에 참고합니다">
                     <textarea value={form.absent_reason} onChange={e => set('absent_reason', e.target.value)}
                       placeholder="예: 타 사역 일정 중복, 개인 연차, 건강상 이유 등" rows={3} className={INPUT_CLS + ' resize-none'} />
@@ -779,23 +776,12 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
 
               {isAttending && (
                 <>
-                  <SectionHeader label="섹션 3 · 참석자 상세 정보" />
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
-                    <p className="text-white/60 text-xs font-bold">📋 개인정보 수집·이용 동의 (필수)</p>
-                    <p className="text-white/40 text-xs leading-relaxed">
-                      수집 목적: 행사 운영, 비상 연락, 숙소/차량 배정{'\n'}
-                      수집 항목: 성명, 연락처 등{'\n'}
-                      보유 기간: 포럼 종료 후 <span className="text-[#a78bfa] font-bold">즉시 파기</span>
-                    </p>
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <div onClick={() => set('consent', !form.consent)}
-                        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${form.consent ? 'bg-[#7c5cfc] border-[#7c5cfc]' : 'border-white/30 bg-transparent'}`}>
-                        {form.consent && <span className="text-white text-xs font-black">✓</span>}
-                      </div>
-                      <span className="text-white/80 text-sm">동의합니다</span>
-                    </label>
-                    <p className="text-white/25 text-xs">* 동의하지 않으실 경우 참가가 제한됩니다</p>
-                  </div>
+                  <SectionHeader label="참석자 상세 정보" />
+                  <Field label="연락처" required>
+                    <input value={form.phone}
+                      onChange={e => set('phone', formatPhone(e.target.value))}
+                      placeholder="010-1234-5678" type="tel" inputMode="numeric" className={INPUT_CLS} />
+                  </Field>
                   <Field label="성별" required hint="숙소 배정용">
                     <div className="grid grid-cols-2 gap-2">
                       {['남성', '여성'].map(opt => (
@@ -829,12 +815,28 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
                       placeholder="알레르기 식단, 특이 질환, 룸메이트 관련 사전 조율 요청 사항 (없으면 비워두세요)"
                       rows={3} className={INPUT_CLS + ' resize-none'} />
                   </Field>
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
+                    <p className="text-white/60 text-xs font-bold">📋 개인정보 수집·이용 동의 (필수)</p>
+                    <p className="text-white/40 text-xs leading-relaxed">
+                      수집 목적: 행사 운영, 비상 연락, 숙소/차량 배정{'\n'}
+                      수집 항목: 성명, 연락처 등{'\n'}
+                      보유 기간: 포럼 종료 후 <span className="text-[#a78bfa] font-bold">즉시 파기</span>
+                    </p>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <div onClick={() => set('consent', !form.consent)}
+                        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${form.consent ? 'bg-[#7c5cfc] border-[#7c5cfc]' : 'border-white/30 bg-transparent'}`}>
+                        {form.consent && <span className="text-white text-xs font-black">✓</span>}
+                      </div>
+                      <span className="text-white/80 text-sm">동의합니다</span>
+                    </label>
+                    <p className="text-white/25 text-xs">* 동의하지 않으실 경우 참가가 제한됩니다</p>
+                  </div>
                 </>
               )}
 
               {(isAttending || isAbsent) && (
                 <>
-                  <SectionHeader label="섹션 4 · 현장 사역 진단 및 기대 (선택)" />
+                  <SectionHeader label="현장 사역 진단 및 기대 (선택)" />
                   <p className="text-white/40 text-xs -mt-2">포럼 기획 및 분반 토의 방향을 정하는 데 큰 도움이 됩니다. 가급적 응답 부탁드립니다.</p>
                   <Field label="현재 담당 사역지에서 겪는 가장 큰 고민 (복수 선택 가능)">
                     <div className="space-y-2">
@@ -850,11 +852,7 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
                         placeholder="기타 (직접 입력)" className={INPUT_CLS + ' mt-1'} />
                     </div>
                   </Field>
-                  <Field label="이번 포럼에서 기대하는 점" hint="선택">
-                    <textarea value={form.desired_topic} onChange={e => set('desired_topic', e.target.value)}
-                      placeholder="자유롭게 서술해 주세요" rows={3} className={INPUT_CLS + ' resize-none'} />
-                  </Field>
-                  <Field label="본부 교육 리더십에게 미리 묻고 싶은 질문 또는 기대" hint="선택">
+                  <Field label="SLM HQ에 하고 싶은 말" hint="선택">
                     <textarea value={form.questions} onChange={e => set('questions', e.target.value)}
                       placeholder="자유롭게 적어주세요" rows={3} className={INPUT_CLS + ' resize-none'} />
                   </Field>
