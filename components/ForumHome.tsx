@@ -153,13 +153,13 @@ export default function ForumHome() {
               <div className="grid grid-cols-2 gap-3">
                 <a href="https://play.google.com/store/apps/details?id=com.hanwha.hima&hl=ko"
                   target="_blank" rel="noopener noreferrer"
-                  className="flex items-center justify-center rounded-xl py-3 font-bold text-sm transition-all active:scale-95 bg-[#7c5cfc] text-white">
-                  Android
+                  className="flex items-center justify-center gap-1.5 rounded-xl py-3 font-bold text-sm transition-all active:scale-95 bg-[#7c5cfc] text-white">
+                  🤖 Android
                 </a>
                 <a href="https://apps.apple.com/kr/app/%ED%95%9C%ED%99%94%EC%86%90%EB%B3%B4-%EB%AA%A8%EB%B0%94%EC%9D%BC-%EC%95%B1/id959889713"
                   target="_blank" rel="noopener noreferrer"
-                  className="flex items-center justify-center rounded-xl py-3 font-bold text-sm transition-all active:scale-95 bg-[#0c1a26] text-white">
-                  iPhone
+                  className="flex items-center justify-center gap-1.5 rounded-xl py-3 font-bold text-sm transition-all active:scale-95 bg-[#7c5cfc] text-white">
+                  🍎 iPhone
                 </a>
               </div>
             </div>
