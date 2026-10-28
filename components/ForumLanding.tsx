@@ -1,214 +1,396 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+
+const TEACHERS = [
+  '김나미에', '오연희', '신대일주', '박예솔', '김은서',
+  '정나연', '오소람', '김나현', '이은경', '신대소름',
+  '이수민', '김예은', '최현진', '유서린',
+]
+const TEACHER_PW = '9182'
+
+function saveAuth(name: string) {
+  localStorage.setItem('teacher_name', name)
+  localStorage.setItem('teacher_authed', '1')
+}
+function getAuth() {
+  return {
+    authed: localStorage.getItem('teacher_authed') === '1',
+    name: localStorage.getItem('teacher_name') || '',
+  }
+}
+function getHonorific(name: string) {
+  return ['김나미에', '오연희'].includes(name) ? '선생님' : '선생님'
+}
 
 export default function ForumLanding() {
-  const [mounted, setMounted] = useState(false);
+  const [mode, setMode] = useState<'home' | 'teacher' | 'special'>('home')
+  const [visible, setVisible] = useState(false)
+  const [regCount, setRegCount] = useState<number | null>(null)
+  const [hasUnread, setHasUnread] = useState(false)
+  const [noticePopup, setNoticePopup] = useState<{ id: string; title: string; content?: string } | null>(null)
+  const [installPrompt, setInstallPrompt] = useState<{ prompt: () => void; userChoice: Promise<{ outcome: string }> } | null>(null)
+  const [showIOSGuide, setShowIOSGuide] = useState(false)
+  const [unreadQueue, setUnreadQueue] = useState<{ id: string; title: string; content?: string }[]>([])
+  const router = useRouter()
+
+  const isInstalled =
+    typeof window !== 'undefined' &&
+    (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as { standalone?: boolean }).standalone)
+
+  const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent)
+  const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent)
+
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+  const isKakao = /KAKAOTALK|kakaotalk/i.test(ua)
+  const isInAppBrowser = isKakao || /FB_IAB|FBAN|Instagram|Line|NAVER|Whale/i.test(ua)
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('special')) {
+      const { authed, name } = getAuth()
+      if (authed && name) setMode('special')
+    }
+  }, [])
+
+  useEffect(() => {
+    function onBeforeInstall(e: Event) {
+      e.preventDefault()
+      setInstallPrompt(e as unknown as typeof installPrompt)
+    }
+    window.addEventListener('beforeinstallprompt', onBeforeInstall)
+    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall)
+  }, [])
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 80)
+    fetchCount()
+    fetchUnread()
+    return () => clearTimeout(t)
+  }, [])
+
+  async function fetchCount() {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('students').select('id').not('registered_at', 'is', null)
+    if (data) setRegCount(data.length)
+  }
+
+  async function fetchUnread() {
+    const supabase = createClient()
+    const seen = JSON.parse(localStorage.getItem('seen_notices') || '[]')
+    const { data } = await supabase
+      .from('announcements').select('*').eq('is_published', true).order('created_at', { ascending: false })
+    if (data) {
+      const unreadList = data.filter((a: { id: string }) => !seen.includes(a.id))
+      const count = unreadList.length
+      setHasUnread(count > 0)
+      setUnreadQueue(unreadList)
+      if (unreadList.length > 0) setNoticePopup(unreadList[0])
+      if ('setAppBadge' in navigator) {
+        if (count > 0) (navigator as { setAppBadge: (n: number) => void }).setAppBadge(count)
+        else (navigator as { clearAppBadge: () => void }).clearAppBadge()
+      }
+    }
+  }
+
+  function dismissNotice(id: string) {
+    const seen = JSON.parse(localStorage.getItem('seen_notices') || '[]')
+    localStorage.setItem('seen_notices', JSON.stringify([...seen, id]))
+    const remaining = unreadQueue.filter(a => a.id !== id)
+    setUnreadQueue(remaining)
+    setNoticePopup(remaining.length > 0 ? remaining[0] : null)
+    if (remaining.length === 0 && 'clearAppBadge' in navigator)
+      (navigator as { clearAppBadge: () => void }).clearAppBadge()
+  }
+
+  function enterParent() {
+    router.push('/home')
+  }
+
+  function enterTeacher() {
+    const { authed, name } = getAuth()
+    if (authed && name) {
+      const FULL = ['김나미에', '오연희']
+      if (FULL.includes(name)) {
+        setMode('special')
+      } else {
+        router.push('/admin')
+      }
+    } else {
+      setMode('teacher')
+    }
+  }
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        fontFamily: "'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif",
-        overflow: "hidden",
-      }}
-    >
-      {/* Background */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: "linear-gradient(160deg, #0c1445 0%, #1e3a8a 40%, #0284c7 75%, #e8f4ff 100%)",
-        }}
-      />
+    <div className="fixed inset-0 flex flex-col overflow-hidden"
+      style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.5s ease' }}>
+      {/* 9:16 배경 이미지 */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/hero-mobile.png" alt="" className="absolute inset-0 w-full h-full object-cover object-center md:hidden" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/hero-desktop.png" alt="" className="absolute inset-0 w-full h-full object-cover object-center hidden md:block" />
+      {/* 하단 블러 그라디언트 */}
+      <div className="absolute inset-0" style={{
+        background: 'linear-gradient(to bottom, transparent 0%, transparent 45%, rgba(232,244,255,0.85) 72%, #e8f4ff 100%)'
+      }} />
 
-      {/* Content */}
-      <div
-        style={{
-          position: "relative",
-          zIndex: 10,
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "2rem 1.5rem",
-          textAlign: "center",
-          gap: "2rem",
-        }}
-      >
-        {/* Badge */}
-        <div
-          style={{
-            background: "rgba(255,255,255,0.15)",
-            backdropFilter: "blur(8px)",
-            border: "1px solid rgba(255,255,255,0.3)",
-            borderRadius: "9999px",
-            padding: "0.4rem 1.2rem",
-            color: "#e0f2fe",
-            fontSize: "0.85rem",
-            letterSpacing: "0.05em",
-          }}
-        >
-          KCCC 교육간사 포럼
-        </div>
+      {/* 콘텐츠 */}
+      <div className="relative z-10 flex flex-col h-full">
+        <div className="flex-1" />
 
-        {/* Title */}
-        <div>
-          <h1
-            style={{
-              fontSize: "clamp(2rem, 7vw, 3.5rem)",
-              fontWeight: 800,
-              color: "#ffffff",
-              lineHeight: 1.2,
-              marginBottom: "0.75rem",
-              textShadow: "0 2px 16px rgba(0,0,0,0.3)",
-            }}
-          >
-            교육간사 포럼
-          </h1>
-          <p
-            style={{
-              fontSize: "clamp(1rem, 3vw, 1.25rem)",
-              color: "#bae6fd",
-              fontWeight: 400,
-              maxWidth: "28rem",
-              margin: "0 auto",
-              lineHeight: 1.6,
-            }}
-          >
-            날짜 · 장소
-          </p>
-        </div>
-
-        {/* CTA Buttons */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.75rem",
-            width: "100%",
-            maxWidth: "22rem",
-          }}
-        >
-          <button
-            style={{
-              background: "linear-gradient(135deg, #0284c7, #0369a1)",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "1rem",
-              padding: "1rem 2rem",
-              fontSize: "1.1rem",
-              fontWeight: 700,
-              cursor: "pointer",
-              boxShadow: "0 4px 24px rgba(2,132,199,0.4)",
-              transition: "transform 0.1s, box-shadow 0.1s",
-              letterSpacing: "0.02em",
-            }}
-            onMouseDown={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.97)";
-            }}
-            onMouseUp={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
-            }}
-            onTouchStart={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.97)";
-            }}
-            onTouchEnd={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
-            }}
-          >
-            입장하기
-          </button>
-
-          <button
-            style={{
-              background: "rgba(255,255,255,0.12)",
-              color: "#e0f2fe",
-              border: "1.5px solid rgba(255,255,255,0.3)",
-              borderRadius: "1rem",
-              padding: "0.9rem 2rem",
-              fontSize: "1rem",
-              fontWeight: 600,
-              cursor: "pointer",
-              backdropFilter: "blur(8px)",
-              transition: "transform 0.1s",
-              letterSpacing: "0.02em",
-            }}
-            onMouseDown={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.97)";
-            }}
-            onMouseUp={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
-            }}
-            onTouchStart={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.97)";
-            }}
-            onTouchEnd={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
-            }}
-          >
-            자료 보기
-          </button>
-        </div>
-
-        {/* Info cards */}
-        {mounted && (
-          <div
-            style={{
-              display: "flex",
-              gap: "0.75rem",
-              flexWrap: "wrap",
-              justifyContent: "center",
-              marginTop: "0.5rem",
-            }}
-          >
-            {[
-              { label: "일시", value: "미정" },
-              { label: "장소", value: "미정" },
-              { label: "대상", value: "교육간사" },
-            ].map((item) => (
-              <div
-                key={item.label}
-                style={{
-                  background: "rgba(255,255,255,0.1)",
-                  backdropFilter: "blur(8px)",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  borderRadius: "0.75rem",
-                  padding: "0.6rem 1rem",
-                  minWidth: "5.5rem",
-                  textAlign: "center",
-                }}
-              >
-                <div style={{ fontSize: "0.7rem", color: "#93c5fd", marginBottom: "0.2rem" }}>
-                  {item.label}
-                </div>
-                <div style={{ fontSize: "0.9rem", color: "#ffffff", fontWeight: 600 }}>
-                  {item.value}
+        <div className="px-5 pb-12 space-y-3 max-w-md mx-auto w-full"
+          style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(20px)', transition: 'all 0.7s ease 0.3s' }}>
+          {mode === 'home' ? (
+            <>
+              {/* 등록 인원 뱃지 */}
+              <div className="flex justify-center mb-1">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 shadow-sm border border-[#0284c7]/20">
+                  <span className="text-sm">✅</span>
+                  <span className="text-black/50 text-xs">현재 등록</span>
+                  <span className="text-[#0369a1] font-black text-sm">{regCount === null ? '-' : regCount}명</span>
+                  <span className="text-black/30 text-xs">/ 50명</span>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+              <p className="text-black/50 text-xs text-center tracking-widest">별내오륜 교회학교 여름성경학교</p>
+              <button onClick={enterParent}
+                className="w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 relative overflow-hidden text-white"
+                style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)', boxShadow: '0 6px 24px rgba(3,105,161,0.4)' }}>
+                <span className="absolute inset-0 pointer-events-none" style={{
+                  background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%)',
+                  animation: 'shimmer 2.5s infinite',
+                }} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/crown-white.png" alt="" className="w-6 h-6 object-contain" /><span>학부모 입장 · 성경학교 입장</span>
+              </button>
+              <button onClick={enterTeacher}
+                className="w-full py-4 rounded-2xl font-bold text-base text-[#0369a1] bg-white/90 border border-[#0284c7]/25 transition-all"
+                style={{ boxShadow: '0 2px 8px rgba(3,105,161,0.12)' }}>
+                교사 입장
+              </button>
+
+              {/* 앱 설치 버튼 */}
+              {!isInstalled && (
+                (isAndroid && installPrompt) ? (
+                  <>
+                    <button onClick={async () => {
+                      installPrompt.prompt()
+                      const result = await installPrompt.userChoice
+                      if (result.outcome === 'accepted') setInstallPrompt(null)
+                    }}
+                      className="w-full py-3 rounded-2xl text-sm font-bold text-black/50 bg-white/60 border border-black/10 flex items-center justify-center gap-2">
+                      📲 홈 화면에 바로가기 추가
+                    </button>
+                    <p className="text-black/35 text-xs text-center px-2">앱을 설치 하면 더 좋은 경험을 할 수 있어요 — 매번 열때마다 <strong>&quot;홈 화면에 추가하기&quot;</strong>를 눌러도 되지만 불편해요 ✅</p>
+                  </>
+                ) : isIOS ? (
+                  <button onClick={() => setShowIOSGuide(true)}
+                    className="w-full py-3 rounded-2xl text-sm font-bold text-black/50 bg-white/60 border border-black/10 flex items-center justify-center gap-2">
+                    📲 홈 화면에 바로가기 추가
+                  </button>
+                ) : null
+              )}
+            </>
+          ) : mode === 'special' ? (
+            <SpecialMenu name={typeof window !== 'undefined' ? localStorage.getItem('teacher_name') || '' : ''} onBack={() => setMode('home')} />
+          ) : (
+            <TeacherLogin onBack={() => setMode('home')} />
+          )}
+        </div>
       </div>
 
-      {/* Bottom gradient fade */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: "6rem",
-          background: "linear-gradient(to top, rgba(232,244,255,0.15), transparent)",
-          pointerEvents: "none",
-        }}
-      />
+      {/* iOS 설치 안내 팝업 */}
+      {showIOSGuide && (
+        <div className="fixed inset-0 z-[200] flex items-end justify-center px-4 pb-6"
+          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}
+          onClick={() => setShowIOSGuide(false)}>
+          <div className="bg-white rounded-3xl w-full max-w-sm p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <p className="text-[#0369a1] font-black text-lg text-center">📲 홈 화면에 바로가기 추가</p>
+
+            {isInAppBrowser ? (
+              <>
+                <p className="text-black/50 text-xs text-center">카카오톡 등 앱에서는 Safari로 열어야 설치 가능해요</p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 bg-[#e8f4ff] rounded-2xl p-3">
+                    <span className="text-xl shrink-0">1️⃣</span>
+                    <p className="text-black/70 text-sm">오른쪽 상단 <strong>점 세개 메뉴 ···</strong> 탭</p>
+                  </div>
+                  <div className="flex items-center gap-3 bg-[#e8f4ff] rounded-2xl p-3">
+                    <span className="text-xl shrink-0">2️⃣</span>
+                    <p className="text-black/70 text-sm"><strong>&quot;Safari로 열기&quot;</strong> 선택</p>
+                  </div>
+                  <div className="flex items-center gap-3 bg-[#e8f4ff] rounded-2xl p-3">
+                    <span className="text-xl shrink-0">3️⃣</span>
+                    <p className="text-black/70 text-sm">Safari에서 점 세개 ··· → <strong>&quot;홈 화면에 추가하기&quot;</strong></p>
+                  </div>
+                </div>
+                <CopyURLButton />
+              </>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 bg-[#e8f4ff] rounded-2xl p-3">
+                  <span className="text-xl shrink-0">1️⃣</span>
+                  <p className="text-black/70 text-sm">하단 메뉴 바 <strong>··· 공유</strong> 탭</p>
+                </div>
+                <div className="flex items-center gap-3 bg-[#e8f4ff] rounded-2xl p-3">
+                  <span className="text-xl shrink-0">2️⃣</span>
+                  <p className="text-black/70 text-sm"><strong>공유</strong> 선택</p>
+                </div>
+                <div className="flex items-center gap-3 bg-[#e8f4ff] rounded-2xl p-3">
+                  <span className="text-xl shrink-0">3️⃣</span>
+                  <p className="text-black/70 text-sm"><strong>&quot;홈 화면에 추가하기&quot;</strong> 선택 후 추가!</p>
+                </div>
+              </div>
+            )}
+            <button onClick={() => setShowIOSGuide(false)}
+              className="w-full py-3 rounded-2xl font-bold"
+              style={{ background: 'linear-gradient(135deg,#0284c7,#0369a1)', color: '#fff' }}>닫기</button>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(200%); }
+        }
+      `}</style>
+
+      {/* 공지 팝업 */}
+      {noticePopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={() => dismissNotice(noticePopup.id)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="relative w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">📢</span>
+              <span className="text-[#0369a1] font-black text-base">공지사항</span>
+            </div>
+            <p className="font-bold text-[#1a1008] text-sm mb-2">{noticePopup.title}</p>
+            {noticePopup.content && <p className="text-black/60 text-sm leading-relaxed mb-4">{noticePopup.content}</p>}
+            <button onClick={() => dismissNotice(noticePopup.id)}
+              className="w-full py-3 rounded-2xl font-bold text-white text-sm"
+              style={{ background: 'linear-gradient(135deg,#0284c7,#0369a1)' }}>
+              확인했어요
+            </button>
+          </div>
+        </div>
+      )}
     </div>
-  );
+  )
+}
+
+function CopyURLButton() {
+  const [copied, setCopied] = useState(false)
+  const url = 'https://vbs2026.vercel.app'
+  function copy() {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+  return (
+    <div className="bg-black/5 rounded-2xl p-3 space-y-2">
+      <p className="text-black/40 text-xs text-center">또는 이 주소를 복사해 Safari에서 직접 열기</p>
+      <div className="flex gap-2 items-center">
+        <p className="flex-1 text-[#0369a1] font-mono text-xs bg-white rounded-xl px-3 py-2 truncate">{url}</p>
+        <button onClick={copy}
+          className={`px-3 py-2 rounded-xl text-xs font-bold shrink-0 transition-all ${copied ? 'bg-green-500 text-white' : 'bg-[#0369a1] text-white'}`}>
+          {copied ? '복사됨!' : '복사'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function TeacherLogin({ onBack }: { onBack: () => void }) {
+  const [name, setName] = useState('')
+  const [pw, setPw] = useState('')
+  const [error, setError] = useState('')
+  const [isNamiae, setIsNamiae] = useState(false)
+  const router = useRouter()
+
+  function login() {
+    if ((name.trim() === '김나미에' || name.trim() === '오연희') && pw === TEACHER_PW) {
+      saveAuth(name.trim())
+      setIsNamiae(true)
+      return
+    }
+    if (!TEACHERS.includes(name.trim())) {
+      setError('이름을 목록에서 선택해주세요')
+      return
+    }
+    if (pw !== TEACHER_PW) {
+      setError('비밀번호가 맞지 않아요')
+      return
+    }
+    saveAuth(name.trim())
+    router.push('/admin')
+  }
+
+  if (isNamiae) {
+    return <SpecialMenu name={typeof window !== 'undefined' ? localStorage.getItem('teacher_name') || '' : ''} onBack={onBack} />
+  }
+
+  const INPUT = "w-full bg-white border border-[#0284c7]/25 rounded-xl px-4 py-3.5 text-[#0c1a26] placeholder-black/30 outline-none focus:border-[#0284c7]/60 text-sm"
+
+  return (
+    <div className="space-y-3">
+      <div className="text-center mb-4">
+        <p className="text-[#0369a1] font-black text-xl">교사 입장</p>
+        <p className="text-black/40 text-xs mt-1">이름과 비밀번호를 입력해 주세요</p>
+      </div>
+
+      <div>
+        <label className="text-black/50 text-xs mb-1.5 block">이름</label>
+        <input value={name} onChange={e => { setName(e.target.value); setError('') }}
+          placeholder="" className={INPUT} list="teacher-list" />
+        <datalist id="teacher-list">
+          {TEACHERS.map(t => <option key={t} value={t} />)}
+        </datalist>
+      </div>
+
+      <div>
+        <label className="text-black/50 text-xs mb-1.5 block">비밀번호</label>
+        <input value={pw} onChange={e => { setPw(e.target.value); setError('') }}
+          onKeyDown={e => e.key === 'Enter' && login()}
+          type="password" placeholder=""
+          className={INPUT + ' text-center text-xl tracking-widest'} />
+      </div>
+
+      {error && <p className="text-red-500 text-xs text-center">{error}</p>}
+
+      <button onClick={login}
+        className="w-full py-4 rounded-2xl font-bold text-base text-white transition-all"
+        style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)', boxShadow: '0 4px 16px rgba(3,105,161,0.3)' }}>
+        입장하기
+      </button>
+
+      <button onClick={onBack} className="w-full text-black/30 text-sm py-2">← 뒤로</button>
+    </div>
+  )
+}
+
+function SpecialMenu({ name, onBack }: { name: string; onBack: () => void }) {
+  const router = useRouter()
+  return (
+    <div className="space-y-3">
+      <div className="text-center mb-4">
+        <p className="text-[#0369a1] font-black text-xl">👋 {name} {getHonorific(name)}</p>
+        <p className="text-black/40 text-xs mt-1">어디로 이동할까요?</p>
+      </div>
+      <button onClick={() => router.push('/admin')}
+        className="w-full bg-white py-5 rounded-2xl font-bold text-[#0369a1] text-base border border-[#0284c7]/25 hover:border-[#0284c7]/50 transition-all"
+        style={{ boxShadow: '0 2px 8px rgba(3,105,161,0.1)' }}>
+        ⚡️ 교사 관리 페이지로 이동
+      </button>
+      <button onClick={() => router.push('/ledger')}
+        className="w-full py-5 rounded-2xl font-black text-base text-white"
+        style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)', boxShadow: '0 4px 16px rgba(3,105,161,0.3)' }}>
+        💰 재정관리 페이지
+      </button>
+      <button onClick={onBack} className="w-full text-black/30 text-sm py-2">← 뒤로</button>
+    </div>
+  )
 }
