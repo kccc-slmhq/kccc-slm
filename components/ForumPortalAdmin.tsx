@@ -36,8 +36,8 @@ type Reg = {
 
 type Settings = Record<string, string>
 
-const TABS = ['참가자 목록', '호실 배정', '식사 주문', '설정']
-const TAB_ICONS = ['👥', '🛏️', '🍽️', '⚙️']
+const TABS = ['참가자 목록', '여행자보험', '호실 배정', '식사 주문', '설정']
+const TAB_ICONS = ['👥', '🔒', '🛏️', '🍽️', '⚙️']
 
 export default function ForumPortalAdmin() {
   const [authed, setAuthed] = useState(false)
@@ -107,9 +107,10 @@ export default function ForumPortalAdmin() {
       {/* Tab content */}
       <div className="p-4">
         {activeTab === 0 && <RegistrationsTab />}
-        {activeTab === 1 && <RoomsTab />}
-        {activeTab === 2 && <MealTab />}
-        {activeTab === 3 && <SettingsTab />}
+        {activeTab === 1 && <InsuranceTab />}
+        {activeTab === 2 && <RoomsTab />}
+        {activeTab === 3 && <MealTab />}
+        {activeTab === 4 && <SettingsTab />}
       </div>
     </div>
   )
@@ -504,6 +505,92 @@ function SettingsTab() {
       <div className="rounded-2xl p-4" style={{ background: '#1a0f3a' }}>
         <p className="text-white/40 text-xs">등록 마감일: <span className="text-white/70">2026년 11월 15일</span></p>
         <p className="text-white/40 text-xs mt-1">문의: 김양연 간사 010-9154-6113</p>
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────── Tab 2: Insurance ─────────────── */
+function InsuranceTab() {
+  const [regs, setRegs] = useState<Reg[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/admin/registrations')
+      .then(r => r.json())
+      .then(d => { setRegs((d.registrations || []).filter((r: Reg) => r.attending === true)); setLoading(false) })
+  }, [])
+
+  function exportCSV() {
+    const rows = [['번호', '이름', '기수', '지구', '캠퍼스', '성별', '주민등록번호', '연락처']]
+    regs.forEach((r, i) => rows.push([
+      String(i + 1), r.name, r.cohort, r.district, r.campus,
+      r.gender || '', r.id_number || '', r.phone || ''
+    ]))
+    const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
+    a.download = '여행자보험_주민번호.csv'; a.click()
+  }
+
+  if (loading) return <p className="text-white/40 text-sm text-center py-10">불러오는 중...</p>
+
+  const withId = regs.filter(r => r.id_number)
+  const withoutId = regs.filter(r => !r.id_number)
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-white font-bold text-lg">🔒 여행자보험 주민번호 수합</h2>
+          <p className="text-white/40 text-xs mt-0.5">참석자 {regs.length}명 중 {withId.length}명 제출 · {withoutId.length}명 미제출</p>
+        </div>
+        <button onClick={exportCSV}
+          className="px-4 py-2 rounded-xl text-sm font-bold text-white"
+          style={{ background: '#7c5cfc' }}>
+          CSV 내보내기
+        </button>
+      </div>
+
+      {withoutId.length > 0 && (
+        <div className="rounded-xl p-3" style={{ background: '#2a1a0a', border: '1px solid rgba(255,150,50,0.3)' }}>
+          <p className="text-orange-400 text-xs font-bold mb-2">⚠️ 주민번호 미제출 ({withoutId.length}명)</p>
+          <div className="flex flex-wrap gap-2">
+            {withoutId.map(r => (
+              <span key={r.id} className="text-white/60 text-xs px-2 py-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                {r.name} ({r.cohort}기)
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="overflow-x-auto rounded-xl" style={{ background: '#1a0f3a' }}>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-white/10">
+              {['#', '이름', '기수', '지구', '성별', '주민등록번호', '연락처'].map(h => (
+                <th key={h} className="px-3 py-3 text-left text-white/40 text-xs font-bold whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {regs.map((r, i) => (
+              <tr key={r.id} className="border-b border-white/5">
+                <td className="px-3 py-2 text-white/30 text-xs">{i + 1}</td>
+                <td className="px-3 py-2 text-white font-bold text-xs whitespace-nowrap">{r.name}</td>
+                <td className="px-3 py-2 text-white/60 text-xs">{r.cohort}</td>
+                <td className="px-3 py-2 text-white/60 text-xs whitespace-nowrap">{r.district}</td>
+                <td className="px-3 py-2 text-white/60 text-xs">{r.gender || '-'}</td>
+                <td className="px-3 py-2 text-xs font-mono whitespace-nowrap" style={{ color: r.id_number ? '#a78bfa' : 'rgba(255,100,100,0.6)' }}>
+                  {r.id_number || '미제출'}
+                </td>
+                <td className="px-3 py-2 text-white/60 text-xs whitespace-nowrap">{r.phone || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {regs.length === 0 && <p className="text-white/30 text-sm text-center py-8">참석 등록자가 없습니다</p>}
       </div>
     </div>
   )
