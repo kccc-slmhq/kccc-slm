@@ -175,7 +175,6 @@ export default function ForumLanding() {
                   <span className="text-black/30 text-xs">/ 50명</span>
                 </div>
               </div>
-              <p className="text-black/50 text-xs text-center tracking-widest">입장 방법을 선택해주세요</p>
               <button onClick={enterParent}
                 className="w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 relative overflow-hidden text-white"
                 style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)', boxShadow: '0 6px 24px rgba(3,105,161,0.4)' }}>
@@ -183,14 +182,7 @@ export default function ForumLanding() {
                   background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%)',
                   animation: 'shimmer 2.5s infinite',
                 }} />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/crown-white.png" alt="" className="w-6 h-6 object-contain" />
-                <span>학부모 · 학생 입장</span>
-              </button>
-              <button onClick={enterTeacher}
-                className="w-full py-4 rounded-2xl font-bold text-base text-[#0369a1] bg-white/90 border border-[#0284c7]/25 transition-all"
-                style={{ boxShadow: '0 2px 8px rgba(3,105,161,0.12)' }}>
-                선생님 입장
+                <span>교육간사 포럼 입장</span>
               </button>
 
               {/* 홈 화면 설치 버튼 */}

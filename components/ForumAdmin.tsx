@@ -1024,14 +1024,14 @@ function TshirtTab() {
         {openSize === '__list__' && (
           <div className="border-t border-black/5 divide-y divide-black/5">
             {T_SIZE_ORDER.flatMap(size =>
-              students.filter(s => s.tshirt_size === size).map(s => ({ ...s, size }))
-            ).map(s => (
-              <div key={s.id} className="flex items-center justify-between px-4 py-2.5">
+              students.filter(s => s.tshirt_size === size).map(s => ({ ...s, _size: size }) as Row & { _size: string })
+            ).map((s, i) => (
+              <div key={(s.id as string) ?? i} className="flex items-center justify-between px-4 py-2.5">
                 <div className="flex items-center gap-2">
                   <span className="text-[#0c1a26] font-bold text-sm">{s.name}</span>
                   <span className="text-black/30 text-xs">{getDisplayGrade(s.name, s.grade)}</span>
                 </div>
-                <span className="text-[#0369a1] font-black text-sm">{s.size}</span>
+                <span className="text-[#0369a1] font-black text-sm">{s._size}</span>
               </div>
             ))}
           </div>
