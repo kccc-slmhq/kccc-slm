@@ -612,9 +612,9 @@ function SurveyDataTab() {
                 <span className="text-white/40 text-xs">{r.cohort}기 · {r.district} · {r.campus}</span>
               </div>
               <p className="text-white/60 text-sm leading-relaxed">{r.absent_reason || '사유 미작성'}</p>
-              {(r as unknown as Record<string,unknown>).questions && (
+              {(r as unknown as Record<string,unknown>).questions ? (
                 <p className="text-[#a78bfa] text-xs mt-2">💬 {String((r as unknown as Record<string,unknown>).questions)}</p>
-              )}
+              ) : null}
             </div>
           ))}
         </div>
@@ -631,7 +631,7 @@ function SurveyDataTab() {
                   <span className="font-black text-white">{r.name}</span>
                   <span className="text-white/50 text-xs">{r.cohort}기</span>
                   <span className="text-white/50 text-xs">{r.district} · {r.campus}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: r.attending ? 'rgba(77,217,255,0.15)', color: '#4dd9ff' }}>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: r.attending ? 'rgba(77,217,255,0.15)' : 'rgba(255,255,255,0.08)', color: '#4dd9ff' }}>
                     {r.attending ? '참석' : '불참'}
                   </span>
                 </div>
@@ -653,8 +653,8 @@ function SurveyDataTab() {
                     ))}
                   </div>
                 )}
-                {extra.desired_topic && <p className="text-white/50 text-xs">기대: {String(extra.desired_topic)}</p>}
-                {extra.questions && <p className="text-[#a78bfa] text-xs">💬 {String(extra.questions)}</p>}
+                {extra.desired_topic ? <p className="text-white/50 text-xs">기대: {String(extra.desired_topic)}</p> : null}
+                {extra.questions ? <p className="text-[#a78bfa] text-xs">💬 {String(extra.questions)}</p> : null}
               </div>
             )
           })}
