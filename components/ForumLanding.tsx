@@ -147,18 +147,15 @@ export default function ForumLanding() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden"
+    <div className="min-h-screen flex flex-col"
       style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.5s ease', background: '#0f0830' }}>
-      {/* 포스터 배경 이미지 */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/forum-poster.webp" alt="" className="absolute inset-0 w-full h-full object-cover object-center" />
-      {/* 하단 페이드 오버레이 */}
-      <div className="absolute inset-0" style={{
-        background: 'linear-gradient(to bottom, transparent 0%, transparent 50%, rgba(15,8,48,0.85) 75%, #0f0830 100%)'
-      }} />
 
-      {/* 메인 콘텐츠 */}
-      <div className="relative z-10 flex flex-col flex-1 items-center justify-end px-6 pb-12 max-w-sm mx-auto w-full">
+      {/* 포스터 이미지 — 비율 그대로 */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/forum-poster.webp" alt="" className="w-full" style={{ display: 'block' }} />
+
+      {/* 하단 버튼 영역 */}
+      <div className="flex flex-col flex-1 items-center justify-center px-6 py-8 max-w-sm mx-auto w-full">
         {/* 하단 영역 */}
         <div className="w-full space-y-4"
           style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(20px)', transition: 'all 0.7s ease 0.4s' }}>
