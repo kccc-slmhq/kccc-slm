@@ -115,13 +115,23 @@ export default function ForumHome() {
             <span>📍</span> 수련회 장소
           </h2>
           <div className="grid grid-cols-2 gap-3">
-            <a href="https://map.naver.com/v5/search/수원%20CCC%20회관"
+            <a href="https://naver.me/5vJUGSbp"
+              target="_blank" rel="noopener noreferrer"
+              className="flex flex-col gap-2 card-dark rounded-2xl p-4 active:scale-95 transition-all">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-xl border border-purple-200">🏨</div>
+              <div>
+                <p className="text-[#0c1a26] font-bold text-sm leading-snug">머무는 숙소</p>
+                <p className="text-black/40 text-xs mt-0.5">경기 수원시 팔달구 인계로 116</p>
+                <p className="text-green-600 text-xs font-bold mt-1">네이버 지도 →</p>
+              </div>
+            </a>
+            <a href="https://naver.me/FOR75yzX"
               target="_blank" rel="noopener noreferrer"
               className="flex flex-col gap-2 card-dark rounded-2xl p-4 active:scale-95 transition-all">
               <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-xl border border-green-200">🗺️</div>
               <div>
-                <p className="text-[#0c1a26] font-bold text-sm leading-snug">수원 CCC 회관</p>
-                <p className="text-black/40 text-xs mt-0.5">경기도 수원시</p>
+                <p className="text-[#0c1a26] font-bold text-sm leading-snug">한국대학생선교회 비전센터</p>
+                <p className="text-black/40 text-xs mt-0.5">경기 수원시 권선구 새터로23번길 12-6</p>
                 <p className="text-green-600 text-xs font-bold mt-1">네이버 지도 →</p>
               </div>
             </a>
