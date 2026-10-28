@@ -57,6 +57,7 @@ export default function ForumLanding() {
   const [visible, setVisible] = useState(false)
   const [regCount, setRegCount] = useState<number | null>(null)
   const [noticePopup, setNoticePopup] = useState<{ id: string; title: string; content?: string } | null>(null)
+  const [dynamicBtn, setDynamicBtn] = useState<{ type: 'order' | 'rooms' } | null>(null)
   const [installPrompt, setInstallPrompt] = useState<{ prompt: () => void; userChoice: Promise<{ outcome: string }> } | null>(null)
   const [showIOSGuide, setShowIOSGuide] = useState(false)
   const [unreadQueue, setUnreadQueue] = useState<{ id: string; title: string; content?: string }[]>([])
@@ -91,8 +92,28 @@ export default function ForumLanding() {
     const t = setTimeout(() => setVisible(true), 80)
     fetchCount()
     fetchUnread()
+    fetchDynamicBtn()
     return () => clearTimeout(t)
   }, [])
+
+  async function fetchDynamicBtn() {
+    try {
+      const supabase = createClient()
+      const { data } = await supabase.from('forum_settings').select('key,value')
+      const s: Record<string, string> = {}
+      for (const r of data || []) s[r.key] = r.value
+      const now = Date.now()
+      const orderActive = s['meal_order_active'] === 'true'
+      const orderStart = s['meal_order_start'] ? new Date(s['meal_order_start']).getTime() : 0
+      const orderEnd = s['meal_order_end'] ? new Date(s['meal_order_end']).getTime() : 0
+      if (orderActive && now >= orderStart && now <= orderEnd) {
+        setDynamicBtn({ type: 'order' }); return
+      }
+      if (s['rooms_published'] === 'true') {
+        setDynamicBtn({ type: 'rooms' }); return
+      }
+    } catch { /* ignore */ }
+  }
 
   async function fetchCount() {
     const supabase = createClient()
