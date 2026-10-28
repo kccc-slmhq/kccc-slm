@@ -78,6 +78,18 @@ export default function ForumHome() {
       {/* Content */}
       <div className="px-4 py-6 max-w-lg mx-auto space-y-5">
 
+        {/* 포럼 타이틀 */}
+        <section className="text-center pt-2 pb-1">
+          <p className="text-sm font-bold tracking-widest mb-1"
+            style={{ background: 'linear-gradient(90deg, #4dd9ff, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            CCC SLM 교육간사 포럼
+          </p>
+          <h1 className="font-black leading-tight text-white"
+            style={{ fontSize: 'clamp(2rem, 8vw, 3rem)', textShadow: '0 2px 20px rgba(124,92,252,0.6)' }}>
+            가르쳐 지키게 하라!!!
+          </h1>
+        </section>
+
         <AskAI />
 
         {/* 디데이 + 오늘의 기도제목 */}
