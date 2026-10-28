@@ -65,15 +65,13 @@ export default function ForumHome() {
 
   return (
     <div className="min-h-screen bg-[#0f0830]">
-      {/* Hero Banner — 포스터 상단만 보이도록 */}
-      <div className="relative w-full overflow-hidden" style={{ height: '75vw', maxHeight: '420px' }}>
+      {/* Hero Banner */}
+      <div className="w-full overflow-hidden" style={{ maxHeight: '200px' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/forum-poster.webp" alt="교육간사 포럼"
-          className="absolute inset-0 w-full"
-          style={{ top: 0, objectFit: 'cover', objectPosition: 'top', height: '100%' }}
+        <img src="/forum-banner.png" alt="교육간사 포럼"
+          className="w-full object-cover"
+          style={{ display: 'block' }}
           onError={e => (e.currentTarget.style.display = 'none')} />
-        <div className="absolute bottom-0 left-0 right-0 h-16"
-          style={{ background: 'linear-gradient(to bottom, transparent, #0f0830)' }} />
       </div>
 
       {/* Content */}
