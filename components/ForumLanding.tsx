@@ -147,48 +147,48 @@ export default function ForumLanding() {
   }
 
   return (
-    <div className="fixed inset-0 flex flex-col"
-      style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.5s ease', background: '#0f0830' }}>
+    <div className="fixed inset-0" style={{ background: '#0f0830', opacity: visible ? 1 : 0, transition: 'opacity 0.5s ease' }}>
 
-      {/* 포스터 이미지 — 화면 꽉 채우기, 비율 유지 */}
+      {/* 포스터 — 풀스크린 */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/forum-poster.webp" alt="" className="w-full flex-1 min-h-0" style={{ display: 'block', objectFit: 'cover', objectPosition: 'top' }} />
+      <img src="/forum-poster.webp" alt="" className="absolute inset-0 w-full h-full" style={{ objectFit: 'cover', objectPosition: 'top' }} />
 
-      {/* 버튼 영역 */}
-      <div className="shrink-0 px-6 py-6 max-w-sm mx-auto w-full"
-        style={{ background: '#0f0830' }}>
-        <div className="w-full space-y-3"
-          style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(20px)', transition: 'all 0.7s ease 0.4s' }}>
+      {/* 하단 그라디언트 페이드 */}
+      <div className="absolute inset-x-0 bottom-0 h-56 pointer-events-none"
+        style={{ background: 'linear-gradient(to bottom, transparent, rgba(15,8,48,0.85) 60%, #0f0830)' }} />
 
-          {mode === 'home' ? (
-            <>
-              {regCount !== null && (
-                <div className="flex justify-center mb-1">
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-full" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                    <span className="text-white/50 text-xs">현재 등록</span>
-                    <span className="font-black text-sm" style={{ background: 'linear-gradient(90deg,#4dd9ff,#a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{regCount}명</span>
-                    <span className="text-white/30 text-xs">/ 60명</span>
-                  </div>
+      {/* 버튼 — 포스터 위에 오버레이 */}
+      <div className="absolute inset-x-0 bottom-0 px-6 pb-10 max-w-sm mx-auto"
+        style={{ transform: visible ? 'translateY(0)' : 'translateY(20px)', transition: 'transform 0.7s ease 0.4s' }}>
+
+        {mode === 'home' ? (
+          <>
+            {regCount !== null && (
+              <div className="flex justify-center mb-3">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                  <span className="text-white/50 text-xs">현재 등록</span>
+                  <span className="font-black text-sm" style={{ background: 'linear-gradient(90deg,#4dd9ff,#a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{regCount}명</span>
+                  <span className="text-white/30 text-xs">/ 60명</span>
                 </div>
-              )}
-              <button onClick={enterParent}
-                className="w-full py-5 rounded-2xl font-black relative overflow-hidden text-white flex items-center justify-center gap-3"
-                style={{ background: 'linear-gradient(135deg, #7c5cfc, #4dd9ff)', boxShadow: '0 6px 32px rgba(124,92,252,0.5)', fontSize: '1.75rem' }}>
-                <span className="absolute inset-0 pointer-events-none" style={{
-                  background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%)',
-                  animation: 'shimmer 2.5s infinite',
-                }} />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/g7-logo.webp" alt="" style={{ width: '5rem', height: '5rem', objectFit: 'contain' }} />
-                입장하기
-              </button>
-            </>
-          ) : mode === 'special' ? (
-            <SpecialMenu name={typeof window !== 'undefined' ? localStorage.getItem('teacher_name') || '' : ''} onBack={() => setMode('home')} />
-          ) : (
-            <TeacherLogin onBack={() => setMode('home')} />
-          )}
-        </div>
+              </div>
+            )}
+            <button onClick={enterParent}
+              className="w-full py-5 rounded-2xl font-black relative overflow-hidden text-white flex items-center justify-center gap-3"
+              style={{ background: 'linear-gradient(135deg, #7c5cfc, #4dd9ff)', boxShadow: '0 6px 32px rgba(124,92,252,0.6)', fontSize: '1.75rem' }}>
+              <span className="absolute inset-0 pointer-events-none" style={{
+                background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%)',
+                animation: 'shimmer 2.5s infinite',
+              }} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/g7-logo.webp" alt="" style={{ width: '2.5rem', height: '2.5rem', objectFit: 'contain' }} />
+              입장하기
+            </button>
+          </>
+        ) : mode === 'special' ? (
+          <SpecialMenu name={typeof window !== 'undefined' ? localStorage.getItem('teacher_name') || '' : ''} onBack={() => setMode('home')} />
+        ) : (
+          <TeacherLogin onBack={() => setMode('home')} />
+        )}
       </div>
 
       {/* iOS 설치 안내 팝업 */}
