@@ -358,7 +358,7 @@ function PackingChecklist() {
       <div className="card-dark rounded-2xl overflow-hidden">
         {allDone && (
           <div className="px-4 py-3 text-center bg-[#7c5cfc]/10 border-b border-[#7c5cfc]/20">
-            <p className="text-[#a78bfa] font-bold text-sm">🎉 준비 완료! 수련회에서 보자! 🤙</p>
+            <p className="text-[#a78bfa] font-bold text-sm">🎉 기대하는 마음으로 포럼에서 만나요!</p>
           </div>
         )}
         <div className="divide-y divide-white/5">
