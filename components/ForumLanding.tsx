@@ -5,44 +5,67 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const TEACHERS = [
-  '김나미에', '오연희', '신대일주', '박예솔', '김은서',
-  '정나연', '오소람', '김나현', '이은경', '신대소름',
-  '이수민', '김예은', '최현진', '유서린',
+  '박예찬', '김근태', '이지연', '나미애', '노성우',
+  '이보람', '김인혁', '이정현', '차태현', '이하원',
+  '신다은', '전지연', '성은진', '안우림',
 ]
 const TEACHER_PW = '9182'
 
+const YEAR = 365 * 24 * 60 * 60
+function setCookie(key: string, value: string) {
+  const exp = new Date(Date.now() + YEAR * 1000).toUTCString()
+  document.cookie = `${key}=${encodeURIComponent(value)}; expires=${exp}; path=/`
+}
+function getCookie(key: string) {
+  const match = document.cookie.split('; ').find(c => c.startsWith(key + '='))
+  return match ? decodeURIComponent(match.split('=')[1]) : null
+}
+function delCookie(key: string) {
+  document.cookie = `${key}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
+}
 function saveAuth(name: string) {
+  localStorage.setItem('admin_auth', 'true')
   localStorage.setItem('teacher_name', name)
-  localStorage.setItem('teacher_authed', '1')
+  setCookie('admin_auth', 'true')
+  setCookie('teacher_name', name)
 }
 function getAuth() {
-  return {
-    authed: localStorage.getItem('teacher_authed') === '1',
-    name: localStorage.getItem('teacher_name') || '',
+  let authed = localStorage.getItem('admin_auth') === 'true'
+  let name = localStorage.getItem('teacher_name') || ''
+  if (!authed || !name) {
+    const cAuth = getCookie('admin_auth') === 'true'
+    const cName = getCookie('teacher_name') || ''
+    if (cAuth && cName) {
+      localStorage.setItem('admin_auth', 'true')
+      localStorage.setItem('teacher_name', cName)
+      authed = true
+      name = cName
+    }
   }
+  return { authed, name }
+}
+const HONORIFICS: Record<string, string> = {
+  '박예찬': '목사님',
+  '김근태': '부장님',
 }
 function getHonorific(name: string) {
-  return ['김나미에', '오연희'].includes(name) ? '선생님' : '선생님'
+  return HONORIFICS[name] || '선생님'
 }
 
 export default function ForumLanding() {
   const [mode, setMode] = useState<'home' | 'teacher' | 'special'>('home')
   const [visible, setVisible] = useState(false)
   const [regCount, setRegCount] = useState<number | null>(null)
-  const [hasUnread, setHasUnread] = useState(false)
   const [noticePopup, setNoticePopup] = useState<{ id: string; title: string; content?: string } | null>(null)
   const [installPrompt, setInstallPrompt] = useState<{ prompt: () => void; userChoice: Promise<{ outcome: string }> } | null>(null)
   const [showIOSGuide, setShowIOSGuide] = useState(false)
   const [unreadQueue, setUnreadQueue] = useState<{ id: string; title: string; content?: string }[]>([])
-  const router = useRouter()
 
   const isInstalled =
     typeof window !== 'undefined' &&
     (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as { standalone?: boolean }).standalone)
-
   const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent)
   const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent)
-
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
   const isKakao = /KAKAOTALK|kakaotalk/i.test(ua)
   const isInAppBrowser = isKakao || /FB_IAB|FBAN|Instagram|Line|NAVER|Whale/i.test(ua)
@@ -86,7 +109,6 @@ export default function ForumLanding() {
     if (data) {
       const unreadList = data.filter((a: { id: string }) => !seen.includes(a.id))
       const count = unreadList.length
-      setHasUnread(count > 0)
       setUnreadQueue(unreadList)
       if (unreadList.length > 0) setNoticePopup(unreadList[0])
       if ('setAppBadge' in navigator) {
@@ -107,17 +129,17 @@ export default function ForumLanding() {
   }
 
   function enterParent() {
-    router.push('/home')
+    window.location.href = '/home'
   }
 
   function enterTeacher() {
     const { authed, name } = getAuth()
     if (authed && name) {
-      const FULL = ['김나미에', '오연희']
+      const FULL = ['나미애', '박예찬']
       if (FULL.includes(name)) {
         setMode('special')
       } else {
-        router.push('/admin')
+        window.location.href = '/admin'
       }
     } else {
       setMode('teacher')
@@ -127,12 +149,12 @@ export default function ForumLanding() {
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden"
       style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.5s ease' }}>
-      {/* 9:16 배경 이미지 */}
+      {/* 배경 이미지 */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/hero-mobile.png" alt="" className="absolute inset-0 w-full h-full object-cover object-center md:hidden" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/hero-desktop.png" alt="" className="absolute inset-0 w-full h-full object-cover object-center hidden md:block" />
-      {/* 하단 블러 그라디언트 */}
+      {/* 하단 밝은 그라데이션 */}
       <div className="absolute inset-0" style={{
         background: 'linear-gradient(to bottom, transparent 0%, transparent 45%, rgba(232,244,255,0.85) 72%, #e8f4ff 100%)'
       }} />
@@ -140,21 +162,20 @@ export default function ForumLanding() {
       {/* 콘텐츠 */}
       <div className="relative z-10 flex flex-col h-full">
         <div className="flex-1" />
-
         <div className="px-5 pb-12 space-y-3 max-w-md mx-auto w-full"
           style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(20px)', transition: 'all 0.7s ease 0.3s' }}>
           {mode === 'home' ? (
             <>
-              {/* 등록 인원 뱃지 */}
+              {/* 등록현황 */}
               <div className="flex justify-center mb-1">
                 <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 shadow-sm border border-[#0284c7]/20">
-                  <span className="text-sm">✅</span>
+                  <span className="text-sm">✍️</span>
                   <span className="text-black/50 text-xs">현재 등록</span>
                   <span className="text-[#0369a1] font-black text-sm">{regCount === null ? '-' : regCount}명</span>
                   <span className="text-black/30 text-xs">/ 50명</span>
                 </div>
               </div>
-              <p className="text-black/50 text-xs text-center tracking-widest">별내오륜 교회학교 여름성경학교</p>
+              <p className="text-black/50 text-xs text-center tracking-widest">입장 방법을 선택해주세요</p>
               <button onClick={enterParent}
                 className="w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 relative overflow-hidden text-white"
                 style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)', boxShadow: '0 6px 24px rgba(3,105,161,0.4)' }}>
@@ -163,15 +184,16 @@ export default function ForumLanding() {
                   animation: 'shimmer 2.5s infinite',
                 }} />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/crown-white.png" alt="" className="w-6 h-6 object-contain" /><span>학부모 입장 · 성경학교 입장</span>
+                <img src="/crown-white.png" alt="" className="w-6 h-6 object-contain" />
+                <span>학부모 · 학생 입장</span>
               </button>
               <button onClick={enterTeacher}
                 className="w-full py-4 rounded-2xl font-bold text-base text-[#0369a1] bg-white/90 border border-[#0284c7]/25 transition-all"
                 style={{ boxShadow: '0 2px 8px rgba(3,105,161,0.12)' }}>
-                교사 입장
+                선생님 입장
               </button>
 
-              {/* 앱 설치 버튼 */}
+              {/* 홈 화면 설치 버튼 */}
               {!isInstalled && (
                 (isAndroid && installPrompt) ? (
                   <>
@@ -181,14 +203,14 @@ export default function ForumLanding() {
                       if (result.outcome === 'accepted') setInstallPrompt(null)
                     }}
                       className="w-full py-3 rounded-2xl text-sm font-bold text-black/50 bg-white/60 border border-black/10 flex items-center justify-center gap-2">
-                      📲 홈 화면에 바로가기 추가
+                      📲 여름성경학교 앱 설치
                     </button>
-                    <p className="text-black/35 text-xs text-center px-2">앱을 설치 하면 더 좋은 경험을 할 수 있어요 — 매번 열때마다 <strong>&quot;홈 화면에 추가하기&quot;</strong>를 눌러도 되지만 불편해요 ✅</p>
+                    <p className="text-black/35 text-xs text-center px-2">설치 시 보안 경고가 뜨면 <strong>&quot;무시하고 설치&quot;</strong>를 눌러주세요 — 안전한 앱입니다 ✅</p>
                   </>
                 ) : isIOS ? (
                   <button onClick={() => setShowIOSGuide(true)}
                     className="w-full py-3 rounded-2xl text-sm font-bold text-black/50 bg-white/60 border border-black/10 flex items-center justify-center gap-2">
-                    📲 홈 화면에 바로가기 추가
+                    📲 여름성경학교 앱 설치
                   </button>
                 ) : null
               )}
@@ -207,15 +229,14 @@ export default function ForumLanding() {
           style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}
           onClick={() => setShowIOSGuide(false)}>
           <div className="bg-white rounded-3xl w-full max-w-sm p-6 space-y-4" onClick={e => e.stopPropagation()}>
-            <p className="text-[#0369a1] font-black text-lg text-center">📲 홈 화면에 바로가기 추가</p>
-
+            <p className="text-[#0369a1] font-black text-lg text-center">📲 여름성경학교 앱 설치</p>
             {isInAppBrowser ? (
               <>
-                <p className="text-black/50 text-xs text-center">카카오톡 등 앱에서는 Safari로 열어야 설치 가능해요</p>
+                <p className="text-black/50 text-xs text-center">카카오톡에서는 Safari로 먼저 열어주세요</p>
                 <div className="space-y-2">
                   <div className="flex items-center gap-3 bg-[#e8f4ff] rounded-2xl p-3">
                     <span className="text-xl shrink-0">1️⃣</span>
-                    <p className="text-black/70 text-sm">오른쪽 상단 <strong>점 세개 메뉴 ···</strong> 탭</p>
+                    <p className="text-black/70 text-sm">우측 하단 <strong>공유 버튼 ⬆️</strong> 탭</p>
                   </div>
                   <div className="flex items-center gap-3 bg-[#e8f4ff] rounded-2xl p-3">
                     <span className="text-xl shrink-0">2️⃣</span>
@@ -223,7 +244,7 @@ export default function ForumLanding() {
                   </div>
                   <div className="flex items-center gap-3 bg-[#e8f4ff] rounded-2xl p-3">
                     <span className="text-xl shrink-0">3️⃣</span>
-                    <p className="text-black/70 text-sm">Safari에서 점 세개 ··· → <strong>&quot;홈 화면에 추가하기&quot;</strong></p>
+                    <p className="text-black/70 text-sm">Safari에서 공유 ⬆️ → <strong>&quot;홈 화면에 추가&quot;</strong></p>
                   </div>
                 </div>
                 <CopyURLButton />
@@ -232,7 +253,7 @@ export default function ForumLanding() {
               <div className="space-y-2">
                 <div className="flex items-center gap-3 bg-[#e8f4ff] rounded-2xl p-3">
                   <span className="text-xl shrink-0">1️⃣</span>
-                  <p className="text-black/70 text-sm">하단 메뉴 바 <strong>··· 공유</strong> 탭</p>
+                  <p className="text-black/70 text-sm">주소창 옆 <strong>··· 버튼</strong> 탭</p>
                 </div>
                 <div className="flex items-center gap-3 bg-[#e8f4ff] rounded-2xl p-3">
                   <span className="text-xl shrink-0">2️⃣</span>
@@ -240,13 +261,13 @@ export default function ForumLanding() {
                 </div>
                 <div className="flex items-center gap-3 bg-[#e8f4ff] rounded-2xl p-3">
                   <span className="text-xl shrink-0">3️⃣</span>
-                  <p className="text-black/70 text-sm"><strong>&quot;홈 화면에 추가하기&quot;</strong> 선택 후 추가!</p>
+                  <p className="text-black/70 text-sm"><strong>&quot;홈 화면에 추가&quot;</strong> 선택 후 추가!</p>
                 </div>
               </div>
             )}
             <button onClick={() => setShowIOSGuide(false)}
-              className="w-full py-3 rounded-2xl font-bold"
-              style={{ background: 'linear-gradient(135deg,#0284c7,#0369a1)', color: '#fff' }}>닫기</button>
+              className="w-full py-3 rounded-2xl font-bold text-white"
+              style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)' }}>확인</button>
           </div>
         </div>
       )}
@@ -272,7 +293,7 @@ export default function ForumLanding() {
             <button onClick={() => dismissNotice(noticePopup.id)}
               className="w-full py-3 rounded-2xl font-bold text-white text-sm"
               style={{ background: 'linear-gradient(135deg,#0284c7,#0369a1)' }}>
-              확인했어요
+              확인했습니다
             </button>
           </div>
         </div>
@@ -292,7 +313,7 @@ function CopyURLButton() {
   }
   return (
     <div className="bg-black/5 rounded-2xl p-3 space-y-2">
-      <p className="text-black/40 text-xs text-center">또는 이 주소를 복사해 Safari에서 직접 열기</p>
+      <p className="text-black/40 text-xs text-center">또는 주소 복사 후 Safari에 붙여넣기</p>
       <div className="flex gap-2 items-center">
         <p className="flex-1 text-[#0369a1] font-mono text-xs bg-white rounded-xl px-3 py-2 truncate">{url}</p>
         <button onClick={copy}
@@ -309,24 +330,23 @@ function TeacherLogin({ onBack }: { onBack: () => void }) {
   const [pw, setPw] = useState('')
   const [error, setError] = useState('')
   const [isNamiae, setIsNamiae] = useState(false)
-  const router = useRouter()
 
   function login() {
-    if ((name.trim() === '김나미에' || name.trim() === '오연희') && pw === TEACHER_PW) {
+    if ((name.trim() === '나미애' || name.trim() === '박예찬') && pw === TEACHER_PW) {
       saveAuth(name.trim())
       setIsNamiae(true)
       return
     }
     if (!TEACHERS.includes(name.trim())) {
-      setError('이름을 목록에서 선택해주세요')
+      setError('이름을 확인해주세요')
       return
     }
     if (pw !== TEACHER_PW) {
-      setError('비밀번호가 맞지 않아요')
+      setError('비밀번호가 틀렸습니다')
       return
     }
     saveAuth(name.trim())
-    router.push('/admin')
+    window.location.href = '/admin'
   }
 
   if (isNamiae) {
@@ -338,10 +358,9 @@ function TeacherLogin({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-3">
       <div className="text-center mb-4">
-        <p className="text-[#0369a1] font-black text-xl">교사 입장</p>
-        <p className="text-black/40 text-xs mt-1">이름과 비밀번호를 입력해 주세요</p>
+        <p className="text-[#0369a1] font-black text-xl">선생님 입장</p>
+        <p className="text-black/40 text-xs mt-1">이름과 비밀번호를 입력해주세요</p>
       </div>
-
       <div>
         <label className="text-black/50 text-xs mb-1.5 block">이름</label>
         <input value={name} onChange={e => { setName(e.target.value); setError('') }}
@@ -350,7 +369,6 @@ function TeacherLogin({ onBack }: { onBack: () => void }) {
           {TEACHERS.map(t => <option key={t} value={t} />)}
         </datalist>
       </div>
-
       <div>
         <label className="text-black/50 text-xs mb-1.5 block">비밀번호</label>
         <input value={pw} onChange={e => { setPw(e.target.value); setError('') }}
@@ -358,37 +376,33 @@ function TeacherLogin({ onBack }: { onBack: () => void }) {
           type="password" placeholder=""
           className={INPUT + ' text-center text-xl tracking-widest'} />
       </div>
-
       {error && <p className="text-red-500 text-xs text-center">{error}</p>}
-
       <button onClick={login}
         className="w-full py-4 rounded-2xl font-bold text-base text-white transition-all"
         style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)', boxShadow: '0 4px 16px rgba(3,105,161,0.3)' }}>
         입장하기
       </button>
-
       <button onClick={onBack} className="w-full text-black/30 text-sm py-2">← 뒤로</button>
     </div>
   )
 }
 
 function SpecialMenu({ name, onBack }: { name: string; onBack: () => void }) {
-  const router = useRouter()
   return (
     <div className="space-y-3">
       <div className="text-center mb-4">
         <p className="text-[#0369a1] font-black text-xl">👋 {name} {getHonorific(name)}</p>
         <p className="text-black/40 text-xs mt-1">어디로 이동할까요?</p>
       </div>
-      <button onClick={() => router.push('/admin')}
+      <button onClick={() => { window.location.href = '/admin' }}
         className="w-full bg-white py-5 rounded-2xl font-bold text-[#0369a1] text-base border border-[#0284c7]/25 hover:border-[#0284c7]/50 transition-all"
         style={{ boxShadow: '0 2px 8px rgba(3,105,161,0.1)' }}>
-        ⚡️ 교사 관리 페이지로 이동
+        ⚔️ 선생님 관리 페이지
       </button>
-      <button onClick={() => router.push('/ledger')}
+      <button onClick={() => { window.location.href = '/ledger' }}
         className="w-full py-5 rounded-2xl font-black text-base text-white"
         style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)', boxShadow: '0 4px 16px rgba(3,105,161,0.3)' }}>
-        💰 재정관리 페이지
+        💰 회계선생님 전용
       </button>
       <button onClick={onBack} className="w-full text-black/30 text-sm py-2">← 뒤로</button>
     </div>
