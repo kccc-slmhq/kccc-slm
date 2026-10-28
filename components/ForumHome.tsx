@@ -66,7 +66,7 @@ export default function ForumHome() {
   return (
     <div className="min-h-screen bg-[#0f0830]">
       {/* Hero Banner — 포스터 상단만 보이도록 */}
-      <div className="relative w-full overflow-hidden" style={{ height: '52vw', maxHeight: '280px' }}>
+      <div className="relative w-full overflow-hidden" style={{ height: '75vw', maxHeight: '420px' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/forum-poster.webp" alt="교육간사 포럼"
           className="absolute inset-0 w-full"
