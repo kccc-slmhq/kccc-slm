@@ -44,7 +44,19 @@ const ACCOUNT = '3333-29-2677428'
 const BANK = '카카오뱅크'
 const HOLDER = '박예찬'
 
-const INPUT_CLS = "w-full bg-white/10 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#7c5cfc]/70 text-sm"
+const INPUT_CLS = "w-full bg-white/10 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#7c5cfc]/70 text-base"
+
+function formatPhone(v: string) {
+  const d = v.replace(/\D/g, '').slice(0, 11)
+  if (d.length <= 3) return d
+  if (d.length <= 7) return d.slice(0, 3) + '-' + d.slice(3)
+  return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7)
+}
+
+function formatCohort(v: string) {
+  const n = v.replace(/[^0-9]/g, '')
+  return n ? n + '기' : ''
+}
 
 export default function ForumHome() {
   const [activeDay, setActiveDay] = useState(0)
@@ -724,7 +736,9 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
                   <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="홍길동" className={INPUT_CLS} />
                 </Field>
                 <Field label="간사 기수" required>
-                  <input value={form.cohort} onChange={e => set('cohort', e.target.value)} placeholder="40기" className={INPUT_CLS} />
+                  <input value={form.cohort}
+                    onChange={e => set('cohort', formatCohort(e.target.value))}
+                    placeholder="40기" inputMode="numeric" className={INPUT_CLS} />
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -736,7 +750,9 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
                 </Field>
               </div>
               <Field label="연락처" required>
-                <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="010-1234-5678" type="tel" className={INPUT_CLS} />
+                <input value={form.phone}
+                  onChange={e => set('phone', formatPhone(e.target.value))}
+                  placeholder="010-1234-5678" type="tel" inputMode="numeric" className={INPUT_CLS} />
               </Field>
               <Field label="이번 교육간사 포럼에 참석하십니까?" required>
                 <div className="grid grid-cols-2 gap-2">
