@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useCallback } from 'react'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 const ADMIN_PW = 'kccc2026'
 const ADMIN_KEY = 'forum_admin_auth'
@@ -36,8 +37,8 @@ type Reg = {
 
 type Settings = Record<string, string>
 
-const TABS = ['참가자 목록', '여행자보험', '호실 배정', '식사 주문', '설정']
-const TAB_ICONS = ['👥', '🔒', '🛏️', '🍽️', '⚙️']
+const TABS = ['참가자 목록', '설문 데이터', '여행자보험', '호실 배정', '식사 주문', '설정']
+const TAB_ICONS = ['👥', '📊', '🔒', '🛏️', '🍽️', '⚙️']
 
 export default function ForumPortalAdmin() {
   const [authed, setAuthed] = useState(false)
@@ -107,10 +108,11 @@ export default function ForumPortalAdmin() {
       {/* Tab content */}
       <div className="p-4">
         {activeTab === 0 && <RegistrationsTab />}
-        {activeTab === 1 && <InsuranceTab />}
-        {activeTab === 2 && <RoomsTab />}
-        {activeTab === 3 && <MealTab />}
-        {activeTab === 4 && <SettingsTab />}
+        {activeTab === 1 && <SurveyDataTab />}
+        {activeTab === 2 && <InsuranceTab />}
+        {activeTab === 3 && <RoomsTab />}
+        {activeTab === 4 && <MealTab />}
+        {activeTab === 5 && <SettingsTab />}
       </div>
     </div>
   )
@@ -510,7 +512,159 @@ function SettingsTab() {
   )
 }
 
-/* ─────────────── Tab 2: Insurance ─────────────── */
+/* ─────────────── Tab 2: Survey Data ─────────────── */
+function SurveyDataTab() {
+  const [regs, setRegs] = useState<Reg[]>([])
+  const [loading, setLoading] = useState(true)
+  const [view, setView] = useState<'challenges' | 'absent' | 'detail'>('challenges')
+
+  useEffect(() => {
+    fetch('/api/admin/registrations')
+      .then(r => r.json())
+      .then(d => { setRegs(d.registrations || []); setLoading(false) })
+  }, [])
+
+  if (loading) return <p className="text-white/40 text-sm text-center py-10">불러오는 중...</p>
+
+  const attendees = regs.filter(r => r.attending === true)
+  const absentees = regs.filter(r => r.attending === false)
+
+  // Challenge tallying
+  const challengeCounts: Record<string, number> = {}
+  regs.forEach(r => {
+    const raw = (r as unknown as Record<string, unknown>).challenges
+    const arr: string[] = Array.isArray(raw) ? raw as string[] : []
+    arr.forEach((c: string) => { challengeCounts[c] = (challengeCounts[c] || 0) + 1 })
+  })
+  const sortedChallenges = Object.entries(challengeCounts).sort((a, b) => b[1] - a[1])
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2 flex-wrap">
+        {([['challenges', '🔥 주요 고민'], ['absent', '😔 불참 사유'], ['detail', '📝 상세 응답']] as const).map(([k, label]) => (
+          <button key={k} onClick={() => setView(k)}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+            style={{ background: view === k ? '#7c5cfc' : 'rgba(124,92,252,0.15)', color: view === k ? 'white' : '#a78bfa' }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'challenges' && (
+        <div className="space-y-5">
+          <div className="rounded-2xl p-4" style={{ background: '#1a0f3a' }}>
+            <p className="text-white/60 text-xs font-bold mb-3">🔥 현장 고민 TOP (복수 선택 · {regs.length}명 기준)</p>
+            {sortedChallenges.length === 0
+              ? <p className="text-white/30 text-sm text-center py-4">응답 없음</p>
+              : (
+                <ResponsiveContainer width="100%" height={sortedChallenges.length * 44 + 20}>
+                  <BarChart data={sortedChallenges.map(([name, value]) => ({ name: name.length > 18 ? name.slice(0, 18) + '…' : name, full: name, value }))}
+                    layout="vertical" margin={{ left: 0, right: 30, top: 4, bottom: 4 }}>
+                    <XAxis type="number" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                    <YAxis type="category" dataKey="name" width={160} tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      cursor={{ fill: 'rgba(124,92,252,0.1)' }}
+                      contentStyle={{ background: '#0f0830', border: '1px solid rgba(124,92,252,0.4)', borderRadius: 12, fontSize: 12 }}
+                      labelFormatter={(_, payload) => payload?.[0]?.payload?.full || ''}
+                      formatter={(v: unknown) => [`${v}명`, '응답수']} />
+                    <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                      {sortedChallenges.map((_, i) => (
+                        <Cell key={i} fill={`hsl(${250 + i * 15}, 80%, ${65 - i * 3}%)`} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )
+            }
+          </div>
+
+          <div className="rounded-2xl p-4" style={{ background: '#1a0f3a' }}>
+            <p className="text-white/60 text-xs font-bold mb-1">📊 참석/불참 현황</p>
+            <div className="flex items-center gap-4 mt-2">
+              <div className="flex-1 rounded-full h-4 overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                <div className="h-4 rounded-full" style={{ width: `${regs.length ? (attendees.length / regs.length) * 100 : 0}%`, background: 'linear-gradient(90deg,#7c5cfc,#4dd9ff)' }} />
+              </div>
+              <span className="text-white/60 text-xs whitespace-nowrap">참석 {attendees.length} / 불참 {absentees.length}</span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-white/40 text-xs font-bold">💬 SLM HQ에 하고 싶은 말</p>
+            {regs.filter(r => (r as unknown as Record<string,unknown>).questions).length === 0 && <p className="text-white/30 text-sm text-center py-4">응답 없음</p>}
+            {regs.filter(r => (r as unknown as Record<string,unknown>).questions).map(r => (
+              <div key={r.id} className="rounded-xl p-3" style={{ background: '#1a0f3a' }}>
+                <p className="text-[#a78bfa] text-xs font-bold mb-1">{r.name} ({r.cohort}기 · {r.district}) <span className="text-white/30">{r.attending ? '참석' : '불참'}</span></p>
+                <p className="text-white/70 text-sm leading-relaxed">{String((r as unknown as Record<string,unknown>).questions)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view === 'absent' && (
+        <div className="space-y-3">
+          <p className="text-white/40 text-xs">불참 {absentees.length}명</p>
+          {absentees.length === 0 && <p className="text-white/30 text-sm text-center py-8">불참자 없음</p>}
+          {absentees.map(r => (
+            <div key={r.id} className="rounded-xl p-4" style={{ background: '#1a0f3a' }}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-white font-bold text-sm">{r.name}</span>
+                <span className="text-white/40 text-xs">{r.cohort}기 · {r.district} · {r.campus}</span>
+              </div>
+              <p className="text-white/60 text-sm leading-relaxed">{r.absent_reason || '사유 미작성'}</p>
+              {(r as unknown as Record<string,unknown>).questions && (
+                <p className="text-[#a78bfa] text-xs mt-2">💬 {String((r as unknown as Record<string,unknown>).questions)}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {view === 'detail' && (
+        <div className="space-y-3">
+          <p className="text-white/40 text-xs">참석자 {attendees.length}명 · 불참자 {absentees.length}명</p>
+          {regs.map(r => {
+            const extra = r as unknown as Record<string, unknown>
+            return (
+              <div key={r.id} className="rounded-xl p-4 space-y-2" style={{ background: '#1a0f3a' }}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-black text-white">{r.name}</span>
+                  <span className="text-white/50 text-xs">{r.cohort}기</span>
+                  <span className="text-white/50 text-xs">{r.district} · {r.campus}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: r.attending ? 'rgba(77,217,255,0.15)', color: '#4dd9ff' }}>
+                    {r.attending ? '참석' : '불참'}
+                  </span>
+                </div>
+                {r.attending ? (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-white/50">
+                    <span>📞 {r.phone}</span>
+                    <span>🚌 {r.transportation}</span>
+                    <span>🗓 {r.attendance_type}</span>
+                    <span>🚻 {r.gender}</span>
+                    {r.room_note && <span className="col-span-2">🏨 {r.room_note}</span>}
+                  </div>
+                ) : (
+                  <p className="text-white/50 text-xs">불참 사유: {r.absent_reason}</p>
+                )}
+                {Array.isArray(extra.challenges) && (extra.challenges as string[]).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {(extra.challenges as string[]).map((c: string) => (
+                      <span key={c} className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(124,92,252,0.2)', color: '#a78bfa' }}>{c}</span>
+                    ))}
+                  </div>
+                )}
+                {extra.desired_topic && <p className="text-white/50 text-xs">기대: {String(extra.desired_topic)}</p>}
+                {extra.questions && <p className="text-[#a78bfa] text-xs">💬 {String(extra.questions)}</p>}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─────────────── Tab 3: Insurance ─────────────── */
 function InsuranceTab() {
   const [regs, setRegs] = useState<Reg[]>([])
   const [loading, setLoading] = useState(true)
