@@ -1,14 +1,14 @@
 import { cookies } from 'next/headers'
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/server'
 
-function checkAuth() {
-  const cookieStore = cookies()
+async function checkAuth() {
+  const cookieStore = await cookies()
   return cookieStore.get('forum_admin_auth')?.value === 'kccc2026'
 }
 
 export async function GET() {
-  if (!checkAuth()) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  const supabase = createClient()
+  if (!await checkAuth()) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const supabase = await createClient()
   const { data, error } = await supabase.from('forum_settings').select('*')
   if (error) return Response.json({ settings: {} })
   const settings: Record<string, string> = {}
@@ -17,10 +17,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!checkAuth()) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!await checkAuth()) return Response.json({ error: 'Unauthorized' }, { status: 401 })
   const { key, value } = await request.json()
   if (!key) return Response.json({ error: 'Missing key' }, { status: 400 })
-  const supabase = createClient()
+  const supabase = await createClient()
   if (value === null || value === undefined) {
     await supabase.from('forum_settings').delete().eq('key', key)
   } else {

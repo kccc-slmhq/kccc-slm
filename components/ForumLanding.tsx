@@ -202,6 +202,20 @@ export default function ForumLanding() {
               }} />
               입장하기
             </button>
+            {dynamicBtn?.type === 'order' && (
+              <button onClick={() => { window.location.href = '/forum/order' }}
+                className="w-full py-4 rounded-2xl font-black text-white text-lg mt-2"
+                style={{ background: 'linear-gradient(135deg,#7c5cfc,#a78bfa)', boxShadow: '0 4px 20px rgba(124,92,252,0.5)' }}>
+                🍽️ 저녁 식사 주문하기
+              </button>
+            )}
+            {dynamicBtn?.type === 'rooms' && (
+              <button onClick={() => { window.location.href = '/forum/rooms' }}
+                className="w-full py-4 rounded-2xl font-black text-white text-lg mt-2"
+                style={{ background: 'linear-gradient(135deg,#1a0f3a,#2d1a6e)', boxShadow: '0 4px 20px rgba(124,92,252,0.3)', border: '1px solid rgba(124,92,252,0.5)' }}>
+                🛏️ 숙소 호실 보기
+              </button>
+            )}
           </>
         ) : mode === 'special' ? (
           <SpecialMenu name={typeof window !== 'undefined' ? localStorage.getItem('teacher_name') || '' : ''} onBack={() => setMode('home')} />
