@@ -796,6 +796,20 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
                     </label>
                     <p className="text-white/25 text-xs">* 동의하지 않으실 경우 참가가 제한됩니다</p>
                   </div>
+                  <Field label="성별" required hint="숙소 배정용">
+                    <div className="grid grid-cols-2 gap-2">
+                      {['남성', '여성'].map(opt => (
+                        <button key={opt} type="button" onClick={() => set('gender', opt)}
+                          className={`py-3 rounded-xl text-sm font-bold border transition-all ${form.gender === opt ? 'bg-[#7c5cfc] border-[#7c5cfc] text-white' : 'bg-white/5 border-white/10 text-white/50'}`}>
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
+                  <Field label="주민등록번호" required hint="여행자 보험 가입용">
+                    <input value={form.id_number} onChange={e => set('id_number', e.target.value)} placeholder="000000-0000000" className={INPUT_CLS} />
+                    <p className="text-white/25 text-xs mt-1">🔒 보험 처리 후 즉시 파기됩니다</p>
+                  </Field>
                   <Field label="참석 형태" required>
                     <RadioGroup
                       options={['전 일정(1박 2일) 참석', '23일(1일 차)만 참석', '24일(2일 차)만 참석']}
@@ -814,24 +828,6 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
                     <textarea value={form.room_note} onChange={e => set('room_note', e.target.value)}
                       placeholder="알레르기 식단, 특이 질환, 룸메이트 관련 사전 조율 요청 사항 (없으면 비워두세요)"
                       rows={3} className={INPUT_CLS + ' resize-none'} />
-                  </Field>
-                  <Field label="성별" required hint="숙소 배정용">
-                    <div className="grid grid-cols-2 gap-2">
-                      {['남성', '여성'].map(opt => (
-                        <button key={opt} type="button" onClick={() => set('gender', opt)}
-                          className={`py-3 rounded-xl text-sm font-bold border transition-all ${form.gender === opt ? 'bg-[#7c5cfc] border-[#7c5cfc] text-white' : 'bg-white/5 border-white/10 text-white/50'}`}>
-                          {opt}
-                        </button>
-                      ))}
-                    </div>
-                  </Field>
-                  <Field label="주민등록번호" required hint="여행자 보험 가입용">
-                    <input value={form.id_number} onChange={e => set('id_number', e.target.value)} placeholder="000000-0000000" className={INPUT_CLS} />
-                    <p className="text-white/25 text-xs mt-1">🔒 보험 처리 후 즉시 파기됩니다</p>
-                  </Field>
-                  <Field label="기타 사항" hint="선택">
-                    <textarea value={form.extra_note} onChange={e => set('extra_note', e.target.value)}
-                      placeholder="전달할 내용이 있으면 자유롭게 적어주세요" rows={2} className={INPUT_CLS + ' resize-none'} />
                   </Field>
                 </>
               )}
@@ -854,7 +850,7 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
                         placeholder="기타 (직접 입력)" className={INPUT_CLS + ' mt-1'} />
                     </div>
                   </Field>
-                  <Field label="이번 포럼에서 집중적으로 다루었으면 하는 주제" hint="선택">
+                  <Field label="이번 포럼에서 기대하는 점" hint="선택">
                     <textarea value={form.desired_topic} onChange={e => set('desired_topic', e.target.value)}
                       placeholder="자유롭게 서술해 주세요" rows={3} className={INPUT_CLS + ' resize-none'} />
                   </Field>
