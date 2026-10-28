@@ -53,6 +53,12 @@ function formatPhone(v: string) {
   return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7)
 }
 
+function formatIdNumber(v: string) {
+  const d = v.replace(/\D/g, '').slice(0, 13)
+  if (d.length <= 6) return d
+  return d.slice(0, 6) + '-' + d.slice(6)
+}
+
 
 export default function ForumHome() {
   const [activeDay, setActiveDay] = useState(0)
@@ -678,16 +684,16 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
     if (!form.cohort.trim()) { setError('간사 기수를 입력해주세요'); return }
     if (!form.district.trim()) { setError('소속 지구를 입력해주세요'); return }
     if (!form.campus.trim()) { setError('주 사역 캠퍼스를 입력해주세요'); return }
-    if (!form.phone.trim()) { setError('연락처를 입력해주세요'); return }
     if (form.attending === null) { setError('참석 여부를 선택해주세요'); return }
     if (!form.attending) {
       if (!form.absent_reason.trim()) { setError('불참 사유를 입력해주세요'); return }
     } else {
-      if (!form.consent) { setError('개인정보 수집·이용에 동의해주세요'); return }
-      if (!form.attendance_type) { setError('참석 형태를 선택해주세요'); return }
-      if (!form.transportation) { setError('이동 수단을 선택해주세요'); return }
+      if (!form.phone.trim()) { setError('연락처를 입력해주세요'); return }
       if (!form.gender) { setError('성별을 선택해주세요'); return }
       if (!form.id_number.trim()) { setError('주민등록번호를 입력해주세요'); return }
+      if (!form.attendance_type) { setError('참석 형태를 선택해주세요'); return }
+      if (!form.transportation) { setError('이동 수단을 선택해주세요'); return }
+      if (!form.consent) { setError('개인정보 수집·이용에 동의해주세요'); return }
     }
     setError(''); setSubmitting(true)
     const allChallenges = [...form.challenges, ...(form.challenge_other.trim() ? [form.challenge_other.trim()] : [])]
@@ -697,7 +703,7 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
       attending: form.attending, absent_reason: form.absent_reason,
       attendance_type: form.attendance_type, transportation: form.transportation,
       carpool_seats: form.carpool_seats, room_note: form.room_note,
-      gender: form.gender, id_number: form.id_number, extra_note: form.extra_note,
+      gender: form.gender, id_number: form.id_number,
       challenges: allChallenges, desired_topic: form.desired_topic, questions: form.questions,
       registered_at: new Date().toISOString(),
     }])
@@ -732,14 +738,10 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
                   <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="홍길동" className={INPUT_CLS} />
                 </Field>
                 <Field label="간사 기수" required>
-                  <div className="relative">
+                  <div>
                     <input value={form.cohort}
                       onChange={e => set('cohort', e.target.value.replace(/[^0-9]/g, ''))}
-                      placeholder="40" inputMode="numeric" className={INPUT_CLS}
-                      style={form.cohort ? { paddingRight: '2.5rem' } : undefined} />
-                    {form.cohort && (
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-base pointer-events-none">기</span>
-                    )}
+                      placeholder="40" inputMode="numeric" className={INPUT_CLS} />
                   </div>
                 </Field>
               </div>
@@ -793,7 +795,9 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
                     </div>
                   </Field>
                   <Field label="주민등록번호" required hint="여행자 보험 가입용">
-                    <input value={form.id_number} onChange={e => set('id_number', e.target.value)} placeholder="000000-0000000" className={INPUT_CLS} />
+                    <input value={form.id_number}
+                      onChange={e => set('id_number', formatIdNumber(e.target.value))}
+                      placeholder="000000-0000000" inputMode="numeric" className={INPUT_CLS} />
                     <p className="text-white/25 text-xs mt-1">🔒 보험 처리 후 즉시 파기됩니다</p>
                   </Field>
                   <Field label="참석 형태" required>
