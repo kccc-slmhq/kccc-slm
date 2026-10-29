@@ -741,7 +741,7 @@ export function RegisterModal({ onClose }: { onClose: () => void }) {
                   <div>
                     <input value={form.cohort}
                       onChange={e => set('cohort', e.target.value.replace(/[^0-9]/g, ''))}
-                      placeholder="40" inputMode="numeric" className={INPUT_CLS} />
+                      placeholder="43" inputMode="numeric" className={INPUT_CLS} />
                   </div>
                 </Field>
               </div>
