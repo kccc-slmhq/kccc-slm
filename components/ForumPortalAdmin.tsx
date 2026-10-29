@@ -688,7 +688,7 @@ function RoomsTab() {
               style={{ background: r.gender === '여성' ? '#fce7f3' : '#eff6ff', color: r.gender === '여성' ? '#be185d' : '#1d4ed8', flexShrink: 0 }}>
               {r.gender === '여성' ? '여' : '남'}
             </span>
-            <span className="text-xs font-bold" style={{ color: C.textMuted, flexShrink: 0 }}>{r.cohort}기</span>
+            <span className="text-xs font-bold" style={{ color: C.textMuted, flexShrink: 0 }}>{r.cohort}기 · {r.district}</span>
             <div className="flex-1" />
             <input value={rooms[r.id] || ''} onChange={e => setRooms(prev => ({ ...prev, [r.id]: e.target.value }))}
               placeholder="호실" className="w-14 rounded-lg px-2 py-1.5 text-xs text-center outline-none"
