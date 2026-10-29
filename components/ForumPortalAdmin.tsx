@@ -33,6 +33,7 @@ type Reg = {
   transportation?: string; room_note?: string; gender?: string; id_number?: string
   questions?: string; registered_at: string
   fee_paid?: boolean; attended?: boolean; room_number?: string; key_taken?: boolean
+  fee_exempt?: boolean
 }
 
 type Settings = Record<string, string>
@@ -253,6 +254,11 @@ function NoticesTab() {
   )
 }
 
+function isSlmhq(r: Reg) {
+  const n = (s: string) => (s || '').toLowerCase().replace(/\s/g, '')
+  return n(r.campus) === 'slmhq' || n(r.name) === 'slmhq'
+}
+
 /* ─────────────── Tab 0: Registrations (basic info) ─────────────── */
 function RegistrationsTab() {
   const [regs, setRegs] = useState<Reg[]>([])
@@ -371,6 +377,8 @@ function CheckInTab() {
   const feePaid = attendees.filter(r => r.fee_paid).length
   const attended = attendees.filter(r => r.attended).length
   const keyTaken = attendees.filter(r => r.key_taken).length
+  const feeActual = attendees.filter(r => r.fee_paid && !isSlmhq(r) && !r.fee_exempt).length
+  const feeTotal = feeActual * 50000
 
   return (
     <div className="space-y-4">
@@ -381,6 +389,13 @@ function CheckInTab() {
             <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>{l as string}</p>
           </div>
         ))}
+      </div>
+      <div className="rounded-2xl px-4 py-3 flex items-center justify-between" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+        <span className="text-sm font-bold" style={{ color: C.textSecondary }}>💰 납부 회비 합계</span>
+        <div className="text-right">
+          <span className="font-black text-lg" style={{ color: C.green }}>{feeTotal.toLocaleString()}원</span>
+          <span className="text-xs ml-1.5" style={{ color: C.textMuted }}>{feeActual}명 × 50,000원</span>
+        </div>
       </div>
 
       <input value={search} onChange={e => { setSearch(e.target.value); tableContainerRef.current && (tableContainerRef.current.scrollTop = 0) }}
@@ -401,11 +416,27 @@ function CheckInTab() {
             <tbody>
               {sorted.map(r => {
                 const isHit = highlighted.includes(r.id)
+                const staff = isSlmhq(r)
+                const exempt = staff || !!r.fee_exempt
                 return (
                   <tr key={r.id}
                     style={{ borderBottom: `1px solid ${C.border}`, background: isHit ? 'rgba(124,92,252,0.08)' : undefined, transition: 'background 0.3s' }}>
-                    <td className="px-3 py-2.5 font-bold whitespace-nowrap" style={{ color: isHit ? C.purple : C.textPrimary }}>
-                      {isHit && <span style={{ marginRight: 4 }}>👉</span>}{r.name}
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        {isHit && <span>👉</span>}
+                        <span className="font-bold" style={{ color: isHit ? C.purple : C.textPrimary }}>{r.name}</span>
+                        {staff && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-md font-bold" style={{ background: '#f0fdf4', color: '#15803d' }}>스텝</span>
+                        )}
+                        {!staff && (
+                          <button onClick={() => patch(r.id, { fee_exempt: !r.fee_exempt, fee_paid: !r.fee_exempt ? true : r.fee_paid })}
+                            disabled={saving === r.id}
+                            className="text-xs px-1.5 py-0.5 rounded-md font-bold transition-all"
+                            style={{ background: r.fee_exempt ? '#fef9c3' : C.inputBg, color: r.fee_exempt ? '#854d0e' : C.textMuted, border: `1px solid ${r.fee_exempt ? '#fde047' : C.border}` }}>
+                            {r.fee_exempt ? '면제' : '면제?'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
                       <span className="px-1.5 py-0.5 rounded-md text-xs font-bold"
@@ -416,7 +447,15 @@ function CheckInTab() {
                     <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.textSecondary }}>{r.cohort}기</td>
                     <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.textSecondary }}>{r.district}</td>
                     <td className="px-3 py-2.5">
-                      <Checkbox checked={!!r.fee_paid} disabled={saving === r.id} onChange={v => patch(r.id, { fee_paid: v })} color={C.green} />
+                      {exempt ? (
+                        <div className="flex items-center gap-1">
+                          <div className="w-6 h-6 rounded-md border-2 flex items-center justify-center" style={{ background: '#d1fae5', borderColor: '#6ee7b7' }}>
+                            <span className="text-xs font-black" style={{ color: '#059669' }}>✓</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <Checkbox checked={!!r.fee_paid} disabled={saving === r.id} onChange={v => patch(r.id, { fee_paid: v })} color={C.green} />
+                      )}
                     </td>
                     <td className="px-3 py-2.5">
                       <Checkbox checked={!!r.attended} disabled={saving === r.id} onChange={v => patch(r.id, { attended: v })} color={C.cyan} />
