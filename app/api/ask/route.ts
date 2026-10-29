@@ -9,7 +9,8 @@ export async function POST(request: Request) {
     process.env.GEMINI_API_KEY_4,
     process.env.GEMINI_API_KEY_5,
   ].filter(Boolean) as string[]
-  if (!apiKeys.length) return Response.json({ error: 'No API key' }, { status: 500 })
+  console.log(`[ask] 등록된 키 수: ${apiKeys.length}`)
+  if (!apiKeys.length) return Response.json({ error: 'No API key', debug: 'no keys found in env' }, { status: 500 })
 
   const systemPrompt = `당신은 2026 CCC 교육간사 포럼 공식 안내 AI입니다.
 반드시 "안녕하세요! SLM HQ입니다 😊"로 시작하세요.
@@ -94,7 +95,10 @@ SLMHQ에서 단체 여행자보험 가입.
         console.error(`[ask] key${i+1} 한도초과, 다음 키 시도`)
         continue
       }
-      if (data.error) console.error('[ask] Gemini error:', JSON.stringify(data.error))
+      if (data.error) {
+        console.error(`[ask] key${i+1} Gemini error:`, JSON.stringify(data.error))
+        continue
+      }
       const answer = data.candidates?.[0]?.content?.parts?.[0]?.text || '죄송해요, 잠시 후 다시 시도해주세요.'
       return Response.json({ answer })
     } catch (e) {
