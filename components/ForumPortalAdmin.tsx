@@ -422,9 +422,13 @@ function CheckInTab() {
                       <Checkbox checked={!!r.attended} disabled={saving === r.id} onChange={v => patch(r.id, { attended: v })} color={C.cyan} />
                     </td>
                     <td className="px-3 py-2.5">
-                      <input defaultValue={r.room_number || ''} onBlur={e => { if (e.target.value !== (r.room_number || '')) patch(r.id, { room_number: e.target.value }) }}
-                        placeholder="호실" className="w-14 rounded-lg px-2 py-1.5 text-xs text-center outline-none"
-                        style={{ background: C.purpleLight, border: `1px solid ${C.purpleMid}`, color: C.purple }} />
+                      {r.attendance_type === '전 일정(1박 2일) 참석' ? (
+                        <input defaultValue={r.room_number || ''} onBlur={e => { if (e.target.value !== (r.room_number || '')) patch(r.id, { room_number: e.target.value }) }}
+                          placeholder="호실" className="w-14 rounded-lg px-2 py-1.5 text-xs text-center outline-none"
+                          style={{ background: C.purpleLight, border: `1px solid ${C.purpleMid}`, color: C.purple }} />
+                      ) : (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-bold whitespace-nowrap" style={{ background: '#f0fdf4', color: '#16a34a' }}>당일참석</span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5">
                       <Checkbox checked={!!r.key_taken} disabled={saving === r.id} onChange={v => patch(r.id, { key_taken: v })} color={C.amber} />
@@ -610,74 +614,86 @@ function InsuranceTab() {
       .then(d => { setRegs((d.registrations || []).filter((r: Reg) => r.attending === true)); setLoading(false) })
   }, [])
 
-  function exportCSV() {
+  function exportCSV(list: Reg[], filename: string) {
     const rows = [['번호', '이름', '기수', '지구', '캠퍼스', '성별', '주민등록번호']]
-    regs.forEach((r, i) => rows.push([
+    list.forEach((r, i) => rows.push([
       String(i + 1), r.name, r.cohort, r.district, r.campus,
       r.gender || '', r.id_number || ''
     ]))
     const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n')
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
-    a.download = '여행자보험_주민번호.csv'; a.click()
+    a.download = filename; a.click()
   }
 
   if (loading) return <p className="text-center py-10" style={{ color: C.textMuted }}>불러오는 중...</p>
 
-  const withId = regs.filter(r => r.id_number)
-  const withoutId = regs.filter(r => !r.id_number)
+  const twoDay = regs.filter(r => r.attendance_type === '전 일정(1박 2일) 참석')
+  const oneDay = regs.filter(r => r.attendance_type !== '전 일정(1박 2일) 참석')
+
+  function InsuranceTable({ list, label }: { list: Reg[], label: string }) {
+    const withoutId = list.filter(r => !r.id_number)
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <p className="font-bold text-sm" style={{ color: C.textPrimary }}>{label}</p>
+            <p className="text-xs mt-0.5" style={{ color: C.textMuted }}>{list.length}명 중 {list.filter(r => r.id_number).length}명 제출 · {withoutId.length}명 미제출</p>
+          </div>
+          <button onClick={() => exportCSV(list, `여행자보험_${label}.csv`)}
+            className="px-3 py-2 rounded-xl text-xs font-bold text-white" style={{ background: C.purple, minHeight: 40 }}>
+            CSV 내보내기
+          </button>
+        </div>
+        {withoutId.length > 0 && (
+          <div className="rounded-xl p-3" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
+            <p className="text-xs font-bold mb-1.5" style={{ color: '#92400e' }}>⚠️ 미제출 ({withoutId.length}명)</p>
+            <div className="flex flex-wrap gap-1.5">
+              {withoutId.map(r => (
+                <span key={r.id} className="text-xs px-2 py-0.5 rounded-lg" style={{ background: '#fef3c7', color: '#92400e' }}>
+                  {r.name} ({r.cohort}기)
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="overflow-x-auto rounded-2xl" style={{ background: C.cardBg, border: `1px solid ${C.border}`, WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+          <table className="w-full text-sm" style={{ minWidth: 500 }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${C.border}`, background: C.inputBg }}>
+                {['#', '이름', '기수', '지구', '성별', '주민등록번호'].map(h => (
+                  <th key={h} className="px-3 py-3 text-left text-xs font-bold whitespace-nowrap" style={{ color: C.textSecondary }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((r, i) => (
+                <tr key={r.id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                  <td className="px-3 py-2.5 text-xs" style={{ color: C.textMuted }}>{i + 1}</td>
+                  <td className="px-3 py-2.5 font-bold text-xs whitespace-nowrap" style={{ color: C.textPrimary }}>{r.name}</td>
+                  <td className="px-3 py-2.5 text-xs" style={{ color: C.textSecondary }}>{r.cohort}</td>
+                  <td className="px-3 py-2.5 text-xs whitespace-nowrap" style={{ color: C.textSecondary }}>{r.district}</td>
+                  <td className="px-3 py-2.5 text-xs" style={{ color: C.textSecondary }}>{r.gender || '-'}</td>
+                  <td className="px-3 py-2.5 text-xs font-mono whitespace-nowrap" style={{ color: r.id_number ? C.purple : C.red }}>
+                    {r.id_number || '미제출'}
+                  </td>
+                </tr>
+              ))}
+              {list.length === 0 && (
+                <tr><td colSpan={6} className="text-center py-6 text-xs" style={{ color: C.textMuted }}>해당 없음</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="font-bold text-lg" style={{ color: C.textPrimary }}>🔒 여행자보험 주민번호 수합</h2>
-          <p className="text-xs mt-0.5" style={{ color: C.textMuted }}>참석자 {regs.length}명 중 {withId.length}명 제출 · {withoutId.length}명 미제출</p>
-        </div>
-        <button onClick={exportCSV} className="px-4 py-2 rounded-xl text-sm font-bold text-white" style={{ background: C.purple, minHeight: 44 }}>
-          CSV 내보내기
-        </button>
-      </div>
-
-      {withoutId.length > 0 && (
-        <div className="rounded-xl p-4" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
-          <p className="text-xs font-bold mb-2" style={{ color: '#92400e' }}>⚠️ 주민번호 미제출 ({withoutId.length}명)</p>
-          <div className="flex flex-wrap gap-2">
-            {withoutId.map(r => (
-              <span key={r.id} className="text-xs px-2 py-1 rounded-lg" style={{ background: '#fef3c7', color: '#92400e' }}>
-                {r.name} ({r.cohort}기)
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="overflow-x-auto rounded-2xl" style={{ background: C.cardBg, border: `1px solid ${C.border}`, WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
-        <table className="w-full text-sm" style={{ minWidth: 560 }}>
-          <thead>
-            <tr style={{ borderBottom: `1px solid ${C.border}`, background: C.inputBg }}>
-              {['#', '이름', '기수', '지구', '성별', '주민등록번호'].map(h => (
-                <th key={h} className="px-3 py-3 text-left text-xs font-bold whitespace-nowrap" style={{ color: C.textSecondary }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {regs.map((r, i) => (
-              <tr key={r.id} style={{ borderBottom: `1px solid ${C.border}` }}>
-                <td className="px-3 py-2.5 text-xs" style={{ color: C.textMuted }}>{i + 1}</td>
-                <td className="px-3 py-2.5 font-bold text-xs whitespace-nowrap" style={{ color: C.textPrimary }}>{r.name}</td>
-                <td className="px-3 py-2.5 text-xs" style={{ color: C.textSecondary }}>{r.cohort}</td>
-                <td className="px-3 py-2.5 text-xs whitespace-nowrap" style={{ color: C.textSecondary }}>{r.district}</td>
-                <td className="px-3 py-2.5 text-xs" style={{ color: C.textSecondary }}>{r.gender || '-'}</td>
-                <td className="px-3 py-2.5 text-xs font-mono whitespace-nowrap" style={{ color: r.id_number ? C.purple : C.red }}>
-                  {r.id_number || '미제출'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {regs.length === 0 && <p className="text-center py-8" style={{ color: C.textMuted }}>참석 등록자가 없습니다</p>}
-      </div>
+    <div className="space-y-6">
+      <h2 className="font-bold text-lg" style={{ color: C.textPrimary }}>🔒 여행자보험 주민번호 수합</h2>
+      <InsuranceTable list={twoDay} label="🏨 1박 2일 참석자" />
+      <InsuranceTable list={oneDay} label="☀️ 당일 참석자" />
     </div>
   )
 }
@@ -696,7 +712,7 @@ function RoomsTab() {
         fetch('/api/admin/registrations').then(r => r.json()),
         fetch('/api/admin/settings').then(r => r.json()),
       ])
-      const list: Reg[] = (rr.registrations || []).filter((r: Reg) => r.attending === true)
+      const list: Reg[] = (rr.registrations || []).filter((r: Reg) => r.attending === true && r.attendance_type === '전 일정(1박 2일) 참석')
       setRegs(list)
       const init: Record<string, string> = {}
       list.forEach((r: Reg) => { init[r.id] = r.room_number || '' })
@@ -732,6 +748,7 @@ function RoomsTab() {
 
   return (
     <div className="space-y-4">
+      <p className="text-xs px-3 py-2 rounded-xl" style={{ background: '#eff6ff', color: '#1d4ed8' }}>🏨 1박 2일 참석자만 표시 (당일 참석자는 호실 배정 불필요)</p>
       <div className="flex items-center gap-3 flex-wrap">
         <button onClick={saveAll} disabled={saving} className="px-4 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-40" style={{ background: C.purple, minHeight: 44 }}>
           {saving ? '저장 중...' : '전체 저장'}
