@@ -37,8 +37,8 @@ type Reg = {
 
 type Settings = Record<string, string>
 
-const TABS = ['참가자 목록', '공지사항', '설문 데이터', '여행자보험', '호실 배정', '식사 주문', '설정']
-const TAB_ICONS = ['👥', '📢', '📊', '🔒', '🛏️', '🍽️', '⚙️']
+const TABS = ['참가자 목록', '등록', '공지사항', '설문 데이터', '여행자보험', '호실 배정', '식사 주문', '설정']
+const TAB_ICONS = ['👥', '✅', '📢', '📊', '🔒', '🛏️', '🍽️', '⚙️']
 
 /* Light theme tokens */
 const C = {
@@ -68,7 +68,7 @@ export default function ForumPortalAdmin() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const tabParam = params.get('tab')
-    if (tabParam === 'settings') setActiveTab(6)
+    if (tabParam === 'settings') setActiveTab(7)
     if (checkAdminAuth()) setAuthed(true)
   }, [])
 
@@ -146,12 +146,13 @@ export default function ForumPortalAdmin() {
       {/* Tab content */}
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 16px' }}>
         {activeTab === 0 && <RegistrationsTab />}
-        {activeTab === 1 && <NoticesTab />}
-        {activeTab === 2 && <SurveyDataTab />}
-        {activeTab === 3 && <InsuranceTab />}
-        {activeTab === 4 && <RoomsTab />}
-        {activeTab === 5 && <MealTab />}
-        {activeTab === 6 && <SettingsTab />}
+        {activeTab === 1 && <CheckInTab />}
+        {activeTab === 2 && <NoticesTab />}
+        {activeTab === 3 && <SurveyDataTab />}
+        {activeTab === 4 && <InsuranceTab />}
+        {activeTab === 5 && <RoomsTab />}
+        {activeTab === 6 && <MealTab />}
+        {activeTab === 7 && <SettingsTab />}
       </div>
     </div>
   )
@@ -252,82 +253,58 @@ function NoticesTab() {
   )
 }
 
-/* ─────────────── Tab 2: Registrations ─────────────── */
+/* ─────────────── Tab 0: Registrations (basic info) ─────────────── */
 function RegistrationsTab() {
   const [regs, setRegs] = useState<Reg[]>([])
   const [loading, setLoading] = useState(true)
-  const [filterAttending, setFilterAttending] = useState(true)
-  const [saving, setSaving] = useState<string | null>(null)
+  const [filterAttending, setFilterAttending] = useState(false)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    const r = await fetch('/api/admin/registrations')
-    if (r.ok) { const d = await r.json(); setRegs(d.registrations || []) }
-    setLoading(false)
+  useEffect(() => {
+    fetch('/api/admin/registrations').then(r => r.json())
+      .then(d => { setRegs(d.registrations || []); setLoading(false) })
   }, [])
 
-  useEffect(() => { load() }, [load])
-
-  async function patch(id: string, updates: Partial<Reg>) {
-    setSaving(id)
-    await fetch('/api/admin/registrations', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...updates }) })
-    setRegs(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r))
-    setSaving(null)
-  }
-
   function exportCSV() {
-    const rows = [['이름','기수','지구','캠퍼스','연락처','참석','회비납부','참석체크','호실','키수령','등록일']]
-    regs.forEach(r => rows.push([r.name, r.cohort + '기', r.district, r.campus, r.phone,
-      r.attending ? 'O' : 'X', r.fee_paid ? 'O' : '', r.attended ? 'O' : '',
-      r.room_number || '', r.key_taken ? 'O' : '', r.registered_at?.slice(0,10) || '']))
+    const rows = [['이름','기수','지구','캠퍼스','성별','연락처','참석여부','등록일']]
+    regs.forEach(r => rows.push([r.name, r.cohort + '기', r.district, r.campus,
+      r.gender || '', r.phone, r.attending ? '참석' : '불참', r.registered_at?.slice(0,10) || '']))
     const csv = rows.map(r => r.join(',')).join('\n')
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿'+csv], { type: 'text/csv' })); a.download = '포럼등록자.csv'; a.click()
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿'+csv], { type: 'text/csv' })); a.download = '포럼참가자.csv'; a.click()
   }
 
-  const displayed = filterAttending ? regs.filter(r => r.attending === true) : regs
+  const sorted = [...regs].sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+  const displayed = filterAttending ? sorted.filter(r => r.attending === true) : sorted
   const total = regs.length
   const attending = regs.filter(r => r.attending === true).length
-  const feePaid = regs.filter(r => r.fee_paid).length
-  const keyTaken = regs.filter(r => r.key_taken).length
 
   return (
     <div className="space-y-4">
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
-        {[['전체', total, C.purple], ['참석', attending, C.cyan], ['회비납부', feePaid, C.green], ['키수령', keyTaken, C.amber]].map(([l, n, c]) => (
-          <div key={l as string} className="rounded-2xl p-4 text-center" style={{ background: C.cardBg, border: `1px solid ${C.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+      <div className="grid grid-cols-2 gap-3">
+        {[['전체', total, C.purple], ['참석', attending, C.cyan]].map(([l, n, c]) => (
+          <div key={l as string} className="rounded-2xl p-4 text-center" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
             <p className="font-black text-2xl" style={{ color: c as string }}>{n as number}</p>
             <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>{l as string}</p>
           </div>
         ))}
       </div>
-
-      {/* Controls */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex gap-2">
-          <button onClick={() => setFilterAttending(true)}
-            className="px-3 py-2 rounded-lg text-xs font-bold transition-all"
-            style={{ background: filterAttending ? C.purple : C.purpleLight, color: filterAttending ? 'white' : C.purple }}>
-            참석자만
-          </button>
           <button onClick={() => setFilterAttending(false)}
-            className="px-3 py-2 rounded-lg text-xs font-bold transition-all"
-            style={{ background: !filterAttending ? C.purple : C.purpleLight, color: !filterAttending ? 'white' : C.purple }}>
-            전체
-          </button>
+            className="px-3 py-2 rounded-lg text-xs font-bold"
+            style={{ background: !filterAttending ? C.purple : C.purpleLight, color: !filterAttending ? 'white' : C.purple }}>전체</button>
+          <button onClick={() => setFilterAttending(true)}
+            className="px-3 py-2 rounded-lg text-xs font-bold"
+            style={{ background: filterAttending ? C.purple : C.purpleLight, color: filterAttending ? 'white' : C.purple }}>참석자만</button>
         </div>
         <button onClick={exportCSV} className="px-3 py-2 rounded-lg text-xs font-bold"
-          style={{ background: C.inputBg, color: C.textSecondary, border: `1px solid ${C.border}` }}>
-          CSV 내보내기
-        </button>
+          style={{ background: C.inputBg, color: C.textSecondary, border: `1px solid ${C.border}` }}>CSV 내보내기</button>
       </div>
-
       {loading ? <p className="text-center py-8" style={{ color: C.textMuted }}>불러오는 중...</p> : (
-        <div className="overflow-x-auto rounded-2xl" style={{ background: C.cardBg, border: `1px solid ${C.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
-          <table className="w-full text-xs" style={{ minWidth: 700 }}>
+        <div className="overflow-x-auto rounded-2xl" style={{ background: C.cardBg, border: `1px solid ${C.border}`, WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+          <table className="w-full text-xs" style={{ minWidth: 560 }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${C.border}`, background: C.inputBg }}>
-                {['이름','기수','지구','캠퍼스','연락처','참석','회비납부','참석체크','호실','키수령'].map(h => (
+                {['이름','기수','지구','캠퍼스','성별','연락처','참석'].map(h => (
                   <th key={h} className="px-3 py-3 text-left font-bold whitespace-nowrap" style={{ color: C.textSecondary }}>{h}</th>
                 ))}
               </tr>
@@ -339,33 +316,106 @@ function RegistrationsTab() {
                   <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.textSecondary }}>{r.cohort}기</td>
                   <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.textSecondary }}>{r.district}</td>
                   <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.textSecondary }}>{r.campus}</td>
+                  <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.textSecondary }}>{r.gender || '-'}</td>
                   <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.textSecondary }}>{r.phone}</td>
                   <td className="px-3 py-2.5 whitespace-nowrap">
                     <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: r.attending ? 'rgba(77,217,255,0.15)' : '#fef2f2', color: r.attending ? '#0891b2' : C.red }}>
                       {r.attending ? '참석' : '불참'}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5">
-                    <Checkbox checked={!!r.fee_paid} disabled={saving === r.id} onChange={v => patch(r.id, { fee_paid: v })} color={C.green} />
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <Checkbox checked={!!r.attended} disabled={saving === r.id} onChange={v => patch(r.id, { attended: v })} color={C.cyan} />
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <input defaultValue={r.room_number || ''} onBlur={e => { if (e.target.value !== (r.room_number || '')) patch(r.id, { room_number: e.target.value }) }}
-                      placeholder="호실" className="w-16 rounded-lg px-2 py-1.5 text-xs outline-none text-base"
-                      style={{ background: C.purpleLight, border: `1px solid ${C.purpleMid}`, color: C.purple }} />
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <Checkbox checked={!!r.key_taken} disabled={saving === r.id} onChange={v => patch(r.id, { key_taken: v })} color={C.amber} />
-                  </td>
                 </tr>
               ))}
               {displayed.length === 0 && (
-                <tr><td colSpan={10} className="text-center py-10" style={{ color: C.textMuted }}>등록자가 없습니다</td></tr>
+                <tr><td colSpan={7} className="text-center py-10" style={{ color: C.textMuted }}>등록자가 없습니다</td></tr>
               )}
             </tbody>
           </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─────────────── Tab 1: Check-in ─────────────── */
+function CheckInTab() {
+  const [regs, setRegs] = useState<Reg[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    fetch('/api/admin/registrations').then(r => r.json())
+      .then(d => { setRegs(d.registrations || []); setLoading(false) })
+  }, [])
+
+  async function patch(id: string, updates: Partial<Reg>) {
+    setSaving(id)
+    await fetch('/api/admin/registrations', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...updates }) })
+    setRegs(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r))
+    setSaving(null)
+  }
+
+  const attendees = regs.filter(r => r.attending === true)
+  const sorted = [...attendees].sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+  const filtered = search.trim()
+    ? sorted.filter(r => r.name.includes(search.trim()))
+    : sorted
+
+  const feePaid = attendees.filter(r => r.fee_paid).length
+  const attended = attendees.filter(r => r.attended).length
+  const keyTaken = attendees.filter(r => r.key_taken).length
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+        {[['회비납부', feePaid, attendees.length, C.green], ['참석체크', attended, attendees.length, C.cyan], ['키수령', keyTaken, attendees.length, C.amber]].map(([l, n, t, c]) => (
+          <div key={l as string} className="rounded-2xl p-3 text-center" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+            <p className="font-black text-xl" style={{ color: c as string }}>{n as number}<span className="text-xs font-normal" style={{ color: C.textMuted }}>/{t as number}</span></p>
+            <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>{l as string}</p>
+          </div>
+        ))}
+      </div>
+
+      <input value={search} onChange={e => setSearch(e.target.value)}
+        placeholder="🔍 이름 검색..."
+        className="w-full rounded-xl px-4 py-3 text-sm outline-none"
+        style={{ background: C.cardBg, border: `1px solid ${C.border}`, color: C.textPrimary, boxSizing: 'border-box' as const }} />
+
+      {loading ? <p className="text-center py-8" style={{ color: C.textMuted }}>불러오는 중...</p> : (
+        <div className="space-y-2">
+          {filtered.length === 0 && <p className="text-center py-10 text-sm" style={{ color: C.textMuted }}>{search ? '검색 결과가 없습니다' : '참석자가 없습니다'}</p>}
+          {filtered.map(r => (
+            <div key={r.id} className="rounded-2xl px-4 py-3" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="font-bold text-sm" style={{ color: C.textPrimary }}>{r.name}</span>
+                <span className="text-xs px-1.5 py-0.5 rounded-md font-bold"
+                  style={{ background: r.gender === '여성' ? '#fce7f3' : '#eff6ff', color: r.gender === '여성' ? '#be185d' : '#1d4ed8' }}>
+                  {r.gender === '여성' ? '여' : '남'}
+                </span>
+                <span className="text-xs" style={{ color: C.textMuted }}>{r.cohort}기 · {r.district}</span>
+              </div>
+              <div className="flex items-center gap-4 flex-wrap">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <Checkbox checked={!!r.fee_paid} disabled={saving === r.id} onChange={v => patch(r.id, { fee_paid: v })} color={C.green} />
+                  <span className="text-xs font-bold" style={{ color: C.green }}>회비납부</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <Checkbox checked={!!r.attended} disabled={saving === r.id} onChange={v => patch(r.id, { attended: v })} color={C.cyan} />
+                  <span className="text-xs font-bold" style={{ color: C.cyan }}>참석체크</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <Checkbox checked={!!r.key_taken} disabled={saving === r.id} onChange={v => patch(r.id, { key_taken: v })} color={C.amber} />
+                  <span className="text-xs font-bold" style={{ color: C.amber }}>키수령</span>
+                </label>
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <span className="text-xs" style={{ color: C.textMuted }}>호실</span>
+                  <input defaultValue={r.room_number || ''} onBlur={e => { if (e.target.value !== (r.room_number || '')) patch(r.id, { room_number: e.target.value }) }}
+                    placeholder="—" className="w-14 rounded-lg px-2 py-1.5 text-xs text-center outline-none"
+                    style={{ background: C.purpleLight, border: `1px solid ${C.purpleMid}`, color: C.purple }} />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -540,10 +590,10 @@ function InsuranceTab() {
   }, [])
 
   function exportCSV() {
-    const rows = [['번호', '이름', '기수', '지구', '캠퍼스', '성별', '주민등록번호', '연락처']]
+    const rows = [['번호', '이름', '기수', '지구', '캠퍼스', '성별', '주민등록번호']]
     regs.forEach((r, i) => rows.push([
       String(i + 1), r.name, r.cohort, r.district, r.campus,
-      r.gender || '', r.id_number || '', r.phone || ''
+      r.gender || '', r.id_number || ''
     ]))
     const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n')
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
@@ -585,7 +635,7 @@ function InsuranceTab() {
         <table className="w-full text-sm" style={{ minWidth: 560 }}>
           <thead>
             <tr style={{ borderBottom: `1px solid ${C.border}`, background: C.inputBg }}>
-              {['#', '이름', '기수', '지구', '성별', '주민등록번호', '연락처'].map(h => (
+              {['#', '이름', '기수', '지구', '성별', '주민등록번호'].map(h => (
                 <th key={h} className="px-3 py-3 text-left text-xs font-bold whitespace-nowrap" style={{ color: C.textSecondary }}>{h}</th>
               ))}
             </tr>
@@ -601,7 +651,6 @@ function InsuranceTab() {
                 <td className="px-3 py-2.5 text-xs font-mono whitespace-nowrap" style={{ color: r.id_number ? C.purple : C.red }}>
                   {r.id_number || '미제출'}
                 </td>
-                <td className="px-3 py-2.5 text-xs whitespace-nowrap" style={{ color: C.textSecondary }}>{r.phone || '-'}</td>
               </tr>
             ))}
           </tbody>
@@ -790,18 +839,20 @@ function MealTab() {
 
       <div className="rounded-2xl p-5 space-y-4" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
         <p className="font-bold text-sm" style={{ color: C.textPrimary }}>주문 받을 시간</p>
-        <div className="space-y-3">
-          <div>
+        <div className="space-y-3" style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0 }}>
             <label className="text-xs mb-1.5 block" style={{ color: C.textSecondary }}>시작</label>
-            <input type="datetime-local" value={orderStart} onChange={e => setOrderStart(e.target.value)}
-              className="rounded-xl px-3 py-2.5 outline-none text-sm"
-              style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary, width: '100%', boxSizing: 'border-box', display: 'block' }} />
+            <div style={{ overflow: 'hidden', borderRadius: 12, border: `1px solid ${C.border}`, background: C.inputBg }}>
+              <input type="datetime-local" value={orderStart} onChange={e => setOrderStart(e.target.value)}
+                style={{ width: '100%', minWidth: 0, padding: '10px 12px', outline: 'none', border: 'none', background: 'transparent', color: C.textPrimary, fontSize: 14, boxSizing: 'border-box' as const }} />
+            </div>
           </div>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <label className="text-xs mb-1.5 block" style={{ color: C.textSecondary }}>종료</label>
-            <input type="datetime-local" value={orderEnd} onChange={e => setOrderEnd(e.target.value)}
-              className="rounded-xl px-3 py-2.5 outline-none text-sm"
-              style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary, width: '100%', boxSizing: 'border-box', display: 'block' }} />
+            <div style={{ overflow: 'hidden', borderRadius: 12, border: `1px solid ${C.border}`, background: C.inputBg }}>
+              <input type="datetime-local" value={orderEnd} onChange={e => setOrderEnd(e.target.value)}
+                style={{ width: '100%', minWidth: 0, padding: '10px 12px', outline: 'none', border: 'none', background: 'transparent', color: C.textPrimary, fontSize: 14, boxSizing: 'border-box' as const }} />
+            </div>
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
