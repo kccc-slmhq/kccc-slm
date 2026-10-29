@@ -682,11 +682,16 @@ function RoomsTab() {
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {regs.map(r => (
-          <div key={r.id} className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
-            <span className="font-bold text-sm flex-1" style={{ color: C.textPrimary }}>{r.name}</span>
-            <span className="text-xs" style={{ color: C.textMuted }}>{r.district}</span>
+          <div key={r.id} className="flex items-center gap-2 rounded-xl px-4 py-3" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+            <span className="font-bold text-sm" style={{ color: C.textPrimary }}>{r.name}</span>
+            <span className="text-xs px-1.5 py-0.5 rounded-md font-bold"
+              style={{ background: r.gender === '여성' ? '#fce7f3' : '#eff6ff', color: r.gender === '여성' ? '#be185d' : '#1d4ed8', flexShrink: 0 }}>
+              {r.gender === '여성' ? '여' : '남'}
+            </span>
+            <span className="text-xs font-bold" style={{ color: C.textMuted, flexShrink: 0 }}>{r.cohort}기</span>
+            <div className="flex-1" />
             <input value={rooms[r.id] || ''} onChange={e => setRooms(prev => ({ ...prev, [r.id]: e.target.value }))}
-              placeholder="호실" className="w-16 rounded-lg px-2 py-1.5 text-xs text-center outline-none text-base"
+              placeholder="호실" className="w-14 rounded-lg px-2 py-1.5 text-xs text-center outline-none"
               style={{ background: C.purpleLight, border: `1px solid ${C.purpleMid}`, color: C.purple }} />
           </div>
         ))}
@@ -789,14 +794,14 @@ function MealTab() {
           <div>
             <label className="text-xs mb-1.5 block" style={{ color: C.textSecondary }}>시작</label>
             <input type="datetime-local" value={orderStart} onChange={e => setOrderStart(e.target.value)}
-              className="w-full rounded-xl px-3 py-2.5 outline-none text-sm"
-              style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary }} />
+              className="rounded-xl px-3 py-2.5 outline-none text-sm"
+              style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary, width: '100%', boxSizing: 'border-box', display: 'block' }} />
           </div>
           <div>
             <label className="text-xs mb-1.5 block" style={{ color: C.textSecondary }}>종료</label>
             <input type="datetime-local" value={orderEnd} onChange={e => setOrderEnd(e.target.value)}
-              className="w-full rounded-xl px-3 py-2.5 outline-none text-sm"
-              style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary }} />
+              className="rounded-xl px-3 py-2.5 outline-none text-sm"
+              style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary, width: '100%', boxSizing: 'border-box', display: 'block' }} />
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
