@@ -232,19 +232,19 @@ function RegistrationsTab() {
             <thead>
               <tr style={{ borderBottom: `1px solid ${C.border}`, background: C.inputBg }}>
                 {['이름','기수','지구','캠퍼스','연락처','참석','회비납부','참석체크','호실','키수령'].map(h => (
-                  <th key={h} className="px-3 py-3 text-left font-bold" style={{ color: C.textSecondary }}>{h}</th>
+                  <th key={h} className="px-3 py-3 text-left font-bold whitespace-nowrap" style={{ color: C.textSecondary }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {displayed.map(r => (
                 <tr key={r.id} style={{ borderBottom: `1px solid ${C.border}` }}>
-                  <td className="px-3 py-2.5 font-bold" style={{ color: C.textPrimary }}>{r.name}</td>
-                  <td className="px-3 py-2.5" style={{ color: C.textSecondary }}>{r.cohort}기</td>
-                  <td className="px-3 py-2.5" style={{ color: C.textSecondary }}>{r.district}</td>
-                  <td className="px-3 py-2.5" style={{ color: C.textSecondary }}>{r.campus}</td>
-                  <td className="px-3 py-2.5" style={{ color: C.textSecondary }}>{r.phone}</td>
-                  <td className="px-3 py-2.5">
+                  <td className="px-3 py-2.5 font-bold whitespace-nowrap" style={{ color: C.textPrimary }}>{r.name}</td>
+                  <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.textSecondary }}>{r.cohort}기</td>
+                  <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.textSecondary }}>{r.district}</td>
+                  <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.textSecondary }}>{r.campus}</td>
+                  <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.textSecondary }}>{r.phone}</td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">
                     <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: r.attending ? 'rgba(77,217,255,0.15)' : '#fef2f2', color: r.attending ? '#0891b2' : C.red }}>
                       {r.attending ? '참석' : '불참'}
                     </span>
