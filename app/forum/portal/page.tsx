@@ -4,6 +4,10 @@ import ForumPortalAdmin from "@/components/ForumPortalAdmin"
 export const metadata: Metadata = {
   title: "포럼 관리자",
   manifest: "/admin-manifest.json",
+  icons: {
+    icon: "/icon-admin.png",
+    apple: "/icon-admin.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
