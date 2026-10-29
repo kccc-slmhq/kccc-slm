@@ -257,7 +257,7 @@ function NoticesTab() {
 function isSlmhq(r: Reg) {
   const n = (s: string) => (s || '').toLowerCase().replace(/\s/g, '')
   const has = (s: string) => n(s).includes('slm') && n(s).includes('hq')
-  return has(r.campus) || has(r.name)
+  return has(r.campus) || has(r.name) || has(r.district)
 }
 
 /* ─────────────── Tab 0: Registrations (basic info) ─────────────── */
