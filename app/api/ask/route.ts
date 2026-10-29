@@ -75,36 +75,45 @@ SLMHQ에서 단체 여행자보험 가입.
       ? '\n\n【 공지사항 】\n현재 게시된 공지사항이 없습니다.'
       : ''
 
+  const body = JSON.stringify({
+    contents: [{ role: 'user', parts: [{ text: systemPrompt + noticeBlock + '\n\n질문: ' + question }] }],
+    generationConfig: { temperature: 0.7, maxOutputTokens: 1200 }
+  })
+
   const startIdx = Math.floor(Date.now() / 1000) % apiKeys.length
   for (let j = 0; j < apiKeys.length; j++) {
     const i = (startIdx + j) % apiKeys.length
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 7000)
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKeys[i]}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: systemPrompt + noticeBlock + '\n\n질문: ' + question }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 1200 }
-          })
-        }
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKeys[i]}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: controller.signal }
       )
+      clearTimeout(timer)
       const data = await response.json()
       if (data.error?.code === 429) {
-        console.error(`[ask] key${i+1} 한도초과, 다음 키 시도`)
+        console.error(`[ask] key${i+1} 한도초과`)
         continue
       }
       if (data.error) {
-        console.error(`[ask] key${i+1} Gemini error:`, JSON.stringify(data.error))
+        console.error(`[ask] key${i+1} 에러:`, JSON.stringify(data.error))
         continue
       }
-      const answer = data.candidates?.[0]?.content?.parts?.[0]?.text || '죄송해요, 잠시 후 다시 시도해주세요.'
+      const answer = data.candidates?.[0]?.content?.parts?.[0]?.text
+      if (!answer) {
+        console.error(`[ask] key${i+1} 빈 응답:`, JSON.stringify(data).slice(0, 200))
+        continue
+      }
+      console.log(`[ask] key${i+1} 성공`)
       return Response.json({ answer })
     } catch (e) {
-      console.error(`[ask] key${i+1} 오류:`, (e as Error).message)
+      clearTimeout(timer)
+      const msg = (e as Error).name === 'AbortError' ? '타임아웃(7s)' : (e as Error).message
+      console.error(`[ask] key${i+1} 실패: ${msg}`)
       continue
     }
   }
+  console.error('[ask] 모든 키 실패')
   return Response.json({ answer: '죄송해요, 잠시 후 다시 시도해주세요.' })
 }
