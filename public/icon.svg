@@ -4,23 +4,35 @@
       <stop offset="0%" style="stop-color:#2d1b69"/>
       <stop offset="100%" style="stop-color:#0f0830"/>
     </linearGradient>
-    <linearGradient id="cross" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#c4b5fd"/>
+    <linearGradient id="book" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a78bfa"/>
       <stop offset="100%" style="stop-color:#4dd9ff"/>
     </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="8" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
+    <linearGradient id="page" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" style="stop-color:#e0d7ff" stop-opacity="0.9"/>
+    </linearGradient>
   </defs>
   <!-- Background -->
   <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <!-- Glow behind cross -->
-  <ellipse cx="256" cy="230" rx="100" ry="130" fill="#7c5cfc" opacity="0.25" filter="url(#glow)"/>
-  <!-- Cross vertical bar -->
-  <rect x="224" y="96" width="64" height="260" rx="32" fill="url(#cross)"/>
-  <!-- Cross horizontal bar -->
-  <rect x="144" y="176" width="224" height="64" rx="32" fill="url(#cross)"/>
-  <!-- Bottom dot accent -->
-  <circle cx="256" cy="410" r="18" fill="#4dd9ff" opacity="0.7"/>
+
+  <!-- Book spine (left side) -->
+  <rect x="110" y="110" width="48" height="292" rx="16" fill="url(#book)"/>
+
+  <!-- Book cover right -->
+  <rect x="150" y="110" width="252" height="292" rx="0" fill="url(#book)" opacity="0.85"/>
+  <rect x="390" y="110" width="12" height="292" rx="6" fill="#4dd9ff" opacity="0.5"/>
+
+  <!-- White pages -->
+  <rect x="164" y="124" width="224" height="264" rx="4" fill="url(#page)"/>
+
+  <!-- Text lines on page -->
+  <rect x="188" y="168" width="176" height="10" rx="5" fill="#7c5cfc" opacity="0.5"/>
+  <rect x="188" y="196" width="144" height="8" rx="4" fill="#7c5cfc" opacity="0.3"/>
+  <rect x="188" y="220" width="160" height="8" rx="4" fill="#7c5cfc" opacity="0.3"/>
+  <rect x="188" y="244" width="120" height="8" rx="4" fill="#7c5cfc" opacity="0.3"/>
+
+  <!-- Small cross on page -->
+  <rect x="248" y="272" width="16" height="52" rx="8" fill="#7c5cfc" opacity="0.7"/>
+  <rect x="228" y="288" width="56" height="16" rx="8" fill="#7c5cfc" opacity="0.7"/>
 </svg>
