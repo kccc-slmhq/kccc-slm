@@ -80,7 +80,7 @@ SLMHQ에서 단체 여행자보험 가입.
     const i = (startIdx + j) % apiKeys.length
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKeys[i]}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKeys[i]}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
