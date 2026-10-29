@@ -350,10 +350,9 @@ function CheckInTab() {
       .then(d => { setRegs(d.registrations || []); setLoading(false) })
   }, [])
 
-  function doSearch() {
-    const q = search.trim()
-    if (!q) return
-    const match = sorted.find(r => r.name.includes(q))
+  function scrollToMatch(q: string) {
+    if (!q.trim()) return
+    const match = sorted.find(r => r.name.includes(q.trim()))
     const row = match ? rowRefs.current[match.id] : null
     const container = tableContainerRef.current
     if (row && container) {
@@ -390,9 +389,8 @@ function CheckInTab() {
         ))}
       </div>
 
-      <input value={search} onChange={e => setSearch(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && doSearch()}
-        placeholder="🔍 이름 입력 후 엔터"
+      <input value={search} onChange={e => { setSearch(e.target.value); scrollToMatch(e.target.value) }}
+        placeholder="🔍 이름 검색"
         className="w-full rounded-xl px-4 py-3 text-sm outline-none"
         style={{ background: C.cardBg, border: `1px solid ${C.border}`, color: C.textPrimary, boxSizing: 'border-box' as const }} />
 
