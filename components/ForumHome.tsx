@@ -65,6 +65,7 @@ export default function ForumHome() {
   const [showModal, setShowModal] = useState(false)
   const [showClosed, setShowClosed] = useState(false)
   const [regOverride, setRegOverride] = useState(false)
+  const [popupNotice, setPopupNotice] = useState<{id: string; title: string; content: string} | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -72,10 +73,40 @@ export default function ForumHome() {
       .then(({ data }) => { if (data && data.content === todayKST()) setRegOverride(true) })
   }, [])
 
+  useEffect(() => {
+    fetch('/api/notices').then(r => r.json()).then(({ notices }) => {
+      if (!notices?.length) return
+      let seen: string[] = []
+      try { seen = JSON.parse(localStorage.getItem('noticed_ids') || '[]') } catch {}
+      const unseen = notices.find((n: {id: string}) => !seen.includes(n.id))
+      if (unseen) setPopupNotice(unseen)
+    }).catch(() => {})
+  }, [])
+
+  function dismissPopup() {
+    if (!popupNotice) return
+    try {
+      const seen: string[] = JSON.parse(localStorage.getItem('noticed_ids') || '[]')
+      seen.push(popupNotice.id)
+      localStorage.setItem('noticed_ids', JSON.stringify(seen))
+    } catch {}
+    setPopupNotice(null)
+  }
+
   const isClosed = !regOverride && new Date() >= DEADLINE
 
   return (
     <div className="min-h-screen bg-[#0f0830]">
+      {/* Notice Popup */}
+      {popupNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
+          <div className="rounded-2xl p-6 w-full max-w-sm" style={{ background: '#1a0f3a', border: '1px solid rgba(124,92,252,0.3)' }}>
+            <p className="font-black text-lg text-white mb-2">{popupNotice.title}</p>
+            {popupNotice.content && <p className="text-white/70 text-sm leading-relaxed mb-5">{popupNotice.content}</p>}
+            <button onClick={dismissPopup} className="w-full py-3 rounded-xl font-bold text-white text-sm" style={{ background: '#7c5cfc' }}>확인</button>
+          </div>
+        </div>
+      )}
       {/* Hero Banner */}
       <div className="relative w-full overflow-hidden" style={{ maxHeight: '220px' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}

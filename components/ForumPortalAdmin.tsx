@@ -37,8 +37,8 @@ type Reg = {
 
 type Settings = Record<string, string>
 
-const TABS = ['참가자 목록', '설문 데이터', '여행자보험', '호실 배정', '식사 주문', '설정']
-const TAB_ICONS = ['👥', '📊', '🔒', '🛏️', '🍽️', '⚙️']
+const TABS = ['참가자 목록', '공지사항', '설문 데이터', '여행자보험', '호실 배정', '식사 주문', '설정']
+const TAB_ICONS = ['👥', '📢', '📊', '🔒', '🛏️', '🍽️', '⚙️']
 
 /* Light theme tokens */
 const C = {
@@ -68,7 +68,7 @@ export default function ForumPortalAdmin() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const tabParam = params.get('tab')
-    if (tabParam === 'settings') setActiveTab(5)
+    if (tabParam === 'settings') setActiveTab(6)
     if (checkAdminAuth()) setAuthed(true)
   }, [])
 
@@ -146,17 +146,194 @@ export default function ForumPortalAdmin() {
       {/* Tab content */}
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 16px' }}>
         {activeTab === 0 && <RegistrationsTab />}
-        {activeTab === 1 && <SurveyDataTab />}
-        {activeTab === 2 && <InsuranceTab />}
-        {activeTab === 3 && <RoomsTab />}
-        {activeTab === 4 && <MealTab />}
-        {activeTab === 5 && <SettingsTab />}
+        {activeTab === 1 && <NoticesTab />}
+        {activeTab === 2 && <SurveyDataTab />}
+        {activeTab === 3 && <InsuranceTab />}
+        {activeTab === 4 && <RoomsTab />}
+        {activeTab === 5 && <MealTab />}
+        {activeTab === 6 && <SettingsTab />}
       </div>
     </div>
   )
 }
 
-/* ─────────────── Tab 1: Registrations ─────────────── */
+/* ─────────────── Tab: Notices ─────────────── */
+// Supabase SQL (run once):
+// create table forum_notices (
+//   id uuid primary key default gen_random_uuid(),
+//   title text not null,
+//   content text,
+//   active boolean default true,
+//   created_at timestamptz default now()
+// );
+type Notice = { id: string; title: string; content: string; active: boolean; created_at: string }
+
+function NoticesTab() {
+  const [notices, setNotices] = useState<Notice[]>([])
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  async function load() {
+    const r = await fetch('/api/admin/notices')
+    const d = await r.json()
+    setNotices(d.notices || [])
+  }
+  useEffect(() => { load() }, [])
+
+  async function create() {
+    if (!title.trim()) return
+    setSaving(true)
+    await fetch('/api/admin/notices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create', title, content }) })
+    setTitle(''); setContent(''); setSaving(false); setMsg('등록됨'); setTimeout(() => setMsg(''), 2000)
+    load()
+  }
+
+  async function toggle(id: string, active: boolean) {
+    await fetch('/api/admin/notices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'toggle', id, active }) })
+    load()
+  }
+
+  async function del(id: string) {
+    if (!confirm('삭제할까요?')) return
+    await fetch('/api/admin/notices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', id }) })
+    load()
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl p-5 space-y-3" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+        <p className="font-bold text-sm" style={{ color: C.textPrimary }}>새 공지 등록</p>
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="제목"
+          className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+          style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary }} />
+        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="내용" rows={3}
+          className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none"
+          style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary }} />
+        <div className="flex items-center gap-3">
+          <button onClick={create} disabled={saving || !title.trim()}
+            className="px-4 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-40"
+            style={{ background: C.purple }}>등록</button>
+          {msg && <span className="text-xs font-bold" style={{ color: C.green }}>{msg}</span>}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {notices.length === 0 && <p className="text-sm text-center py-6" style={{ color: C.textMuted }}>등록된 공지가 없습니다</p>}
+        {notices.map(n => (
+          <div key={n.id} className="rounded-2xl p-4" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm" style={{ color: C.textPrimary }}>{n.title}</p>
+                {n.content && <p className="text-xs mt-1 leading-relaxed" style={{ color: C.textSecondary }}>{n.content}</p>}
+                <p className="text-xs mt-1" style={{ color: C.textMuted }}>{new Date(n.created_at).toLocaleDateString('ko-KR')}</p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button onClick={() => toggle(n.id, !n.active)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold"
+                  style={{ background: n.active ? 'rgba(34,197,94,0.12)' : C.inputBg, color: n.active ? C.green : C.textMuted, border: `1px solid ${n.active ? 'rgba(34,197,94,0.3)' : C.border}` }}>
+                  {n.active ? '활성' : '비활성'}
+                </button>
+                <button onClick={() => del(n.id)} className="px-2 py-1.5 rounded-lg text-xs font-bold"
+                  style={{ background: '#fef2f2', color: C.red, border: `1px solid #fecaca` }}>삭제</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────── Tab 1: Notices ─────────────── */
+type Notice = { id: string; title: string; content: string; active: boolean; created_at: string }
+
+function NoticesTab() {
+  const [notices, setNotices] = useState<Notice[]>([])
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  async function load() {
+    const r = await fetch('/api/admin/notices').then(r => r.json())
+    setNotices(r.notices || [])
+  }
+  useEffect(() => { load() }, [])
+
+  async function post(action: string, body: object) {
+    const r = await fetch('/api/admin/notices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, ...body }) })
+    return r.json()
+  }
+
+  async function add() {
+    if (!title.trim()) return
+    setSaving(true)
+    await post('create', { title: title.trim(), content: content.trim() })
+    setTitle(''); setContent('')
+    await load()
+    setSaving(false); setMsg('등록됨'); setTimeout(() => setMsg(''), 2000)
+  }
+
+  async function toggle(n: Notice) {
+    await post('toggle', { id: n.id, active: !n.active })
+    await load()
+  }
+
+  async function del(id: string) {
+    if (!confirm('삭제할까요?')) return
+    await post('delete', { id })
+    await load()
+  }
+
+  const IB = `w-full rounded-xl px-3 py-3 outline-none text-sm`
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl p-5 space-y-3" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+        <p className="font-bold text-sm" style={{ color: C.textPrimary }}>📢 공지사항 등록</p>
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="제목 (필수)"
+          className={IB} style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary }} />
+        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="내용 (선택)"
+          rows={3} className={IB} style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary, resize: 'none' }} />
+        <div className="flex items-center gap-3">
+          <button onClick={add} disabled={saving || !title.trim()}
+            className="px-5 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-40"
+            style={{ background: C.purple }}>{saving ? '등록 중...' : '등록하기'}</button>
+          {msg && <span className="text-sm font-bold" style={{ color: C.green }}>{msg}</span>}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {notices.length === 0 && <p className="text-center py-8 text-sm" style={{ color: C.textMuted }}>등록된 공지사항이 없습니다</p>}
+        {notices.map(n => (
+          <div key={n.id} className="rounded-2xl p-4" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm" style={{ color: C.textPrimary }}>{n.title}</p>
+                {n.content && <p className="text-xs mt-1 leading-relaxed" style={{ color: C.textSecondary }}>{n.content}</p>}
+                <p className="text-xs mt-1.5" style={{ color: C.textMuted }}>{new Date(n.created_at).toLocaleString('ko-KR')}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => toggle(n)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold"
+                  style={{ background: n.active ? '#dcfce7' : C.inputBg, color: n.active ? '#16a34a' : C.textMuted, border: `1px solid ${n.active ? '#bbf7d0' : C.border}` }}>
+                  {n.active ? '활성' : '비활성'}
+                </button>
+                <button onClick={() => del(n.id)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold"
+                  style={{ background: '#fef2f2', color: C.red, border: `1px solid #fecaca` }}>삭제</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────── Tab 2: Registrations ─────────────── */
 function RegistrationsTab() {
   const [regs, setRegs] = useState<Reg[]>([])
   const [loading, setLoading] = useState(true)
@@ -693,13 +870,13 @@ function MealTab() {
           <div>
             <label className="text-xs mb-1.5 block" style={{ color: C.textSecondary }}>시작</label>
             <input type="datetime-local" value={orderStart} onChange={e => setOrderStart(e.target.value)}
-              className="w-full rounded-xl px-3 py-2.5 outline-none text-base"
+              className="w-full rounded-xl px-3 py-2.5 outline-none text-sm"
               style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary }} />
           </div>
           <div>
             <label className="text-xs mb-1.5 block" style={{ color: C.textSecondary }}>종료</label>
             <input type="datetime-local" value={orderEnd} onChange={e => setOrderEnd(e.target.value)}
-              className="w-full rounded-xl px-3 py-2.5 outline-none text-base"
+              className="w-full rounded-xl px-3 py-2.5 outline-none text-sm"
               style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary }} />
           </div>
         </div>
