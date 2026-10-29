@@ -343,6 +343,7 @@ function CheckInTab() {
   const [saving, setSaving] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const rowRefs = React.useRef<Record<string, HTMLTableRowElement | null>>({})
+  const tableContainerRef = React.useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     fetch('/api/admin/registrations').then(r => r.json())
@@ -353,8 +354,12 @@ function CheckInTab() {
     const q = search.trim()
     if (!q) return
     const match = sorted.find(r => r.name.includes(q))
-    if (match && rowRefs.current[match.id]) {
-      rowRefs.current[match.id]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const row = match ? rowRefs.current[match.id] : null
+    const container = tableContainerRef.current
+    if (row && container) {
+      const containerTop = container.getBoundingClientRect().top
+      const rowTop = row.getBoundingClientRect().top
+      container.scrollTop += (rowTop - containerTop) - container.clientHeight / 2 + row.clientHeight / 2
     }
   }
 
@@ -392,7 +397,7 @@ function CheckInTab() {
         style={{ background: C.cardBg, border: `1px solid ${C.border}`, color: C.textPrimary, boxSizing: 'border-box' as const }} />
 
       {loading ? <p className="text-center py-8" style={{ color: C.textMuted }}>불러오는 중...</p> : (
-        <div className="overflow-x-auto rounded-2xl" style={{ background: C.cardBg, border: `1px solid ${C.border}`, WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+        <div ref={tableContainerRef} className="overflow-auto rounded-2xl" style={{ background: C.cardBg, border: `1px solid ${C.border}`, maxHeight: '60vh', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
           <table className="w-full text-xs" style={{ minWidth: 620 }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${C.border}`, background: C.inputBg }}>
