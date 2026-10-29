@@ -640,18 +640,20 @@ function FloatingRegisterBtn({ onClick, isClosed }: { onClick: () => void; isClo
 /* ── 식사 주문 팝업 ── */
 function MealOrderModal({ menu, onClose }: { menu: string[]; onClose: () => void }) {
   const [name, setName] = useState('')
+  const [cohort, setCohort] = useState('')
   const [selected, setSelected] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
   const [err, setErr] = useState('')
 
   async function submit() {
-    if (!name.trim() || !selected) return
+    if (!name.trim() || !cohort.trim() || !selected) return
     setSubmitting(true); setErr('')
+    const fullName = `${name.trim()} (${cohort.trim()}기)`
     const r = await fetch('/api/meal-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name.trim(), menu_item: selected }),
+      body: JSON.stringify({ name: fullName, menu_item: selected }),
     })
     const d = await r.json()
     setSubmitting(false)
@@ -674,13 +676,18 @@ function MealOrderModal({ menu, onClose }: { menu: string[]; onClose: () => void
           <div className="text-center py-8 space-y-3">
             <div className="text-5xl">✅</div>
             <p className="text-white font-black text-xl">주문 완료!</p>
-            <p className="text-white/60 text-sm">{name} · {selected}</p>
+            <p className="text-white/60 text-sm">{name} ({cohort}기) · {selected}</p>
             <button onClick={onClose} className="w-full btn-gold py-3 rounded-2xl font-bold mt-2">닫기</button>
           </div>
         ) : (
           <>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="이름 입력"
-              className={INPUT_CLS} />
+            <div className="flex gap-2">
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="이름"
+                className={INPUT_CLS} style={{ flex: 2 }} />
+              <input value={cohort} onChange={e => setCohort(e.target.value.replace(/\D/g, ''))}
+                placeholder="기수" inputMode="numeric"
+                className={INPUT_CLS} style={{ flex: 1 }} />
+            </div>
             <div className="space-y-2">
               <p className="text-white/50 text-xs font-bold">메뉴 선택</p>
               {menu.map(item => (
@@ -692,9 +699,9 @@ function MealOrderModal({ menu, onClose }: { menu: string[]; onClose: () => void
               ))}
             </div>
             {err && <p className="text-red-400 text-sm">{err}</p>}
-            <button onClick={submit} disabled={!name.trim() || !selected || submitting}
+            <button onClick={submit} disabled={!name.trim() || !cohort.trim() || !selected || submitting}
               className="w-full btn-gold py-4 rounded-2xl font-black text-lg disabled:opacity-40">
-              {submitting ? '주문 중...' : '주문하기'}
+              {submitting ? '주문 중...' : '제출하기'}
             </button>
           </>
         )}

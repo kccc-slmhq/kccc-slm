@@ -956,31 +956,39 @@ function MealTab() {
       </div>
 
       {orders.length > 0 && (
-        <div className="rounded-2xl p-5 space-y-3" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <p className="font-bold text-sm" style={{ color: C.textPrimary }}>주문 현황 ({orders.length}건)</p>
-            <div className="flex gap-2 flex-wrap">
-              {Object.entries(menuCounts).map(([item, cnt]) => (
-                <span key={item} className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: C.purpleLight, color: C.purple }}>{item} {cnt}건</span>
+        <div className="space-y-3">
+          {/* 메뉴별 수량 요약 */}
+          <div className="rounded-2xl p-5" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+            <p className="font-bold text-sm mb-4" style={{ color: C.textPrimary }}>📊 메뉴별 주문 현황 (총 {orders.length}건)</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {Object.entries(menuCounts).sort((a, b) => b[1] - a[1]).map(([item, cnt]) => (
+                <div key={item} className="rounded-xl px-4 py-3 flex items-center justify-between" style={{ background: C.inputBg, border: `1px solid ${C.border}` }}>
+                  <span className="font-bold text-sm" style={{ color: C.textPrimary }}>{item}</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="font-black text-2xl" style={{ color: C.purple }}>{cnt}</span>
+                    <span className="text-xs" style={{ color: C.textMuted }}>건</span>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
-          <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
-            <table className="w-full text-sm" style={{ minWidth: 300 }}>
-              <thead><tr style={{ borderBottom: `1px solid ${C.border}`, background: C.inputBg }}>
-                {['이름','메뉴','시간'].map(h => <th key={h} className="px-3 py-2 text-left text-xs font-bold" style={{ color: C.textSecondary }}>{h}</th>)}
-              </tr></thead>
-              <tbody>
-                {orders.map(o => (
-                  <tr key={o.id} style={{ borderBottom: `1px solid ${C.border}` }}>
-                    <td className="px-3 py-2" style={{ color: C.textPrimary }}>{o.name}</td>
-                    <td className="px-3 py-2" style={{ color: C.textSecondary }}>{o.menu_item}</td>
-                    <td className="px-3 py-2 text-xs" style={{ color: C.textMuted }}>{new Date(o.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+
+          {/* 메뉴별 상세 명단 */}
+          {Object.entries(menuCounts).sort((a, b) => b[1] - a[1]).map(([item]) => {
+            const list = orders.filter(o => o.menu_item === item)
+            return (
+              <div key={item} className="rounded-2xl p-5 space-y-2" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+                <p className="font-bold text-sm" style={{ color: C.textPrimary }}>{item} <span style={{ color: C.textMuted }}>({list.length}명)</span></p>
+                <div className="flex flex-wrap gap-2">
+                  {list.map(o => (
+                    <span key={o.id} className="text-xs px-3 py-1.5 rounded-xl font-bold" style={{ background: C.purpleLight, color: C.purple }}>
+                      {o.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
