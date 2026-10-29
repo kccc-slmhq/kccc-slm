@@ -817,13 +817,14 @@ function RoomsTab() {
             </p>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {group.map(r => (
-                <div key={r.id} className="flex items-center gap-2 rounded-xl px-4 py-3"
+                <div key={r.id} className="flex items-center gap-3 rounded-xl px-4 py-3"
                   style={{ background: C.cardBg, border: `1px solid ${gender === '여성' ? '#fce7f3' : '#eff6ff'}` }}>
-                  <span className="font-bold text-sm" style={{ color: C.textPrimary }}>{r.name}</span>
-                  <span className="text-xs font-bold" style={{ color: C.textMuted, flexShrink: 0 }}>{r.cohort}기 · {r.district}</span>
-                  <div className="flex-1" />
+                  <div className="flex-1 min-w-0">
+                    <span className="font-bold text-sm" style={{ color: C.textPrimary }}>{r.name}</span>
+                    <span className="text-xs font-bold ml-2" style={{ color: C.textMuted }}>{r.cohort}기 · {r.district}</span>
+                  </div>
                   <input value={rooms[r.id] || ''} onChange={e => setRooms(prev => ({ ...prev, [r.id]: e.target.value }))}
-                    placeholder="호실" className="w-14 rounded-lg px-2 py-1.5 text-xs text-center outline-none"
+                    placeholder="호실 입력" className="w-24 rounded-lg px-3 py-2 text-sm text-center outline-none font-bold"
                     style={{ background: gender === '여성' ? '#fce7f3' : '#eff6ff', border: `1px solid ${gender === '여성' ? '#fbcfe8' : '#bfdbfe'}`, color: gender === '여성' ? '#be185d' : '#1d4ed8' }} />
                 </div>
               ))}

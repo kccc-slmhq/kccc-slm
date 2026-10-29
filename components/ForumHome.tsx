@@ -60,12 +60,25 @@ function formatIdNumber(v: string) {
 }
 
 
+const EVENT_START = new Date('2026-11-23T00:00:00+09:00')
+
+type AppSettings = {
+  meal_order_active: boolean
+  meal_order_start: string
+  meal_order_end: string
+  meal_menu: string[]
+  rooms_published: boolean
+}
+
 export default function ForumHome() {
   const [activeDay, setActiveDay] = useState(0)
   const [showModal, setShowModal] = useState(false)
   const [showClosed, setShowClosed] = useState(false)
   const [regOverride, setRegOverride] = useState(false)
   const [popupNotice, setPopupNotice] = useState<{id: string; title: string; content: string} | null>(null)
+  const [appSettings, setAppSettings] = useState<AppSettings>({ meal_order_active: false, meal_order_start: '', meal_order_end: '', meal_menu: [], rooms_published: false })
+  const [showMealOrder, setShowMealOrder] = useState(false)
+  const [showRoomSearch, setShowRoomSearch] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -83,6 +96,25 @@ export default function ForumHome() {
     }).catch(() => {})
   }, [])
 
+  useEffect(() => {
+    fetch('/api/admin/settings').then(r => r.json()).then(d => {
+      const s = d.settings || {}
+      const now = Date.now()
+      const start = s.meal_order_start ? new Date(s.meal_order_start).getTime() : 0
+      const end = s.meal_order_end ? new Date(s.meal_order_end).getTime() : 0
+      const mealActive = s.meal_order_active === 'true' && now >= start && now <= end
+      let menu: string[] = []
+      try { menu = JSON.parse(s.meal_menu || '[]') } catch {}
+      setAppSettings({
+        meal_order_active: mealActive,
+        meal_order_start: s.meal_order_start || '',
+        meal_order_end: s.meal_order_end || '',
+        meal_menu: menu,
+        rooms_published: s.rooms_published === 'true',
+      })
+    }).catch(() => {})
+  }, [])
+
   function dismissPopup() {
     if (!popupNotice) return
     try {
@@ -93,7 +125,9 @@ export default function ForumHome() {
     setPopupNotice(null)
   }
 
-  const isClosed = !regOverride && new Date() >= DEADLINE
+  const now = new Date()
+  const isEventDay = now >= EVENT_START
+  const isClosed = !regOverride && now >= DEADLINE
 
   return (
     <div className="min-h-screen bg-[#0f0830]">
@@ -219,7 +253,29 @@ export default function ForumHome() {
         </footer>
       </div>
 
-      <FloatingRegisterBtn onClick={() => isClosed ? setShowClosed(true) : setShowModal(true)} />
+      {/* Floating bottom buttons */}
+      <div className="fixed bottom-6 left-0 right-0 z-50 px-5 space-y-2">
+        {/* 식사 주문 버튼 */}
+        {appSettings.meal_order_active && (
+          <button onClick={() => setShowMealOrder(true)}
+            className="w-full py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 text-white"
+            style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)', boxShadow: '0 8px 36px rgba(245,158,11,0.5)' }}>
+            🍽️ 식사 주문하기
+          </button>
+        )}
+        {/* 호실 배정 버튼 */}
+        {appSettings.rooms_published && (
+          <button onClick={() => setShowRoomSearch(true)}
+            className="w-full py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 text-white"
+            style={{ background: 'linear-gradient(135deg,#7c5cfc,#4dd9ff)', boxShadow: '0 8px 36px rgba(124,92,252,0.5)' }}>
+            🛏️ 배정 호실 보기
+          </button>
+        )}
+        {/* 등록하기 / 마감 버튼 (포럼 당일부터 숨김) */}
+        {!isEventDay && (
+          <FloatingRegisterBtn onClick={() => isClosed ? setShowClosed(true) : setShowModal(true)} isClosed={isClosed} />
+        )}
+      </div>
 
       {showClosed && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-5"
@@ -240,6 +296,8 @@ export default function ForumHome() {
       )}
 
       {showModal && <RegisterModal onClose={() => setShowModal(false)} />}
+      {showMealOrder && <MealOrderModal menu={appSettings.meal_menu} onClose={() => setShowMealOrder(false)} />}
+      {showRoomSearch && <RoomSearchModal onClose={() => setShowRoomSearch(false)} />}
     </div>
   )
 }
@@ -562,45 +620,165 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
   )
 }
 
-function FloatingRegisterBtn({ onClick }: { onClick: () => void }) {
-  const [offset, setOffset] = useState(0)
-  const lastScrollY = React.useRef(0)
-  const ticking = React.useRef(false)
+function FloatingRegisterBtn({ onClick, isClosed }: { onClick: () => void; isClosed: boolean }) {
+  return (
+    <button onClick={onClick}
+      className="w-full btn-gold py-4 rounded-2xl font-black text-lg flex flex-col items-center justify-center gap-0.5"
+      style={{ boxShadow: '0 8px 36px rgba(124,92,252,0.5)', opacity: isClosed ? 0.75 : 1 }}>
+      {isClosed ? (
+        <span className="flex items-center gap-2"><span>🔒</span> 등록 마감</span>
+      ) : (
+        <>
+          <span className="flex items-center gap-2"><span>✍️</span> 교육간사포럼 등록하기</span>
+          <span className="text-xs font-semibold opacity-80">📅 등록 마감 11월 15일</span>
+        </>
+      )}
+    </button>
+  )
+}
 
-  useEffect(() => {
-    function onScroll() {
-      if (!ticking.current) {
-        requestAnimationFrame(() => {
-          const delta = window.scrollY - lastScrollY.current
-          setOffset(prev => Math.max(-8, Math.min(8, prev + delta * 0.15)))
-          lastScrollY.current = window.scrollY
-          ticking.current = false
-        })
-        ticking.current = true
-      }
-    }
-    let timer: ReturnType<typeof setTimeout>
-    function onScrollEnd() {
-      clearTimeout(timer)
-      timer = setTimeout(() => setOffset(0), 120)
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    window.addEventListener('scroll', onScrollEnd, { passive: true })
-    return () => {
-      window.removeEventListener('scroll', onScroll)
-      window.removeEventListener('scroll', onScrollEnd)
-    }
-  }, [])
+/* ── 식사 주문 팝업 ── */
+function MealOrderModal({ menu, onClose }: { menu: string[]; onClose: () => void }) {
+  const [name, setName] = useState('')
+  const [selected, setSelected] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [done, setDone] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function submit() {
+    if (!name.trim() || !selected) return
+    setSubmitting(true); setErr('')
+    const r = await fetch('/api/meal-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name.trim(), menu_item: selected }),
+    })
+    const d = await r.json()
+    setSubmitting(false)
+    if (d.error) { setErr('주문 시간이 지났거나 오류가 발생했습니다'); return }
+    setDone(true)
+  }
 
   return (
-    <div className="fixed bottom-6 left-0 right-0 z-50 px-5"
-      style={{ transform: `translateY(${offset}px)`, transition: offset === 0 ? 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)' : 'transform 0.08s ease-out' }}>
-      <button onClick={onClick}
-        className="w-full btn-gold py-4 rounded-2xl font-black text-lg flex flex-col items-center justify-center gap-0.5"
-        style={{ boxShadow: '0 8px 36px rgba(124,92,252,0.5)' }}>
-        <span className="flex items-center gap-2"><span>✍️</span> 교육간사포럼 등록하기</span>
-        <span className="text-xs font-semibold opacity-80">📅 등록 마감 11월 15일</span>
-      </button>
+    <div className="fixed inset-0 z-[100] flex items-end justify-center"
+      style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}
+      onClick={onClose}>
+      <div className="w-full max-w-lg rounded-t-3xl p-6 space-y-4 pb-10"
+        style={{ background: '#1a0f3a', border: '1px solid rgba(124,92,252,0.3)' }}
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <p className="font-black text-xl text-white">🍽️ 식사 주문</p>
+          <button onClick={onClose} className="text-white/40 text-2xl leading-none">×</button>
+        </div>
+        {done ? (
+          <div className="text-center py-8 space-y-3">
+            <div className="text-5xl">✅</div>
+            <p className="text-white font-black text-xl">주문 완료!</p>
+            <p className="text-white/60 text-sm">{name} · {selected}</p>
+            <button onClick={onClose} className="w-full btn-gold py-3 rounded-2xl font-bold mt-2">닫기</button>
+          </div>
+        ) : (
+          <>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="이름 입력"
+              className={INPUT_CLS} />
+            <div className="space-y-2">
+              <p className="text-white/50 text-xs font-bold">메뉴 선택</p>
+              {menu.map(item => (
+                <button key={item} onClick={() => setSelected(item)}
+                  className="w-full py-3.5 rounded-xl font-bold text-left px-4 transition-all"
+                  style={{ background: selected === item ? '#7c5cfc' : 'rgba(255,255,255,0.07)', color: selected === item ? 'white' : 'rgba(255,255,255,0.8)', border: `1px solid ${selected === item ? '#7c5cfc' : 'rgba(255,255,255,0.1)'}` }}>
+                  {selected === item && '✓ '}{item}
+                </button>
+              ))}
+            </div>
+            {err && <p className="text-red-400 text-sm">{err}</p>}
+            <button onClick={submit} disabled={!name.trim() || !selected || submitting}
+              className="w-full btn-gold py-4 rounded-2xl font-black text-lg disabled:opacity-40">
+              {submitting ? '주문 중...' : '주문하기'}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ── 호실 검색 팝업 ── */
+type RoomResult = { name: string; cohort: string; district: string; room_number: string; roommates: { name: string; cohort: string; district: string }[] }
+
+function RoomSearchModal({ onClose }: { onClose: () => void }) {
+  const [name, setName] = useState('')
+  const [cohort, setCohort] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [results, setResults] = useState<RoomResult[] | null>(null)
+  const [err, setErr] = useState('')
+
+  async function search() {
+    if (!name.trim() || !cohort.trim()) return
+    setLoading(true); setErr(''); setResults(null)
+    const r = await fetch(`/api/rooms?name=${encodeURIComponent(name.trim())}&cohort=${encodeURIComponent(cohort.trim())}`)
+    const d = await r.json()
+    setLoading(false)
+    if (d.error === 'not found') { setErr('이름 또는 기수를 확인해주세요'); return }
+    if (d.error) { setErr('오류가 발생했습니다'); return }
+    setResults(d.results || [])
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-end justify-center"
+      style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}
+      onClick={onClose}>
+      <div className="w-full max-w-lg rounded-t-3xl p-6 space-y-4 pb-10"
+        style={{ background: '#1a0f3a', border: '1px solid rgba(124,92,252,0.3)' }}
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <p className="font-black text-xl text-white">🛏️ 배정 호실 확인</p>
+          <button onClick={onClose} className="text-white/40 text-2xl leading-none">×</button>
+        </div>
+        <div className="flex gap-2">
+          <input value={name} onChange={e => setName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && search()}
+            placeholder="이름" className={INPUT_CLS} style={{ flex: 2 }} />
+          <input value={cohort} onChange={e => setCohort(e.target.value.replace(/\D/g, ''))}
+            onKeyDown={e => e.key === 'Enter' && search()}
+            placeholder="기수 (숫자만)" inputMode="numeric"
+            className={INPUT_CLS} style={{ flex: 1 }} />
+        </div>
+        <button onClick={search} disabled={!name.trim() || !cohort.trim() || loading}
+          className="w-full btn-gold py-4 rounded-2xl font-black text-lg disabled:opacity-40">
+          {loading ? '검색 중...' : '검색'}
+        </button>
+        {err && <p className="text-red-400 text-sm text-center">{err}</p>}
+        {results && results.length > 0 && results.map((r, i) => (
+          <div key={i} className="rounded-2xl p-5 space-y-3" style={{ background: 'rgba(124,92,252,0.15)', border: '1px solid rgba(124,92,252,0.3)' }}>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-black" style={{ background: '#7c5cfc', color: 'white' }}>
+                {r.room_number || '?'}
+              </div>
+              <div>
+                <p className="text-white font-black text-lg">{r.room_number ? `${r.room_number}호` : '미배정'}</p>
+                <p className="text-white/50 text-xs">{r.name} · {r.cohort}기 · {r.district}</p>
+              </div>
+            </div>
+            {r.roommates.length > 0 && (
+              <div>
+                <p className="text-white/40 text-xs font-bold mb-2">룸메이트</p>
+                <div className="space-y-1.5">
+                  {r.roommates.map((m, j) => (
+                    <div key={j} className="flex items-center gap-2 text-sm">
+                      <span className="text-white font-bold">{m.name}</span>
+                      <span className="text-white/40 text-xs">{m.cohort}기 · {m.district}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {r.roommates.length === 0 && r.room_number && (
+              <p className="text-white/40 text-sm">룸메이트 없음 (1인실)</p>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
