@@ -158,7 +158,7 @@ export default function ForumPortalAdmin() {
 }
 
 /* ─────────────── Tab: Notices ─────────────── */
-// Supabase SQL (run once):
+// Supabase SQL (run once in Supabase SQL editor):
 // create table forum_notices (
 //   id uuid primary key default gen_random_uuid(),
 //   title text not null,
@@ -166,87 +166,6 @@ export default function ForumPortalAdmin() {
 //   active boolean default true,
 //   created_at timestamptz default now()
 // );
-type Notice = { id: string; title: string; content: string; active: boolean; created_at: string }
-
-function NoticesTab() {
-  const [notices, setNotices] = useState<Notice[]>([])
-  const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [msg, setMsg] = useState('')
-
-  async function load() {
-    const r = await fetch('/api/admin/notices')
-    const d = await r.json()
-    setNotices(d.notices || [])
-  }
-  useEffect(() => { load() }, [])
-
-  async function create() {
-    if (!title.trim()) return
-    setSaving(true)
-    await fetch('/api/admin/notices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create', title, content }) })
-    setTitle(''); setContent(''); setSaving(false); setMsg('등록됨'); setTimeout(() => setMsg(''), 2000)
-    load()
-  }
-
-  async function toggle(id: string, active: boolean) {
-    await fetch('/api/admin/notices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'toggle', id, active }) })
-    load()
-  }
-
-  async function del(id: string) {
-    if (!confirm('삭제할까요?')) return
-    await fetch('/api/admin/notices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', id }) })
-    load()
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl p-5 space-y-3" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
-        <p className="font-bold text-sm" style={{ color: C.textPrimary }}>새 공지 등록</p>
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="제목"
-          className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-          style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary }} />
-        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="내용" rows={3}
-          className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none"
-          style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary }} />
-        <div className="flex items-center gap-3">
-          <button onClick={create} disabled={saving || !title.trim()}
-            className="px-4 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-40"
-            style={{ background: C.purple }}>등록</button>
-          {msg && <span className="text-xs font-bold" style={{ color: C.green }}>{msg}</span>}
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        {notices.length === 0 && <p className="text-sm text-center py-6" style={{ color: C.textMuted }}>등록된 공지가 없습니다</p>}
-        {notices.map(n => (
-          <div key={n.id} className="rounded-2xl p-4" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm" style={{ color: C.textPrimary }}>{n.title}</p>
-                {n.content && <p className="text-xs mt-1 leading-relaxed" style={{ color: C.textSecondary }}>{n.content}</p>}
-                <p className="text-xs mt-1" style={{ color: C.textMuted }}>{new Date(n.created_at).toLocaleDateString('ko-KR')}</p>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button onClick={() => toggle(n.id, !n.active)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold"
-                  style={{ background: n.active ? 'rgba(34,197,94,0.12)' : C.inputBg, color: n.active ? C.green : C.textMuted, border: `1px solid ${n.active ? 'rgba(34,197,94,0.3)' : C.border}` }}>
-                  {n.active ? '활성' : '비활성'}
-                </button>
-                <button onClick={() => del(n.id)} className="px-2 py-1.5 rounded-lg text-xs font-bold"
-                  style={{ background: '#fef2f2', color: C.red, border: `1px solid #fecaca` }}>삭제</button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/* ─────────────── Tab 1: Notices ─────────────── */
 type Notice = { id: string; title: string; content: string; active: boolean; created_at: string }
 
 function NoticesTab() {
