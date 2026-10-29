@@ -13,10 +13,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "KCCC PRS 참여 현황 대시보드",
-  description: "지구별/캠퍼스별 참여 현황 대시보드",
+  title: "CCC 교육간사 포럼 2026",
+  description: "2026 CCC SLM 교육간사 포럼",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "교육간사 포럼",
+  },
   other: {
-    "color-scheme": "light",
+    "color-scheme": "dark",
+    "mobile-web-app-capable": "yes",
   },
 };
 
