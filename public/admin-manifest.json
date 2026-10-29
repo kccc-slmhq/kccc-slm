@@ -1,0 +1,13 @@
+{
+  "name": "포럼 관리자",
+  "short_name": "포럼 관리",
+  "description": "2026 CCC 교육간사 포럼 관리자",
+  "start_url": "/forum/portal",
+  "display": "standalone",
+  "background_color": "#f5f3ff",
+  "theme_color": "#7c5cfc",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
