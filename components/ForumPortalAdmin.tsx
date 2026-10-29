@@ -342,7 +342,6 @@ function CheckInTab() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const rowRefs = React.useRef<Record<string, HTMLTableRowElement | null>>({})
   const tableContainerRef = React.useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -350,17 +349,6 @@ function CheckInTab() {
       .then(d => { setRegs(d.registrations || []); setLoading(false) })
   }, [])
 
-  function scrollToMatch(q: string) {
-    if (!q.trim()) return
-    const match = sorted.find(r => r.name.includes(q.trim()))
-    const row = match ? rowRefs.current[match.id] : null
-    const container = tableContainerRef.current
-    if (row && container) {
-      const containerTop = container.getBoundingClientRect().top
-      const rowTop = row.getBoundingClientRect().top
-      container.scrollTop += (rowTop - containerTop) - container.clientHeight / 2 + row.clientHeight / 2
-    }
-  }
 
   async function patch(id: string, updates: Partial<Reg>) {
     setSaving(id)
@@ -370,8 +358,14 @@ function CheckInTab() {
   }
 
   const attendees = regs.filter(r => r.attending === true)
-  const sorted = [...attendees].sort((a, b) => a.name.localeCompare(b.name, 'ko'))
   const q = search.trim()
+  const sorted = [...attendees].sort((a, b) => {
+    const aMatch = q && a.name.includes(q)
+    const bMatch = q && b.name.includes(q)
+    if (aMatch && !bMatch) return -1
+    if (!aMatch && bMatch) return 1
+    return a.name.localeCompare(b.name, 'ko')
+  })
   const highlighted = q ? sorted.filter(r => r.name.includes(q)).map(r => r.id) : []
 
   const feePaid = attendees.filter(r => r.fee_paid).length
@@ -389,7 +383,7 @@ function CheckInTab() {
         ))}
       </div>
 
-      <input value={search} onChange={e => { setSearch(e.target.value); scrollToMatch(e.target.value) }}
+      <input value={search} onChange={e => { setSearch(e.target.value); tableContainerRef.current && (tableContainerRef.current.scrollTop = 0) }}
         placeholder="🔍 이름 검색"
         className="w-full rounded-xl px-4 py-3 text-sm outline-none"
         style={{ background: C.cardBg, border: `1px solid ${C.border}`, color: C.textPrimary, boxSizing: 'border-box' as const }} />
@@ -408,7 +402,7 @@ function CheckInTab() {
               {sorted.map(r => {
                 const isHit = highlighted.includes(r.id)
                 return (
-                  <tr key={r.id} ref={el => { rowRefs.current[r.id] = el }}
+                  <tr key={r.id}
                     style={{ borderBottom: `1px solid ${C.border}`, background: isHit ? 'rgba(124,92,252,0.08)' : undefined, transition: 'background 0.3s' }}>
                     <td className="px-3 py-2.5 font-bold whitespace-nowrap" style={{ color: isHit ? C.purple : C.textPrimary }}>
                       {isHit && <span style={{ marginRight: 4 }}>👉</span>}{r.name}
