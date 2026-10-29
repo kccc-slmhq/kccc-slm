@@ -256,7 +256,8 @@ function NoticesTab() {
 
 function isSlmhq(r: Reg) {
   const n = (s: string) => (s || '').toLowerCase().replace(/\s/g, '')
-  return n(r.campus) === 'slmhq' || n(r.name) === 'slmhq'
+  const has = (s: string) => n(s).includes('slm') && n(s).includes('hq')
+  return has(r.campus) || has(r.name)
 }
 
 /* ─────────────── Tab 0: Registrations (basic info) ─────────────── */
@@ -433,7 +434,7 @@ function CheckInTab() {
                             disabled={saving === r.id}
                             className="text-xs px-1.5 py-0.5 rounded-md font-bold transition-all"
                             style={{ background: r.fee_exempt ? '#fef9c3' : C.inputBg, color: r.fee_exempt ? '#854d0e' : C.textMuted, border: `1px solid ${r.fee_exempt ? '#fde047' : C.border}` }}>
-                            {r.fee_exempt ? '면제' : '면제?'}
+                            면제
                           </button>
                         )}
                       </div>
