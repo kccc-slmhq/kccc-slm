@@ -40,6 +40,25 @@ type Settings = Record<string, string>
 const TABS = ['참가자 목록', '설문 데이터', '여행자보험', '호실 배정', '식사 주문', '설정']
 const TAB_ICONS = ['👥', '📊', '🔒', '🛏️', '🍽️', '⚙️']
 
+/* Light theme tokens */
+const C = {
+  pageBg: '#f5f3ff',
+  cardBg: '#ffffff',
+  headerBg: '#ffffff',
+  border: '#e5e7eb',
+  textPrimary: '#1f2937',
+  textSecondary: '#6b7280',
+  textMuted: '#9ca3af',
+  purple: '#7c5cfc',
+  purpleLight: '#ede9fe',
+  purpleMid: 'rgba(124,92,252,0.15)',
+  cyan: '#4dd9ff',
+  green: '#22c55e',
+  amber: '#f59e0b',
+  red: '#ef4444',
+  inputBg: '#f9fafb',
+}
+
 export default function ForumPortalAdmin() {
   const [authed, setAuthed] = useState(false)
   const [pw, setPw] = useState('')
@@ -49,7 +68,7 @@ export default function ForumPortalAdmin() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const tabParam = params.get('tab')
-    if (tabParam === 'settings') setActiveTab(3)
+    if (tabParam === 'settings') setActiveTab(5)
     if (checkAdminAuth()) setAuthed(true)
   }, [])
 
@@ -60,19 +79,23 @@ export default function ForumPortalAdmin() {
 
   if (!authed) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#0f0830' }}>
-        <div className="w-full max-w-sm rounded-3xl p-8 space-y-5" style={{ background: '#1a0f3a', border: '1px solid rgba(124,92,252,0.3)' }}>
-          <h1 className="text-center font-black text-xl" style={{ background: 'linear-gradient(90deg,#4dd9ff,#a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            포럼 관리자
-          </h1>
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: C.pageBg }}>
+        <div className="w-full max-w-sm rounded-3xl p-8 space-y-5" style={{ background: C.cardBg, boxShadow: '0 8px 40px rgba(124,92,252,0.15)', border: `1px solid ${C.border}` }}>
+          <div className="text-center">
+            <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: C.purpleLight }}>
+              <span className="text-2xl">🔐</span>
+            </div>
+            <h1 className="font-black text-xl" style={{ color: C.purple }}>포럼 관리자</h1>
+            <p className="text-xs mt-1" style={{ color: C.textMuted }}>2026 CCC 교육간사 포럼</p>
+          </div>
           <input value={pw} onChange={e => { setPw(e.target.value); setPwError('') }}
             onKeyDown={e => e.key === 'Enter' && login()}
             type="password" placeholder="비밀번호"
-            className="w-full rounded-xl px-4 py-3 text-white text-center text-xl tracking-widest outline-none text-base"
-            style={{ background: 'rgba(124,92,252,0.2)', border: '1px solid rgba(124,92,252,0.4)' }} />
-          {pwError && <p className="text-red-400 text-xs text-center">{pwError}</p>}
+            className="w-full rounded-xl px-4 py-3 text-center text-lg tracking-widest outline-none text-base"
+            style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary }} />
+          {pwError && <p className="text-red-500 text-xs text-center">{pwError}</p>}
           <button onClick={login} className="w-full py-4 rounded-2xl font-bold text-white"
-            style={{ background: 'linear-gradient(135deg,#7c5cfc,#4dd9ff)' }}>
+            style={{ background: `linear-gradient(135deg,${C.purple},${C.cyan})` }}>
             입장
           </button>
         </div>
@@ -81,32 +104,47 @@ export default function ForumPortalAdmin() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#0f0830' }}>
+    <div className="min-h-screen" style={{ background: C.pageBg }}>
       {/* Header */}
-      <div className="px-4 py-3 flex items-center justify-between" style={{ background: '#1a0f3a', borderBottom: '1px solid rgba(124,92,252,0.2)' }}>
-        <div>
-          <h1 className="font-black text-base" style={{ color: '#a78bfa' }}>2026 교육간사 포럼 관리</h1>
-          <p className="text-white/40 text-xs">11월 23-24일 · 수원 CCC 회관</p>
+      <div style={{ background: C.headerBg, borderBottom: `1px solid ${C.border}`, position: 'sticky', top: 0, zIndex: 10 }}>
+        <div className="flex items-center justify-between px-4 py-3" style={{ maxWidth: 1400, margin: '0 auto' }}>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: C.purpleLight }}>
+              <span className="text-base">⚙️</span>
+            </div>
+            <div>
+              <h1 className="font-black text-sm" style={{ color: C.purple }}>2026 교육간사 포럼 관리</h1>
+              <p className="text-xs" style={{ color: C.textMuted }}>11월 23-24일 · 수원 CCC 회관</p>
+            </div>
+          </div>
+          <button onClick={() => { clearAdminAuth(); window.location.href = '/forum' }}
+            className="text-xs px-3 py-2 rounded-lg font-medium"
+            style={{ background: C.inputBg, color: C.textSecondary, border: `1px solid ${C.border}` }}>
+            로그아웃
+          </button>
         </div>
-        <button onClick={() => { clearAdminAuth(); window.location.href = '/forum' }}
-          className="text-white/30 text-xs px-3 py-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
-          로그아웃
-        </button>
       </div>
 
       {/* Tab bar */}
-      <div className="flex overflow-x-auto" style={{ background: '#1a0f3a', borderBottom: '1px solid rgba(124,92,252,0.15)' }}>
-        {TABS.map((t, i) => (
-          <button key={t} onClick={() => setActiveTab(i)}
-            className="flex-1 min-w-[80px] px-3 py-3 text-xs font-bold whitespace-nowrap transition-all"
-            style={{ color: activeTab === i ? '#a78bfa' : 'rgba(255,255,255,0.35)', borderBottom: activeTab === i ? '2px solid #7c5cfc' : '2px solid transparent' }}>
-            {TAB_ICONS[i]} {t}
-          </button>
-        ))}
+      <div style={{ background: C.headerBg, borderBottom: `1px solid ${C.border}` }}>
+        <div className="flex overflow-x-auto" style={{ maxWidth: 1400, margin: '0 auto' }}>
+          {TABS.map((t, i) => (
+            <button key={t} onClick={() => setActiveTab(i)}
+              className="flex-shrink-0 px-4 py-3 text-xs font-bold whitespace-nowrap transition-all"
+              style={{
+                minWidth: 90,
+                color: activeTab === i ? C.purple : C.textMuted,
+                borderBottom: activeTab === i ? `2px solid ${C.purple}` : '2px solid transparent',
+                background: 'transparent',
+              }}>
+              {TAB_ICONS[i]} {t}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Tab content */}
-      <div className="p-4">
+      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 16px' }}>
         {activeTab === 0 && <RegistrationsTab />}
         {activeTab === 1 && <SurveyDataTab />}
         {activeTab === 2 && <InsuranceTab />}
@@ -159,11 +197,11 @@ function RegistrationsTab() {
   return (
     <div className="space-y-4">
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-2">
-        {[['전체', total, '#a78bfa'], ['참석', attending, '#4dd9ff'], ['회비납부', feePaid, '#22c55e'], ['키수령', keyTaken, '#f59e0b']].map(([l, n, c]) => (
-          <div key={l as string} className="rounded-xl p-3 text-center" style={{ background: '#1a0f3a' }}>
-            <p className="font-black text-xl" style={{ color: c as string }}>{n as number}</p>
-            <p className="text-white/40 text-xs">{l as string}</p>
+      <div className="grid grid-cols-2 gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
+        {[['전체', total, C.purple], ['참석', attending, C.cyan], ['회비납부', feePaid, C.green], ['키수령', keyTaken, C.amber]].map(([l, n, c]) => (
+          <div key={l as string} className="rounded-2xl p-4 text-center" style={{ background: C.cardBg, border: `1px solid ${C.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+            <p className="font-black text-2xl" style={{ color: c as string }}>{n as number}</p>
+            <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>{l as string}</p>
           </div>
         ))}
       </div>
@@ -172,58 +210,63 @@ function RegistrationsTab() {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex gap-2">
           <button onClick={() => setFilterAttending(true)}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-            style={{ background: filterAttending ? '#7c5cfc' : 'rgba(124,92,252,0.15)', color: filterAttending ? 'white' : '#a78bfa' }}>
+            className="px-3 py-2 rounded-lg text-xs font-bold transition-all"
+            style={{ background: filterAttending ? C.purple : C.purpleLight, color: filterAttending ? 'white' : C.purple }}>
             참석자만
           </button>
           <button onClick={() => setFilterAttending(false)}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-            style={{ background: !filterAttending ? '#7c5cfc' : 'rgba(124,92,252,0.15)', color: !filterAttending ? 'white' : '#a78bfa' }}>
+            className="px-3 py-2 rounded-lg text-xs font-bold transition-all"
+            style={{ background: !filterAttending ? C.purple : C.purpleLight, color: !filterAttending ? 'white' : C.purple }}>
             전체
           </button>
         </div>
-        <button onClick={exportCSV} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white/60" style={{ background: 'rgba(255,255,255,0.08)' }}>
+        <button onClick={exportCSV} className="px-3 py-2 rounded-lg text-xs font-bold"
+          style={{ background: C.inputBg, color: C.textSecondary, border: `1px solid ${C.border}` }}>
           CSV 내보내기
         </button>
       </div>
 
-      {loading ? <p className="text-white/40 text-sm text-center py-8">불러오는 중...</p> : (
-        <div className="overflow-x-auto rounded-2xl" style={{ background: '#1a0f3a' }}>
-          <table className="w-full text-xs min-w-[700px]">
+      {loading ? <p className="text-center py-8" style={{ color: C.textMuted }}>불러오는 중...</p> : (
+        <div className="overflow-x-auto rounded-2xl" style={{ background: C.cardBg, border: `1px solid ${C.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+          <table className="w-full text-xs" style={{ minWidth: 700 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid rgba(124,92,252,0.2)' }}>
+              <tr style={{ borderBottom: `1px solid ${C.border}`, background: C.inputBg }}>
                 {['이름','기수','지구','캠퍼스','연락처','참석','회비납부','참석체크','호실','키수령'].map(h => (
-                  <th key={h} className="px-3 py-2 text-left font-bold" style={{ color: '#a78bfa' }}>{h}</th>
+                  <th key={h} className="px-3 py-3 text-left font-bold" style={{ color: C.textSecondary }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {displayed.map(r => (
-                <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <td className="px-3 py-2 text-white font-bold">{r.name}</td>
-                  <td className="px-3 py-2 text-white/60">{r.cohort}기</td>
-                  <td className="px-3 py-2 text-white/60">{r.district}</td>
-                  <td className="px-3 py-2 text-white/60">{r.campus}</td>
-                  <td className="px-3 py-2 text-white/60">{r.phone}</td>
-                  <td className="px-3 py-2"><span style={{ color: r.attending ? '#4dd9ff' : 'rgba(255,255,255,0.3)' }}>{r.attending ? 'O' : 'X'}</span></td>
-                  <td className="px-3 py-2">
-                    <Checkbox checked={!!r.fee_paid} disabled={saving === r.id} onChange={v => patch(r.id, { fee_paid: v })} color="#22c55e" />
+                <tr key={r.id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                  <td className="px-3 py-2.5 font-bold" style={{ color: C.textPrimary }}>{r.name}</td>
+                  <td className="px-3 py-2.5" style={{ color: C.textSecondary }}>{r.cohort}기</td>
+                  <td className="px-3 py-2.5" style={{ color: C.textSecondary }}>{r.district}</td>
+                  <td className="px-3 py-2.5" style={{ color: C.textSecondary }}>{r.campus}</td>
+                  <td className="px-3 py-2.5" style={{ color: C.textSecondary }}>{r.phone}</td>
+                  <td className="px-3 py-2.5">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: r.attending ? 'rgba(77,217,255,0.15)' : '#fef2f2', color: r.attending ? '#0891b2' : C.red }}>
+                      {r.attending ? '참석' : '불참'}
+                    </span>
                   </td>
-                  <td className="px-3 py-2">
-                    <Checkbox checked={!!r.attended} disabled={saving === r.id} onChange={v => patch(r.id, { attended: v })} color="#4dd9ff" />
+                  <td className="px-3 py-2.5">
+                    <Checkbox checked={!!r.fee_paid} disabled={saving === r.id} onChange={v => patch(r.id, { fee_paid: v })} color={C.green} />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2.5">
+                    <Checkbox checked={!!r.attended} disabled={saving === r.id} onChange={v => patch(r.id, { attended: v })} color={C.cyan} />
+                  </td>
+                  <td className="px-3 py-2.5">
                     <input defaultValue={r.room_number || ''} onBlur={e => { if (e.target.value !== (r.room_number || '')) patch(r.id, { room_number: e.target.value }) }}
-                      placeholder="호실" className="w-14 rounded-lg px-2 py-1 text-white text-xs outline-none text-base"
-                      style={{ background: 'rgba(124,92,252,0.2)', border: '1px solid rgba(124,92,252,0.3)' }} />
+                      placeholder="호실" className="w-16 rounded-lg px-2 py-1.5 text-xs outline-none text-base"
+                      style={{ background: C.purpleLight, border: `1px solid ${C.purpleMid}`, color: C.purple }} />
                   </td>
-                  <td className="px-3 py-2">
-                    <Checkbox checked={!!r.key_taken} disabled={saving === r.id} onChange={v => patch(r.id, { key_taken: v })} color="#f59e0b" />
+                  <td className="px-3 py-2.5">
+                    <Checkbox checked={!!r.key_taken} disabled={saving === r.id} onChange={v => patch(r.id, { key_taken: v })} color={C.amber} />
                   </td>
                 </tr>
               ))}
               {displayed.length === 0 && (
-                <tr><td colSpan={10} className="text-center py-8 text-white/30">등록자가 없습니다</td></tr>
+                <tr><td colSpan={10} className="text-center py-10" style={{ color: C.textMuted }}>등록자가 없습니다</td></tr>
               )}
             </tbody>
           </table>
@@ -233,7 +276,247 @@ function RegistrationsTab() {
   )
 }
 
-/* ─────────────── Tab 2: Rooms ─────────────── */
+/* ─────────────── Tab 2: Survey Data ─────────────── */
+function SurveyDataTab() {
+  const [regs, setRegs] = useState<Reg[]>([])
+  const [loading, setLoading] = useState(true)
+  const [view, setView] = useState<'challenges' | 'absent' | 'detail'>('challenges')
+
+  useEffect(() => {
+    fetch('/api/admin/registrations')
+      .then(r => r.json())
+      .then(d => { setRegs(d.registrations || []); setLoading(false) })
+  }, [])
+
+  if (loading) return <p className="text-center py-10" style={{ color: C.textMuted }}>불러오는 중...</p>
+
+  const attendees = regs.filter(r => r.attending === true)
+  const absentees = regs.filter(r => r.attending === false)
+
+  const challengeCounts: Record<string, number> = {}
+  regs.forEach(r => {
+    const raw = (r as unknown as Record<string, unknown>).challenges
+    const arr: string[] = Array.isArray(raw) ? raw as string[] : []
+    arr.forEach((c: string) => { challengeCounts[c] = (challengeCounts[c] || 0) + 1 })
+  })
+  const sortedChallenges = Object.entries(challengeCounts).sort((a, b) => b[1] - a[1])
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2 flex-wrap">
+        {([['challenges', '🔥 주요 고민'], ['absent', '😔 불참 사유'], ['detail', '📝 상세 응답']] as const).map(([k, label]) => (
+          <button key={k} onClick={() => setView(k)}
+            className="px-4 py-2 rounded-xl text-sm font-bold transition-all"
+            style={{ background: view === k ? C.purple : C.purpleLight, color: view === k ? 'white' : C.purple }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'challenges' && (
+        <div className="space-y-4">
+          <div className="rounded-2xl p-5" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+            <p className="text-sm font-bold mb-4" style={{ color: C.textPrimary }}>🔥 현장 고민 TOP (복수 선택 · {regs.length}명 기준)</p>
+            {sortedChallenges.length === 0
+              ? <p className="text-center py-4" style={{ color: C.textMuted }}>응답 없음</p>
+              : (
+                <div style={{ minHeight: 20 }}>
+                  <ResponsiveContainer width="100%" height={sortedChallenges.length * 44 + 20} minWidth={0}>
+                    <BarChart data={sortedChallenges.map(([name, value]) => ({ name: name.length > 20 ? name.slice(0, 20) + '…' : name, full: name, value }))}
+                      layout="vertical" margin={{ left: 0, right: 40, top: 4, bottom: 4 }}>
+                      <XAxis type="number" tick={{ fill: C.textMuted, fontSize: 11 }} tickLine={false} axisLine={false} />
+                      <YAxis type="category" dataKey="name" width={180} tick={{ fill: C.textSecondary, fontSize: 11 }} tickLine={false} axisLine={false} />
+                      <Tooltip
+                        cursor={{ fill: C.purpleLight }}
+                        contentStyle={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 12, color: C.textPrimary }}
+                        labelFormatter={(_, payload) => payload?.[0]?.payload?.full || ''}
+                        formatter={(v: unknown) => [`${v}명`, '응답수']} />
+                      <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                        {sortedChallenges.map((_, i) => (
+                          <Cell key={i} fill={`hsl(${255 + i * 12}, 70%, ${60 - i * 2}%)`} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )
+            }
+          </div>
+
+          <div className="rounded-2xl p-5" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+            <p className="text-sm font-bold mb-3" style={{ color: C.textPrimary }}>📊 참석/불참 현황</p>
+            <div className="flex items-center gap-4">
+              <div className="flex-1 rounded-full h-3 overflow-hidden" style={{ background: C.border }}>
+                <div className="h-3 rounded-full" style={{ width: `${regs.length ? (attendees.length / regs.length) * 100 : 0}%`, background: `linear-gradient(90deg,${C.purple},${C.cyan})` }} />
+              </div>
+              <span className="text-sm font-bold whitespace-nowrap" style={{ color: C.textSecondary }}>참석 {attendees.length} / 불참 {absentees.length}</span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-bold" style={{ color: C.textPrimary }}>💬 SLM HQ에 하고 싶은 말</p>
+            {regs.filter(r => (r as unknown as Record<string,unknown>).questions).length === 0 && (
+              <p className="text-center py-4" style={{ color: C.textMuted }}>응답 없음</p>
+            )}
+            {regs.filter(r => (r as unknown as Record<string,unknown>).questions).map(r => (
+              <div key={r.id} className="rounded-xl p-4" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+                <p className="text-xs font-bold mb-1" style={{ color: C.purple }}>{r.name} ({r.cohort}기 · {r.district}) <span style={{ color: C.textMuted }}>{r.attending ? '참석' : '불참'}</span></p>
+                <p className="text-sm leading-relaxed" style={{ color: C.textPrimary }}>{String((r as unknown as Record<string,unknown>).questions)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view === 'absent' && (
+        <div className="space-y-3">
+          <p className="text-xs" style={{ color: C.textMuted }}>불참 {absentees.length}명</p>
+          {absentees.length === 0 && <p className="text-center py-8" style={{ color: C.textMuted }}>불참자 없음</p>}
+          {absentees.map(r => (
+            <div key={r.id} className="rounded-xl p-4" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <span className="font-bold text-sm" style={{ color: C.textPrimary }}>{r.name}</span>
+                <span className="text-xs" style={{ color: C.textMuted }}>{r.cohort}기 · {r.district} · {r.campus}</span>
+              </div>
+              <p className="text-sm leading-relaxed" style={{ color: C.textSecondary }}>{r.absent_reason || '사유 미작성'}</p>
+              {(r as unknown as Record<string,unknown>).questions ? (
+                <p className="text-xs mt-2" style={{ color: C.purple }}>💬 {String((r as unknown as Record<string,unknown>).questions)}</p>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {view === 'detail' && (
+        <div className="space-y-3">
+          <p className="text-xs" style={{ color: C.textMuted }}>참석자 {attendees.length}명 · 불참자 {absentees.length}명</p>
+          {regs.map(r => {
+            const extra = r as unknown as Record<string, unknown>
+            return (
+              <div key={r.id} className="rounded-xl p-4 space-y-2" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-black" style={{ color: C.textPrimary }}>{r.name}</span>
+                  <span className="text-xs" style={{ color: C.textMuted }}>{r.cohort}기</span>
+                  <span className="text-xs" style={{ color: C.textMuted }}>{r.district} · {r.campus}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-bold"
+                    style={{ background: r.attending ? 'rgba(14,165,233,0.1)' : '#fef2f2', color: r.attending ? '#0891b2' : C.red }}>
+                    {r.attending ? '참석' : '불참'}
+                  </span>
+                </div>
+                {r.attending ? (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs" style={{ color: C.textSecondary }}>
+                    <span>📞 {r.phone}</span>
+                    <span>🚌 {r.transportation}</span>
+                    <span>🗓 {r.attendance_type}</span>
+                    <span>🚻 {r.gender}</span>
+                    {r.room_note && <span className="col-span-2">🏨 {r.room_note}</span>}
+                  </div>
+                ) : (
+                  <p className="text-xs" style={{ color: C.textSecondary }}>불참 사유: {r.absent_reason}</p>
+                )}
+                {Array.isArray(extra.challenges) && (extra.challenges as string[]).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {(extra.challenges as string[]).map((c: string) => (
+                      <span key={c} className="text-xs px-2 py-0.5 rounded-full" style={{ background: C.purpleLight, color: C.purple }}>{c}</span>
+                    ))}
+                  </div>
+                )}
+                {extra.desired_topic ? <p className="text-xs" style={{ color: C.textSecondary }}>기대: {String(extra.desired_topic)}</p> : null}
+                {extra.questions ? <p className="text-xs" style={{ color: C.purple }}>💬 {String(extra.questions)}</p> : null}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─────────────── Tab 3: Insurance ─────────────── */
+function InsuranceTab() {
+  const [regs, setRegs] = useState<Reg[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/admin/registrations')
+      .then(r => r.json())
+      .then(d => { setRegs((d.registrations || []).filter((r: Reg) => r.attending === true)); setLoading(false) })
+  }, [])
+
+  function exportCSV() {
+    const rows = [['번호', '이름', '기수', '지구', '캠퍼스', '성별', '주민등록번호', '연락처']]
+    regs.forEach((r, i) => rows.push([
+      String(i + 1), r.name, r.cohort, r.district, r.campus,
+      r.gender || '', r.id_number || '', r.phone || ''
+    ]))
+    const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
+    a.download = '여행자보험_주민번호.csv'; a.click()
+  }
+
+  if (loading) return <p className="text-center py-10" style={{ color: C.textMuted }}>불러오는 중...</p>
+
+  const withId = regs.filter(r => r.id_number)
+  const withoutId = regs.filter(r => !r.id_number)
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="font-bold text-lg" style={{ color: C.textPrimary }}>🔒 여행자보험 주민번호 수합</h2>
+          <p className="text-xs mt-0.5" style={{ color: C.textMuted }}>참석자 {regs.length}명 중 {withId.length}명 제출 · {withoutId.length}명 미제출</p>
+        </div>
+        <button onClick={exportCSV} className="px-4 py-2 rounded-xl text-sm font-bold text-white" style={{ background: C.purple, minHeight: 44 }}>
+          CSV 내보내기
+        </button>
+      </div>
+
+      {withoutId.length > 0 && (
+        <div className="rounded-xl p-4" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
+          <p className="text-xs font-bold mb-2" style={{ color: '#92400e' }}>⚠️ 주민번호 미제출 ({withoutId.length}명)</p>
+          <div className="flex flex-wrap gap-2">
+            {withoutId.map(r => (
+              <span key={r.id} className="text-xs px-2 py-1 rounded-lg" style={{ background: '#fef3c7', color: '#92400e' }}>
+                {r.name} ({r.cohort}기)
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="overflow-x-auto rounded-2xl" style={{ background: C.cardBg, border: `1px solid ${C.border}`, WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+        <table className="w-full text-sm" style={{ minWidth: 560 }}>
+          <thead>
+            <tr style={{ borderBottom: `1px solid ${C.border}`, background: C.inputBg }}>
+              {['#', '이름', '기수', '지구', '성별', '주민등록번호', '연락처'].map(h => (
+                <th key={h} className="px-3 py-3 text-left text-xs font-bold whitespace-nowrap" style={{ color: C.textSecondary }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {regs.map((r, i) => (
+              <tr key={r.id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                <td className="px-3 py-2.5 text-xs" style={{ color: C.textMuted }}>{i + 1}</td>
+                <td className="px-3 py-2.5 font-bold text-xs whitespace-nowrap" style={{ color: C.textPrimary }}>{r.name}</td>
+                <td className="px-3 py-2.5 text-xs" style={{ color: C.textSecondary }}>{r.cohort}</td>
+                <td className="px-3 py-2.5 text-xs whitespace-nowrap" style={{ color: C.textSecondary }}>{r.district}</td>
+                <td className="px-3 py-2.5 text-xs" style={{ color: C.textSecondary }}>{r.gender || '-'}</td>
+                <td className="px-3 py-2.5 text-xs font-mono whitespace-nowrap" style={{ color: r.id_number ? C.purple : C.red }}>
+                  {r.id_number || '미제출'}
+                </td>
+                <td className="px-3 py-2.5 text-xs whitespace-nowrap" style={{ color: C.textSecondary }}>{r.phone || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {regs.length === 0 && <p className="text-center py-8" style={{ color: C.textMuted }}>참석 등록자가 없습니다</p>}
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────── Tab 4: Rooms ─────────────── */
 function RoomsTab() {
   const [regs, setRegs] = useState<Reg[]>([])
   const [rooms, setRooms] = useState<Record<string, string>>({})
@@ -282,56 +565,55 @@ function RoomsTab() {
   })
 
   return (
-    <div className="space-y-4 max-w-2xl">
+    <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <button onClick={saveAll} disabled={saving} className="px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-40"
-          style={{ background: '#7c5cfc' }}>
+        <button onClick={saveAll} disabled={saving} className="px-4 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-40" style={{ background: C.purple, minHeight: 44 }}>
           {saving ? '저장 중...' : '전체 저장'}
         </button>
-        {msg && <span className="text-green-400 text-sm">{msg}</span>}
-        <div className="flex gap-2 ml-auto">
+        {msg && <span className="text-sm font-bold" style={{ color: C.green }}>{msg}</span>}
+        <div className="flex gap-2 ml-auto flex-wrap">
           <button onClick={() => publish(true)} disabled={published || saving}
-            className="px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-40"
-            style={{ background: published ? 'rgba(34,197,94,0.3)' : '#22c55e' }}>
+            className="px-4 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-40" style={{ background: published ? C.green : '#16a34a', minHeight: 44 }}>
             {published ? '✓ 공지됨' : '배정 공지하기'}
           </button>
           {published && (
-            <button onClick={() => publish(false)} disabled={saving} className="px-4 py-2 rounded-xl text-sm font-bold"
-              style={{ background: 'rgba(239,68,68,0.2)', color: '#f87171' }}>
+            <button onClick={() => publish(false)} disabled={saving} className="px-4 py-2.5 rounded-xl text-sm font-bold" style={{ background: '#fef2f2', color: C.red, border: `1px solid #fecaca`, minHeight: 44 }}>
               공지 취소
             </button>
           )}
         </div>
       </div>
 
-      <div className="grid gap-2 md:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {regs.map(r => (
-          <div key={r.id} className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: '#1a0f3a' }}>
-            <span className="text-white font-bold text-sm flex-1">{r.name}</span>
-            <span className="text-white/40 text-xs">{r.district}</span>
+          <div key={r.id} className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+            <span className="font-bold text-sm flex-1" style={{ color: C.textPrimary }}>{r.name}</span>
+            <span className="text-xs" style={{ color: C.textMuted }}>{r.district}</span>
             <input value={rooms[r.id] || ''} onChange={e => setRooms(prev => ({ ...prev, [r.id]: e.target.value }))}
-              placeholder="호실" className="w-16 rounded-lg px-2 py-1 text-white text-xs text-center outline-none text-base"
-              style={{ background: 'rgba(124,92,252,0.2)', border: '1px solid rgba(124,92,252,0.3)' }} />
+              placeholder="호실" className="w-16 rounded-lg px-2 py-1.5 text-xs text-center outline-none text-base"
+              style={{ background: C.purpleLight, border: `1px solid ${C.purpleMid}`, color: C.purple }} />
           </div>
         ))}
       </div>
 
       {Object.keys(grouped).length > 0 && (
-        <div className="rounded-2xl p-4 space-y-3" style={{ background: '#1a0f3a' }}>
-          <p className="text-white/60 text-xs font-bold">호실별 배정 미리보기</p>
-          {Object.entries(grouped).sort().map(([room, names]) => (
-            <div key={room} className="flex items-start gap-3">
-              <span className="font-black text-sm shrink-0" style={{ color: room === '미배정' ? '#f87171' : '#4dd9ff', minWidth: '3rem' }}>{room}</span>
-              <span className="text-white/70 text-sm">{names.join(', ')}</span>
-            </div>
-          ))}
+        <div className="rounded-2xl p-5 space-y-3" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+          <p className="text-sm font-bold" style={{ color: C.textSecondary }}>호실별 배정 미리보기</p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {Object.entries(grouped).sort().map(([room, names]) => (
+              <div key={room} className="flex items-start gap-3 rounded-xl px-3 py-2" style={{ background: C.inputBg }}>
+                <span className="font-black text-sm shrink-0" style={{ color: room === '미배정' ? C.red : C.purple, minWidth: '3rem' }}>{room}</span>
+                <span className="text-sm" style={{ color: C.textSecondary }}>{names.join(', ')}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
   )
 }
 
-/* ─────────────── Tab 3: Meals ─────────────── */
+/* ─────────────── Tab 5: Meals ─────────────── */
 function MealTab() {
   const [menuText, setMenuText] = useState('')
   const [orderStart, setOrderStart] = useState('')
@@ -390,45 +672,44 @@ function MealTab() {
   orders.forEach(o => { menuCounts[o.menu_item] = (menuCounts[o.menu_item] || 0) + 1 })
 
   return (
-    <div className="space-y-5 max-w-2xl">
-      <div className="rounded-2xl p-4 space-y-3" style={{ background: '#1a0f3a' }}>
-        <p className="text-white font-bold text-sm">메뉴 목록 (한 줄에 하나씩)</p>
+    <div className="space-y-4" style={{ maxWidth: 700 }}>
+      <div className="rounded-2xl p-5 space-y-4" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+        <p className="font-bold text-sm" style={{ color: C.textPrimary }}>메뉴 목록 (한 줄에 하나씩)</p>
         <textarea value={menuText} onChange={e => setMenuText(e.target.value)} rows={5}
           placeholder={'갈비탕\n비빔밥\n된장찌개'}
-          className="w-full rounded-xl px-4 py-3 text-white outline-none resize-none text-base"
-          style={{ background: 'rgba(124,92,252,0.15)', border: '1px solid rgba(124,92,252,0.3)' }} />
+          className="w-full rounded-xl px-4 py-3 outline-none resize-none text-base"
+          style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary }} />
         <div className="flex items-center gap-3">
-          <button onClick={saveMenu} disabled={saving} className="px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-40" style={{ background: '#7c5cfc' }}>
+          <button onClick={saveMenu} disabled={saving} className="px-4 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-40" style={{ background: C.purple, minHeight: 44 }}>
             메뉴 저장
           </button>
-          {msg && <span className="text-green-400 text-sm">{msg}</span>}
+          {msg && <span className="text-sm font-bold" style={{ color: C.green }}>{msg}</span>}
         </div>
       </div>
 
-      <div className="rounded-2xl p-4 space-y-3" style={{ background: '#1a0f3a' }}>
-        <p className="text-white font-bold text-sm">주문 받을 시간</p>
+      <div className="rounded-2xl p-5 space-y-4" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+        <p className="font-bold text-sm" style={{ color: C.textPrimary }}>주문 받을 시간</p>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-white/50 text-xs mb-1 block">시작</label>
+            <label className="text-xs mb-1.5 block" style={{ color: C.textSecondary }}>시작</label>
             <input type="datetime-local" value={orderStart} onChange={e => setOrderStart(e.target.value)}
-              className="w-full rounded-xl px-3 py-2 text-white outline-none text-base"
-              style={{ background: 'rgba(124,92,252,0.15)', border: '1px solid rgba(124,92,252,0.3)', colorScheme: 'dark' }} />
+              className="w-full rounded-xl px-3 py-2.5 outline-none text-base"
+              style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary }} />
           </div>
           <div>
-            <label className="text-white/50 text-xs mb-1 block">종료</label>
+            <label className="text-xs mb-1.5 block" style={{ color: C.textSecondary }}>종료</label>
             <input type="datetime-local" value={orderEnd} onChange={e => setOrderEnd(e.target.value)}
-              className="w-full rounded-xl px-3 py-2 text-white outline-none text-base"
-              style={{ background: 'rgba(124,92,252,0.15)', border: '1px solid rgba(124,92,252,0.3)', colorScheme: 'dark' }} />
+              className="w-full rounded-xl px-3 py-2.5 outline-none text-base"
+              style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary }} />
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button onClick={publishOrder} disabled={saving || !orderStart || !orderEnd}
-            className="px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-40"
-            style={{ background: active ? 'rgba(34,197,94,0.3)' : '#22c55e' }}>
+            className="px-4 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-40" style={{ background: active ? C.green : '#16a34a', minHeight: 44 }}>
             {active ? '✓ 주문 공지 중' : '주문 공지하기'}
           </button>
           {active && (
-            <button onClick={cancelOrder} disabled={saving} className="px-4 py-2 rounded-xl text-sm font-bold" style={{ background: 'rgba(239,68,68,0.2)', color: '#f87171' }}>
+            <button onClick={cancelOrder} disabled={saving} className="px-4 py-2.5 rounded-xl text-sm font-bold" style={{ background: '#fef2f2', color: C.red, border: `1px solid #fecaca`, minHeight: 44 }}>
               주문 취소
             </button>
           )}
@@ -436,26 +717,26 @@ function MealTab() {
       </div>
 
       {orders.length > 0 && (
-        <div className="rounded-2xl p-4 space-y-3" style={{ background: '#1a0f3a' }}>
-          <div className="flex items-center justify-between">
-            <p className="text-white font-bold text-sm">주문 현황 ({orders.length}건)</p>
-            <div className="flex gap-2 text-xs">
+        <div className="rounded-2xl p-5 space-y-3" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <p className="font-bold text-sm" style={{ color: C.textPrimary }}>주문 현황 ({orders.length}건)</p>
+            <div className="flex gap-2 flex-wrap">
               {Object.entries(menuCounts).map(([item, cnt]) => (
-                <span key={item} className="px-2 py-0.5 rounded-full" style={{ background: 'rgba(124,92,252,0.3)', color: '#a78bfa' }}>{item} {cnt}</span>
+                <span key={item} className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: C.purpleLight, color: C.purple }}>{item} {cnt}건</span>
               ))}
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead><tr style={{ borderBottom: '1px solid rgba(124,92,252,0.2)' }}>
-                {['이름','메뉴','시간'].map(h => <th key={h} className="px-2 py-1.5 text-left" style={{ color: '#a78bfa' }}>{h}</th>)}
+          <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+            <table className="w-full text-sm" style={{ minWidth: 300 }}>
+              <thead><tr style={{ borderBottom: `1px solid ${C.border}`, background: C.inputBg }}>
+                {['이름','메뉴','시간'].map(h => <th key={h} className="px-3 py-2 text-left text-xs font-bold" style={{ color: C.textSecondary }}>{h}</th>)}
               </tr></thead>
               <tbody>
                 {orders.map(o => (
-                  <tr key={o.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    <td className="px-2 py-1.5 text-white">{o.name}</td>
-                    <td className="px-2 py-1.5 text-white/70">{o.menu_item}</td>
-                    <td className="px-2 py-1.5 text-white/40">{new Date(o.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</td>
+                  <tr key={o.id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                    <td className="px-3 py-2" style={{ color: C.textPrimary }}>{o.name}</td>
+                    <td className="px-3 py-2" style={{ color: C.textSecondary }}>{o.menu_item}</td>
+                    <td className="px-3 py-2 text-xs" style={{ color: C.textMuted }}>{new Date(o.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</td>
                   </tr>
                 ))}
               </tbody>
@@ -467,7 +748,7 @@ function MealTab() {
   )
 }
 
-/* ─────────────── Tab 4: Settings (mobile-friendly) ─────────────── */
+/* ─────────────── Tab 6: Settings ─────────────── */
 function SettingsTab() {
   const [regOpen, setRegOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -492,259 +773,26 @@ function SettingsTab() {
   }
 
   return (
-    <div className="space-y-4 max-w-sm mx-auto">
-      <div className="rounded-2xl p-5 space-y-4" style={{ background: '#1a0f3a' }}>
-        <p className="text-white/50 text-xs font-bold uppercase tracking-wider">등록 오픈</p>
-        <p className="text-white/70 text-sm">마감일(11월 15일) 이후에도 오늘 하루 등록 가능하게 열기</p>
+    <div className="space-y-4" style={{ maxWidth: 420 }}>
+      <div className="rounded-2xl p-6 space-y-4" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: C.textMuted }}>등록 오픈</p>
+          <p className="text-sm" style={{ color: C.textSecondary }}>마감일(11월 15일) 이후에도 오늘 하루 등록 가능하게 열기</p>
+        </div>
         <button onClick={() => toggleRegOpen(!regOpen)} disabled={saving}
           className="w-full py-5 rounded-2xl font-black text-xl text-white transition-all disabled:opacity-40"
-          style={{ background: regOpen ? 'linear-gradient(135deg,#22c55e,#4dd9ff)' : 'linear-gradient(135deg,#7c5cfc,#a78bfa)', boxShadow: regOpen ? '0 4px 24px rgba(34,197,94,0.4)' : '0 4px 24px rgba(124,92,252,0.4)' }}>
+          style={{
+            background: regOpen ? `linear-gradient(135deg,${C.green},${C.cyan})` : `linear-gradient(135deg,${C.purple},#a78bfa)`,
+            boxShadow: regOpen ? `0 4px 24px rgba(34,197,94,0.35)` : `0 4px 24px rgba(124,92,252,0.35)`,
+          }}>
           {saving ? '처리 중...' : regOpen ? '🟢 오픈 중' : '🔴 닫힘'}
         </button>
-        <p className="text-white/25 text-xs text-center">당일 자정(00:00)에 자동으로 닫힙니다</p>
+        <p className="text-xs text-center" style={{ color: C.textMuted }}>당일 자정(00:00)에 자동으로 닫힙니다</p>
       </div>
 
-      <div className="rounded-2xl p-4" style={{ background: '#1a0f3a' }}>
-        <p className="text-white/40 text-xs">등록 마감일: <span className="text-white/70">2026년 11월 15일</span></p>
-        <p className="text-white/40 text-xs mt-1">문의: 김양연 간사 010-9154-6113</p>
-      </div>
-    </div>
-  )
-}
-
-/* ─────────────── Tab 2: Survey Data ─────────────── */
-function SurveyDataTab() {
-  const [regs, setRegs] = useState<Reg[]>([])
-  const [loading, setLoading] = useState(true)
-  const [view, setView] = useState<'challenges' | 'absent' | 'detail'>('challenges')
-
-  useEffect(() => {
-    fetch('/api/admin/registrations')
-      .then(r => r.json())
-      .then(d => { setRegs(d.registrations || []); setLoading(false) })
-  }, [])
-
-  if (loading) return <p className="text-white/40 text-sm text-center py-10">불러오는 중...</p>
-
-  const attendees = regs.filter(r => r.attending === true)
-  const absentees = regs.filter(r => r.attending === false)
-
-  // Challenge tallying
-  const challengeCounts: Record<string, number> = {}
-  regs.forEach(r => {
-    const raw = (r as unknown as Record<string, unknown>).challenges
-    const arr: string[] = Array.isArray(raw) ? raw as string[] : []
-    arr.forEach((c: string) => { challengeCounts[c] = (challengeCounts[c] || 0) + 1 })
-  })
-  const sortedChallenges = Object.entries(challengeCounts).sort((a, b) => b[1] - a[1])
-
-  return (
-    <div className="space-y-4">
-      <div className="flex gap-2 flex-wrap">
-        {([['challenges', '🔥 주요 고민'], ['absent', '😔 불참 사유'], ['detail', '📝 상세 응답']] as const).map(([k, label]) => (
-          <button key={k} onClick={() => setView(k)}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-            style={{ background: view === k ? '#7c5cfc' : 'rgba(124,92,252,0.15)', color: view === k ? 'white' : '#a78bfa' }}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {view === 'challenges' && (
-        <div className="space-y-5">
-          <div className="rounded-2xl p-4" style={{ background: '#1a0f3a' }}>
-            <p className="text-white/60 text-xs font-bold mb-3">🔥 현장 고민 TOP (복수 선택 · {regs.length}명 기준)</p>
-            {sortedChallenges.length === 0
-              ? <p className="text-white/30 text-sm text-center py-4">응답 없음</p>
-              : (
-                <ResponsiveContainer width="100%" height={sortedChallenges.length * 44 + 20}>
-                  <BarChart data={sortedChallenges.map(([name, value]) => ({ name: name.length > 18 ? name.slice(0, 18) + '…' : name, full: name, value }))}
-                    layout="vertical" margin={{ left: 0, right: 30, top: 4, bottom: 4 }}>
-                    <XAxis type="number" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} tickLine={false} axisLine={false} />
-                    <YAxis type="category" dataKey="name" width={160} tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 11 }} tickLine={false} axisLine={false} />
-                    <Tooltip
-                      cursor={{ fill: 'rgba(124,92,252,0.1)' }}
-                      contentStyle={{ background: '#0f0830', border: '1px solid rgba(124,92,252,0.4)', borderRadius: 12, fontSize: 12 }}
-                      labelFormatter={(_, payload) => payload?.[0]?.payload?.full || ''}
-                      formatter={(v: unknown) => [`${v}명`, '응답수']} />
-                    <Bar dataKey="value" radius={[0, 6, 6, 0]}>
-                      {sortedChallenges.map((_, i) => (
-                        <Cell key={i} fill={`hsl(${250 + i * 15}, 80%, ${65 - i * 3}%)`} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )
-            }
-          </div>
-
-          <div className="rounded-2xl p-4" style={{ background: '#1a0f3a' }}>
-            <p className="text-white/60 text-xs font-bold mb-1">📊 참석/불참 현황</p>
-            <div className="flex items-center gap-4 mt-2">
-              <div className="flex-1 rounded-full h-4 overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                <div className="h-4 rounded-full" style={{ width: `${regs.length ? (attendees.length / regs.length) * 100 : 0}%`, background: 'linear-gradient(90deg,#7c5cfc,#4dd9ff)' }} />
-              </div>
-              <span className="text-white/60 text-xs whitespace-nowrap">참석 {attendees.length} / 불참 {absentees.length}</span>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-white/40 text-xs font-bold">💬 SLM HQ에 하고 싶은 말</p>
-            {regs.filter(r => (r as unknown as Record<string,unknown>).questions).length === 0 && <p className="text-white/30 text-sm text-center py-4">응답 없음</p>}
-            {regs.filter(r => (r as unknown as Record<string,unknown>).questions).map(r => (
-              <div key={r.id} className="rounded-xl p-3" style={{ background: '#1a0f3a' }}>
-                <p className="text-[#a78bfa] text-xs font-bold mb-1">{r.name} ({r.cohort}기 · {r.district}) <span className="text-white/30">{r.attending ? '참석' : '불참'}</span></p>
-                <p className="text-white/70 text-sm leading-relaxed">{String((r as unknown as Record<string,unknown>).questions)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {view === 'absent' && (
-        <div className="space-y-3">
-          <p className="text-white/40 text-xs">불참 {absentees.length}명</p>
-          {absentees.length === 0 && <p className="text-white/30 text-sm text-center py-8">불참자 없음</p>}
-          {absentees.map(r => (
-            <div key={r.id} className="rounded-xl p-4" style={{ background: '#1a0f3a' }}>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-white font-bold text-sm">{r.name}</span>
-                <span className="text-white/40 text-xs">{r.cohort}기 · {r.district} · {r.campus}</span>
-              </div>
-              <p className="text-white/60 text-sm leading-relaxed">{r.absent_reason || '사유 미작성'}</p>
-              {(r as unknown as Record<string,unknown>).questions ? (
-                <p className="text-[#a78bfa] text-xs mt-2">💬 {String((r as unknown as Record<string,unknown>).questions)}</p>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {view === 'detail' && (
-        <div className="space-y-3">
-          <p className="text-white/40 text-xs">참석자 {attendees.length}명 · 불참자 {absentees.length}명</p>
-          {regs.map(r => {
-            const extra = r as unknown as Record<string, unknown>
-            return (
-              <div key={r.id} className="rounded-xl p-4 space-y-2" style={{ background: '#1a0f3a' }}>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-black text-white">{r.name}</span>
-                  <span className="text-white/50 text-xs">{r.cohort}기</span>
-                  <span className="text-white/50 text-xs">{r.district} · {r.campus}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: r.attending ? 'rgba(77,217,255,0.15)' : 'rgba(255,255,255,0.08)', color: '#4dd9ff' }}>
-                    {r.attending ? '참석' : '불참'}
-                  </span>
-                </div>
-                {r.attending ? (
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-white/50">
-                    <span>📞 {r.phone}</span>
-                    <span>🚌 {r.transportation}</span>
-                    <span>🗓 {r.attendance_type}</span>
-                    <span>🚻 {r.gender}</span>
-                    {r.room_note && <span className="col-span-2">🏨 {r.room_note}</span>}
-                  </div>
-                ) : (
-                  <p className="text-white/50 text-xs">불참 사유: {r.absent_reason}</p>
-                )}
-                {Array.isArray(extra.challenges) && (extra.challenges as string[]).length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {(extra.challenges as string[]).map((c: string) => (
-                      <span key={c} className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(124,92,252,0.2)', color: '#a78bfa' }}>{c}</span>
-                    ))}
-                  </div>
-                )}
-                {extra.desired_topic ? <p className="text-white/50 text-xs">기대: {String(extra.desired_topic)}</p> : null}
-                {extra.questions ? <p className="text-[#a78bfa] text-xs">💬 {String(extra.questions)}</p> : null}
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/* ─────────────── Tab 3: Insurance ─────────────── */
-function InsuranceTab() {
-  const [regs, setRegs] = useState<Reg[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetch('/api/admin/registrations')
-      .then(r => r.json())
-      .then(d => { setRegs((d.registrations || []).filter((r: Reg) => r.attending === true)); setLoading(false) })
-  }, [])
-
-  function exportCSV() {
-    const rows = [['번호', '이름', '기수', '지구', '캠퍼스', '성별', '주민등록번호', '연락처']]
-    regs.forEach((r, i) => rows.push([
-      String(i + 1), r.name, r.cohort, r.district, r.campus,
-      r.gender || '', r.id_number || '', r.phone || ''
-    ]))
-    const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n')
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
-    a.download = '여행자보험_주민번호.csv'; a.click()
-  }
-
-  if (loading) return <p className="text-white/40 text-sm text-center py-10">불러오는 중...</p>
-
-  const withId = regs.filter(r => r.id_number)
-  const withoutId = regs.filter(r => !r.id_number)
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-white font-bold text-lg">🔒 여행자보험 주민번호 수합</h2>
-          <p className="text-white/40 text-xs mt-0.5">참석자 {regs.length}명 중 {withId.length}명 제출 · {withoutId.length}명 미제출</p>
-        </div>
-        <button onClick={exportCSV}
-          className="px-4 py-2 rounded-xl text-sm font-bold text-white"
-          style={{ background: '#7c5cfc' }}>
-          CSV 내보내기
-        </button>
-      </div>
-
-      {withoutId.length > 0 && (
-        <div className="rounded-xl p-3" style={{ background: '#2a1a0a', border: '1px solid rgba(255,150,50,0.3)' }}>
-          <p className="text-orange-400 text-xs font-bold mb-2">⚠️ 주민번호 미제출 ({withoutId.length}명)</p>
-          <div className="flex flex-wrap gap-2">
-            {withoutId.map(r => (
-              <span key={r.id} className="text-white/60 text-xs px-2 py-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                {r.name} ({r.cohort}기)
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="overflow-x-auto rounded-xl" style={{ background: '#1a0f3a' }}>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-white/10">
-              {['#', '이름', '기수', '지구', '성별', '주민등록번호', '연락처'].map(h => (
-                <th key={h} className="px-3 py-3 text-left text-white/40 text-xs font-bold whitespace-nowrap">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {regs.map((r, i) => (
-              <tr key={r.id} className="border-b border-white/5">
-                <td className="px-3 py-2 text-white/30 text-xs">{i + 1}</td>
-                <td className="px-3 py-2 text-white font-bold text-xs whitespace-nowrap">{r.name}</td>
-                <td className="px-3 py-2 text-white/60 text-xs">{r.cohort}</td>
-                <td className="px-3 py-2 text-white/60 text-xs whitespace-nowrap">{r.district}</td>
-                <td className="px-3 py-2 text-white/60 text-xs">{r.gender || '-'}</td>
-                <td className="px-3 py-2 text-xs font-mono whitespace-nowrap" style={{ color: r.id_number ? '#a78bfa' : 'rgba(255,100,100,0.6)' }}>
-                  {r.id_number || '미제출'}
-                </td>
-                <td className="px-3 py-2 text-white/60 text-xs whitespace-nowrap">{r.phone || '-'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {regs.length === 0 && <p className="text-white/30 text-sm text-center py-8">참석 등록자가 없습니다</p>}
+      <div className="rounded-2xl p-4" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+        <p className="text-xs" style={{ color: C.textMuted }}>등록 마감일: <span style={{ color: C.textSecondary }}>2026년 11월 15일</span></p>
+        <p className="text-xs mt-1" style={{ color: C.textMuted }}>문의: 김양연 간사 010-9154-6113</p>
       </div>
     </div>
   )
@@ -754,8 +802,8 @@ function InsuranceTab() {
 function Checkbox({ checked, onChange, disabled, color }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; color?: string }) {
   return (
     <button onClick={() => !disabled && onChange(!checked)} disabled={disabled}
-      className="w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all disabled:opacity-40"
-      style={{ background: checked ? (color || '#7c5cfc') : 'transparent', borderColor: checked ? (color || '#7c5cfc') : 'rgba(255,255,255,0.3)' }}>
+      className="w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all disabled:opacity-40"
+      style={{ background: checked ? (color || C.purple) : 'white', borderColor: checked ? (color || C.purple) : C.border }}>
       {checked && <span className="text-white text-xs font-black">✓</span>}
     </button>
   )
