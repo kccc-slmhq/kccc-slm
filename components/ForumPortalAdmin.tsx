@@ -689,7 +689,7 @@ function MealTab() {
 
       <div className="rounded-2xl p-5 space-y-4" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
         <p className="font-bold text-sm" style={{ color: C.textPrimary }}>주문 받을 시간</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-3">
           <div>
             <label className="text-xs mb-1.5 block" style={{ color: C.textSecondary }}>시작</label>
             <input type="datetime-local" value={orderStart} onChange={e => setOrderStart(e.target.value)}
