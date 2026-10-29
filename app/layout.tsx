@@ -17,8 +17,8 @@ export const metadata: Metadata = {
   description: "2026 CCC SLM 교육간사 포럼",
   manifest: "/manifest.json",
   icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
+    icon: "/forum-poster.webp",
+    apple: "/forum-poster.webp",
   },
   appleWebApp: {
     capable: true,
