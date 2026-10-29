@@ -349,15 +349,14 @@ function CheckInTab() {
       .then(d => { setRegs(d.registrations || []); setLoading(false) })
   }, [])
 
-  useEffect(() => {
+  function doSearch() {
     const q = search.trim()
     if (!q) return
     const match = sorted.find(r => r.name.includes(q))
     if (match && rowRefs.current[match.id]) {
       rowRefs.current[match.id]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search])
+  }
 
   async function patch(id: string, updates: Partial<Reg>) {
     setSaving(id)
@@ -387,7 +386,8 @@ function CheckInTab() {
       </div>
 
       <input value={search} onChange={e => setSearch(e.target.value)}
-        placeholder="🔍 이름 검색 → 해당 행 하이라이트 후 이동"
+        onKeyDown={e => e.key === 'Enter' && doSearch()}
+        placeholder="🔍 이름 입력 후 엔터"
         className="w-full rounded-xl px-4 py-3 text-sm outline-none"
         style={{ background: C.cardBg, border: `1px solid ${C.border}`, color: C.textPrimary, boxSizing: 'border-box' as const }} />
 
