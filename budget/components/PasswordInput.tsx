@@ -11,7 +11,16 @@ export function PasswordInput({
   const [visible, setVisible] = useState(false);
   return (
     <div className="relative">
-      <input ref={ref} {...props} type={visible ? "text" : "password"} className={`${className ?? ""} pr-11`} />
+      {/* 글자를 보이게 해도 휴대폰 자판이 첫 글자를 대문자로 바꾸거나 자동 수정하지 않도록 */}
+      <input
+        ref={ref}
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        {...props}
+        type={visible ? "text" : "password"}
+        className={`${className ?? ""} pr-11`}
+      />
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
