@@ -974,32 +974,34 @@ function RoomsTab() {
 }
 
 /* ─────────────── Tab 5: Meals ─────────────── */
+type MealOrder = { id: string; name: string; menu_item: string; meal_title: string; created_at: string }
+
 function MealTab() {
   const [menuText, setMenuText] = useState('')
-  const [orderStart, setOrderStart] = useState('')
-  const [orderEnd, setOrderEnd] = useState('')
+  const [orderTitle, setOrderTitle] = useState('')
   const [active, setActive] = useState(false)
-  const [orders, setOrders] = useState<{ id: string; name: string; menu_item: string; created_at: string }[]>([])
+  const [orders, setOrders] = useState<MealOrder[]>([])
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
+  const [editId, setEditId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editMenu, setEditMenu] = useState('')
 
-  useEffect(() => {
-    async function load() {
-      const [sr, or] = await Promise.all([
-        fetch('/api/admin/settings').then(r => r.json()),
-        fetch('/api/meal-order').then(r => r.json()),
-      ])
-      const s = sr.settings || {}
-      if (s.meal_menu) {
-        try { setMenuText(JSON.parse(s.meal_menu).join('\n')) } catch { setMenuText('') }
-      }
-      setOrderStart(s.meal_order_start || '')
-      setOrderEnd(s.meal_order_end || '')
-      setActive(s.meal_order_active === 'true')
-      setOrders(or.orders || [])
+  async function load() {
+    const [sr, or] = await Promise.all([
+      fetch('/api/admin/settings').then(r => r.json()),
+      fetch('/api/meal-order').then(r => r.json()),
+    ])
+    const s = sr.settings || {}
+    if (s.meal_menu) {
+      try { setMenuText(JSON.parse(s.meal_menu).join('\n')) } catch { setMenuText('') }
     }
-    load()
-  }, [])
+    setOrderTitle(s.meal_order_title || '')
+    setActive(s.meal_order_active === 'true')
+    setOrders(or.orders || [])
+  }
+
+  useEffect(() => { load() }, [])
 
   async function saveSetting(key: string, value: string | null) {
     await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, value }) })
@@ -1013,8 +1015,12 @@ function MealTab() {
   }
 
   async function publishOrder() {
+    if (!orderTitle.trim()) { setMsg('타이틀을 입력해주세요'); setTimeout(() => setMsg(''), 2000); return }
     setSaving(true)
-    await saveSetting('meal_order_active', 'true')
+    await Promise.all([
+      saveSetting('meal_order_title', orderTitle.trim()),
+      saveSetting('meal_order_active', 'true'),
+    ])
     setActive(true); setSaving(false); setMsg('공지됨'); setTimeout(() => setMsg(''), 2000)
   }
 
@@ -1024,11 +1030,30 @@ function MealTab() {
     setActive(false); setSaving(false)
   }
 
-  const menuCounts: Record<string, number> = {}
-  orders.forEach(o => { menuCounts[o.menu_item] = (menuCounts[o.menu_item] || 0) + 1 })
+  async function deleteOrder(id: string) {
+    if (!confirm('삭제하시겠습니까?')) return
+    await fetch('/api/admin/meal-orders', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    setOrders(prev => prev.filter(o => o.id !== id))
+  }
+
+  async function saveEdit(id: string) {
+    await fetch('/api/admin/meal-orders', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, name: editName, menu_item: editMenu }) })
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, name: editName, menu_item: editMenu } : o))
+    setEditId(null)
+  }
+
+  // group orders by meal_title
+  const groups: Record<string, MealOrder[]> = {}
+  for (const o of orders) {
+    const key = o.meal_title || '(타이틀 없음)'
+    if (!groups[key]) groups[key] = []
+    groups[key].push(o)
+  }
+  const menuItems = menuText.split('\n').map(s => s.trim()).filter(Boolean)
 
   return (
     <div className="space-y-4" style={{ maxWidth: 700 }}>
+      {/* 메뉴 설정 */}
       <div className="rounded-2xl p-5 space-y-4" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
         <p className="font-bold text-sm" style={{ color: C.textPrimary }}>메뉴 목록 (한 줄에 하나씩)</p>
         <textarea value={menuText} onChange={e => setMenuText(e.target.value)} rows={5}
@@ -1043,56 +1068,78 @@ function MealTab() {
         </div>
       </div>
 
-      <div className="rounded-2xl p-5 space-y-4" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+      {/* 주문 공지 */}
+      <div className="rounded-2xl p-5 space-y-3" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+        <p className="font-bold text-sm" style={{ color: C.textPrimary }}>주문 공지</p>
+        <input value={orderTitle} onChange={e => setOrderTitle(e.target.value)}
+          placeholder="예: 11월 23일 점심" disabled={active}
+          className="w-full rounded-xl px-4 py-3 outline-none text-base"
+          style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary, opacity: active ? 0.6 : 1 }} />
         <div className="flex gap-2 flex-wrap">
           <button onClick={publishOrder} disabled={saving}
             className="px-4 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-40" style={{ background: active ? C.green : '#16a34a', minHeight: 44 }}>
-            {active ? '✓ 주문 공지 중' : '주문 공지하기'}
+            {active ? `✓ 공지 중: ${orderTitle}` : '주문 공지하기'}
           </button>
           {active && (
             <button onClick={cancelOrder} disabled={saving} className="px-4 py-2.5 rounded-xl text-sm font-bold" style={{ background: '#fef2f2', color: C.red, border: `1px solid #fecaca`, minHeight: 44 }}>
-              주문 취소
+              공지 닫기
             </button>
           )}
         </div>
       </div>
 
-      {orders.length > 0 && (
-        <div className="space-y-3">
-          {/* 메뉴별 수량 요약 */}
-          <div className="rounded-2xl p-5" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
-            <p className="font-bold text-sm mb-4" style={{ color: C.textPrimary }}>📊 메뉴별 주문 현황 (총 {orders.length}건)</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {Object.entries(menuCounts).sort((a, b) => b[1] - a[1]).map(([item, cnt]) => (
-                <div key={item} className="rounded-xl px-4 py-3 flex items-center justify-between" style={{ background: C.inputBg, border: `1px solid ${C.border}` }}>
+      {/* 주문 내역 — 타이틀별 그룹 */}
+      {Object.entries(groups).map(([title, list]) => {
+        const counts: Record<string, number> = {}
+        list.forEach(o => { counts[o.menu_item] = (counts[o.menu_item] || 0) + 1 })
+        return (
+          <div key={title} className="rounded-2xl p-5 space-y-3" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+            <div className="flex items-center justify-between">
+              <p className="font-black text-sm" style={{ color: C.textPrimary }}>🍽️ {title} <span style={{ color: C.textMuted }}>({list.length}건)</span></p>
+            </div>
+            {/* 메뉴별 수량 요약 */}
+            <div className="grid gap-2 sm:grid-cols-2">
+              {Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([item, cnt]) => (
+                <div key={item} className="rounded-xl px-4 py-2 flex items-center justify-between" style={{ background: C.inputBg, border: `1px solid ${C.border}` }}>
                   <span className="font-bold text-sm" style={{ color: C.textPrimary }}>{item}</span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="font-black text-2xl" style={{ color: C.purple }}>{cnt}</span>
-                    <span className="text-xs" style={{ color: C.textMuted }}>건</span>
-                  </div>
+                  <span className="font-black text-xl" style={{ color: C.purple }}>{cnt}</span>
+                </div>
+              ))}
+            </div>
+            {/* 개별 주문 목록 */}
+            <div className="space-y-1.5 pt-1">
+              {list.map(o => (
+                <div key={o.id}>
+                  {editId === o.id ? (
+                    <div className="flex gap-2 items-center flex-wrap">
+                      <input value={editName} onChange={e => setEditName(e.target.value)}
+                        className="rounded-lg px-3 py-1.5 text-sm flex-1" style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary, minWidth: 80 }} />
+                      <select value={editMenu} onChange={e => setEditMenu(e.target.value)}
+                        className="rounded-lg px-3 py-1.5 text-sm" style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary }}>
+                        {menuItems.map(m => <option key={m}>{m}</option>)}
+                        {!menuItems.includes(editMenu) && <option>{editMenu}</option>}
+                      </select>
+                      <button onClick={() => saveEdit(o.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: C.green }}>저장</button>
+                      <button onClick={() => setEditId(null)} className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ background: C.inputBg, color: C.textSecondary, border: `1px solid ${C.border}` }}>취소</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-2 rounded-xl px-3 py-2" style={{ background: C.inputBg }}>
+                      <span className="text-sm font-bold" style={{ color: C.textPrimary }}>{o.name}</span>
+                      <span className="text-xs px-2 py-1 rounded-lg font-bold" style={{ background: C.purpleLight, color: C.purple }}>{o.menu_item}</span>
+                      <div className="flex gap-1 ml-auto">
+                        <button onClick={() => { setEditId(o.id); setEditName(o.name); setEditMenu(o.menu_item) }}
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold" style={{ background: C.inputBg, color: C.textSecondary, border: `1px solid ${C.border}` }}>수정</button>
+                        <button onClick={() => deleteOrder(o.id)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold" style={{ background: '#fef2f2', color: C.red, border: '1px solid #fecaca' }}>삭제</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           </div>
-
-          {/* 메뉴별 상세 명단 */}
-          {Object.entries(menuCounts).sort((a, b) => b[1] - a[1]).map(([item]) => {
-            const list = orders.filter(o => o.menu_item === item)
-            return (
-              <div key={item} className="rounded-2xl p-5 space-y-2" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
-                <p className="font-bold text-sm" style={{ color: C.textPrimary }}>{item} <span style={{ color: C.textMuted }}>({list.length}명)</span></p>
-                <div className="flex flex-wrap gap-2">
-                  {list.map(o => (
-                    <span key={o.id} className="text-xs px-3 py-1.5 rounded-xl font-bold" style={{ background: C.purpleLight, color: C.purple }}>
-                      {o.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+        )
+      })}
     </div>
   )
 }

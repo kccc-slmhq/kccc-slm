@@ -16,7 +16,8 @@ export async function POST(request: Request) {
   for (const r of settings || []) map[r.key] = r.value
   if (map['meal_order_active'] !== 'true') return Response.json({ error: 'Order window closed' }, { status: 403 })
 
-  const { error } = await supabase.from('meal_orders').insert({ name, phone, menu_item })
+  const title = map['meal_order_title'] || ''
+  const { error } = await supabase.from('meal_orders').insert({ name, phone, menu_item, meal_title: title })
   if (error) return Response.json({ error: error.message }, { status: 500 })
   return Response.json({ ok: true })
 }
