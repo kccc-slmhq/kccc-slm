@@ -506,17 +506,13 @@ function CheckInTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-        {[['참석체크', attended, C.cyan], ['키수령', keyTaken, C.amber]].map(([l, n, c]) => (
-          <div key={l as string} className="rounded-2xl p-3 text-center" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
-            <p className="font-black text-xl" style={{ color: c as string }}>{n as number}<span className="text-xs font-normal" style={{ color: C.textMuted }}>/{attendees.length}</span></p>
-            <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>{l as string}</p>
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+        {([['납부', feePaid, C.green], ['면제', feeExempt, C.amber], ['참석체크', attended, C.cyan], ['키수령', keyTaken, '#a78bfa']] as [string, number, string][]).map(([l, n, c]) => (
+          <div key={l} className="rounded-2xl p-3 text-center" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+            <p className="font-black text-xl" style={{ color: c }}>{n}<span className="text-xs font-normal" style={{ color: C.textMuted }}>/{attendees.length}</span></p>
+            <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>{l}</p>
           </div>
         ))}
-        <div className="rounded-2xl p-3 text-center" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
-          <p className="font-black text-xl" style={{ color: C.green }}>{feePaid}<span className="text-xs font-normal" style={{ color: C.textMuted }}>명</span></p>
-          <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>납부 · 면제 {feeExempt}명 · 전체 {attendees.length}명</p>
-        </div>
       </div>
       <div className="rounded-2xl px-4 py-3 flex items-center justify-between" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
         <span className="text-sm font-bold" style={{ color: C.textSecondary }}>💰 회비</span>
