@@ -986,6 +986,7 @@ function MealTab() {
   const [editId, setEditId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editMenu, setEditMenu] = useState('')
+  const [expandedKey, setExpandedKey] = useState<string | null>(null)
 
   async function load() {
     const [sr, or] = await Promise.all([
@@ -1093,50 +1094,55 @@ function MealTab() {
         const counts: Record<string, number> = {}
         list.forEach(o => { counts[o.menu_item] = (counts[o.menu_item] || 0) + 1 })
         return (
-          <div key={title} className="rounded-2xl p-5 space-y-3" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
-            <div className="flex items-center justify-between">
-              <p className="font-black text-sm" style={{ color: C.textPrimary }}>🍽️ {title} <span style={{ color: C.textMuted }}>({list.length}건)</span></p>
-            </div>
-            {/* 메뉴별 수량 요약 */}
-            <div className="grid gap-2 sm:grid-cols-2">
-              {Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([item, cnt]) => (
-                <div key={item} className="rounded-xl px-4 py-2 flex items-center justify-between" style={{ background: C.inputBg, border: `1px solid ${C.border}` }}>
-                  <span className="font-bold text-sm" style={{ color: C.textPrimary }}>{item}</span>
-                  <span className="font-black text-xl" style={{ color: C.purple }}>{cnt}</span>
-                </div>
-              ))}
-            </div>
-            {/* 개별 주문 목록 */}
-            <div className="space-y-1.5 pt-1">
-              {list.map(o => (
-                <div key={o.id}>
-                  {editId === o.id ? (
-                    <div className="flex gap-2 items-center flex-wrap">
-                      <input value={editName} onChange={e => setEditName(e.target.value)}
-                        className="rounded-lg px-3 py-1.5 text-sm flex-1" style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary, minWidth: 80 }} />
-                      <select value={editMenu} onChange={e => setEditMenu(e.target.value)}
-                        className="rounded-lg px-3 py-1.5 text-sm" style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary }}>
-                        {menuItems.map(m => <option key={m}>{m}</option>)}
-                        {!menuItems.includes(editMenu) && <option>{editMenu}</option>}
-                      </select>
-                      <button onClick={() => saveEdit(o.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: C.green }}>저장</button>
-                      <button onClick={() => setEditId(null)} className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ background: C.inputBg, color: C.textSecondary, border: `1px solid ${C.border}` }}>취소</button>
+          <div key={title} className="rounded-2xl p-5 space-y-2" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+            <p className="font-black text-sm mb-3" style={{ color: C.textPrimary }}>🍽️ {title} <span style={{ color: C.textMuted }}>({list.length}건)</span></p>
+            {Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([item, cnt]) => {
+              const key = `${title}::${item}`
+              const expanded = expandedKey === key
+              const people = list.filter(o => o.menu_item === item).sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+              return (
+                <div key={item}>
+                  <button onClick={() => setExpandedKey(expanded ? null : key)}
+                    className="w-full rounded-xl px-4 py-3 flex items-center justify-between"
+                    style={{ background: C.inputBg, border: `1px solid ${expanded ? C.purple : C.border}` }}>
+                    <span className="font-bold text-sm" style={{ color: C.textPrimary }}>{item}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-xl" style={{ color: C.purple }}>{cnt}</span>
+                      <span className="text-xs" style={{ color: C.textMuted }}>{expanded ? '▲' : '▼'}</span>
                     </div>
-                  ) : (
-                    <div className="flex items-center justify-between gap-2 rounded-xl px-3 py-2" style={{ background: C.inputBg }}>
-                      <span className="text-sm font-bold" style={{ color: C.textPrimary }}>{o.name}</span>
-                      <span className="text-xs px-2 py-1 rounded-lg font-bold" style={{ background: C.purpleLight, color: C.purple }}>{o.menu_item}</span>
-                      <div className="flex gap-1 ml-auto">
-                        <button onClick={() => { setEditId(o.id); setEditName(o.name); setEditMenu(o.menu_item) }}
-                          className="px-2.5 py-1 rounded-lg text-xs font-bold" style={{ background: C.inputBg, color: C.textSecondary, border: `1px solid ${C.border}` }}>수정</button>
-                        <button onClick={() => deleteOrder(o.id)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-bold" style={{ background: '#fef2f2', color: C.red, border: '1px solid #fecaca' }}>삭제</button>
-                      </div>
+                  </button>
+                  {expanded && (
+                    <div className="mt-1.5 space-y-1.5 pl-2">
+                      {people.map(o => (
+                        <div key={o.id}>
+                          {editId === o.id ? (
+                            <div className="flex gap-2 items-center flex-wrap rounded-xl px-3 py-2" style={{ background: C.inputBg }}>
+                              <input value={editName} onChange={e => setEditName(e.target.value)}
+                                className="rounded-lg px-3 py-1.5 text-sm flex-1" style={{ background: C.cardBg, border: `1px solid ${C.border}`, color: C.textPrimary, minWidth: 80 }} />
+                              <select value={editMenu} onChange={e => setEditMenu(e.target.value)}
+                                className="rounded-lg px-3 py-1.5 text-sm" style={{ background: C.cardBg, border: `1px solid ${C.border}`, color: C.textPrimary }}>
+                                {menuItems.map(m => <option key={m}>{m}</option>)}
+                                {!menuItems.includes(editMenu) && <option>{editMenu}</option>}
+                              </select>
+                              <button onClick={() => saveEdit(o.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: C.green }}>저장</button>
+                              <button onClick={() => setEditId(null)} className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ background: C.inputBg, color: C.textSecondary, border: `1px solid ${C.border}` }}>취소</button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: C.inputBg }}>
+                              <span className="text-sm font-bold flex-1" style={{ color: C.textPrimary }}>{o.name}</span>
+                              <button onClick={() => { setEditId(o.id); setEditName(o.name); setEditMenu(o.menu_item) }}
+                                className="px-2.5 py-1 rounded-lg text-xs font-bold" style={{ background: C.cardBg, color: C.textSecondary, border: `1px solid ${C.border}` }}>수정</button>
+                              <button onClick={() => deleteOrder(o.id)}
+                                className="px-2.5 py-1 rounded-lg text-xs font-bold" style={{ background: '#fef2f2', color: C.red, border: '1px solid #fecaca' }}>삭제</button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
+              )
+            })}
           </div>
         )
       })}
