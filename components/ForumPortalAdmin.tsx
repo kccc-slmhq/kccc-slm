@@ -507,7 +507,7 @@ function CheckInTab() {
   return (
     <div className="space-y-4">
       <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
-        {([['납부', feePaid, C.green], ['면제', feeExempt, C.amber], ['참석체크', attended, C.cyan], ['키수령', keyTaken, '#a78bfa']] as [string, number, string][]).map(([l, n, c]) => (
+        {([['회비 납부', feePaid, C.green], ['면제', feeExempt, C.amber], ['참석체크', attended, C.cyan], ['키수령', keyTaken, '#a78bfa']] as [string, number, string][]).map(([l, n, c]) => (
           <div key={l} className="rounded-2xl p-3 text-center" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
             <p className="font-black text-xl" style={{ color: c }}>{n}<span className="text-xs font-normal" style={{ color: C.textMuted }}>/{attendees.length}</span></p>
             <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>{l}</p>
@@ -515,7 +515,7 @@ function CheckInTab() {
         ))}
       </div>
       <div className="rounded-2xl px-4 py-3 flex items-center justify-between" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
-        <span className="text-sm font-bold" style={{ color: C.textSecondary }}>💰 회비</span>
+        <span className="text-sm font-bold" style={{ color: C.textSecondary }}>💰 회비 납부현황</span>
         <span className="font-black text-lg" style={{ color: C.green }}>{feeTotal.toLocaleString()}원</span>
       </div>
 
