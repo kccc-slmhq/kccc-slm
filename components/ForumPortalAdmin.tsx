@@ -265,11 +265,13 @@ function RegistrationsTab() {
   const [regs, setRegs] = useState<Reg[]>([])
   const [loading, setLoading] = useState(true)
   const [filterAttending, setFilterAttending] = useState(false)
+  const [editing, setEditing] = useState<Reg | null>(null)
 
-  useEffect(() => {
+  function load() {
     fetch('/api/admin/registrations').then(r => r.json())
       .then(d => { setRegs(d.registrations || []); setLoading(false) })
-  }, [])
+  }
+  useEffect(() => { load() }, [])
 
   function exportCSV() {
     const rows = [['이름','기수','지구','캠퍼스','성별','연락처','참석여부','등록일']]
@@ -308,10 +310,10 @@ function RegistrationsTab() {
       </div>
       {loading ? <p className="text-center py-8" style={{ color: C.textMuted }}>불러오는 중...</p> : (
         <div className="overflow-x-auto rounded-2xl" style={{ background: C.cardBg, border: `1px solid ${C.border}`, WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
-          <table className="w-full text-xs" style={{ minWidth: 560 }}>
+          <table className="w-full text-xs" style={{ minWidth: 580 }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${C.border}`, background: C.inputBg }}>
-                {['이름','기수','지구','캠퍼스','성별','연락처','참석'].map(h => (
+                {['이름','기수','지구','캠퍼스','성별','연락처','참석',''].map(h => (
                   <th key={h} className="px-3 py-3 text-left font-bold whitespace-nowrap" style={{ color: C.textSecondary }}>{h}</th>
                 ))}
               </tr>
@@ -330,15 +332,136 @@ function RegistrationsTab() {
                       {r.attending ? '참석' : '불참'}
                     </span>
                   </td>
+                  <td className="px-3 py-2.5">
+                    <button onClick={() => setEditing(r)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold"
+                      style={{ background: C.purpleLight, color: C.purple }}>수정</button>
+                  </td>
                 </tr>
               ))}
               {displayed.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-10" style={{ color: C.textMuted }}>등록자가 없습니다</td></tr>
+                <tr><td colSpan={8} className="text-center py-10" style={{ color: C.textMuted }}>등록자가 없습니다</td></tr>
               )}
             </tbody>
           </table>
         </div>
       )}
+      {editing && <EditRegModal reg={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load() }} />}
+    </div>
+  )
+}
+
+/* ─────────────── Edit Registration Modal ─────────────── */
+function EditRegModal({ reg, onClose, onSaved }: { reg: Reg; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({ ...reg })
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+
+  const IB = `w-full rounded-xl px-3 py-2.5 outline-none text-sm`
+  const FS = { background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary }
+
+  function set(k: keyof Reg, v: unknown) { setForm(prev => ({ ...prev, [k]: v })) }
+
+  async function save() {
+    setSaving(true); setErr('')
+    const r = await fetch('/api/admin/registrations', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: form.id,
+        name: form.name, cohort: form.cohort, district: form.district,
+        campus: form.campus, phone: form.phone, gender: form.gender,
+        attendance_type: form.attendance_type, transportation: form.transportation,
+        attending: form.attending, absent_reason: form.absent_reason,
+        id_number: form.id_number,
+      }),
+    })
+    const d = await r.json()
+    setSaving(false)
+    if (d.error) { setErr(d.error); return }
+    onSaved()
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center px-0 sm:px-4"
+      style={{ background: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
+      <div className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl overflow-y-auto"
+        style={{ background: C.cardBg, border: `1px solid ${C.border}`, maxHeight: '90vh' }}
+        onClick={e => e.stopPropagation()}>
+        <div className="sticky top-0 flex items-center justify-between px-5 py-4 border-b" style={{ background: C.cardBg, borderColor: C.border }}>
+          <p className="font-black text-base" style={{ color: C.textPrimary }}>✏️ 참가자 정보 수정</p>
+          <button onClick={onClose} className="text-2xl leading-none" style={{ color: C.textMuted }}>×</button>
+        </div>
+        <div className="p-5 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold mb-1 block" style={{ color: C.textSecondary }}>이름</label>
+              <input value={form.name} onChange={e => set('name', e.target.value)} className={IB} style={FS} />
+            </div>
+            <div>
+              <label className="text-xs font-bold mb-1 block" style={{ color: C.textSecondary }}>기수</label>
+              <input value={form.cohort} onChange={e => set('cohort', e.target.value)} className={IB} style={FS} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold mb-1 block" style={{ color: C.textSecondary }}>지구</label>
+              <input value={form.district} onChange={e => set('district', e.target.value)} className={IB} style={FS} />
+            </div>
+            <div>
+              <label className="text-xs font-bold mb-1 block" style={{ color: C.textSecondary }}>캠퍼스</label>
+              <input value={form.campus} onChange={e => set('campus', e.target.value)} className={IB} style={FS} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold mb-1 block" style={{ color: C.textSecondary }}>연락처</label>
+              <input value={form.phone} onChange={e => set('phone', e.target.value)} className={IB} style={FS} />
+            </div>
+            <div>
+              <label className="text-xs font-bold mb-1 block" style={{ color: C.textSecondary }}>성별</label>
+              <select value={form.gender || ''} onChange={e => set('gender', e.target.value)} className={IB} style={FS}>
+                <option value="">선택</option>
+                <option value="남성">남성</option>
+                <option value="여성">여성</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-bold mb-1 block" style={{ color: C.textSecondary }}>참석 형태</label>
+            <select value={form.attendance_type || ''} onChange={e => set('attendance_type', e.target.value)} className={IB} style={FS}>
+              <option value="">선택</option>
+              <option value="전 일정(1박 2일) 참석">전 일정(1박 2일) 참석</option>
+              <option value="23일(1일 차)만 참석">23일(1일 차)만 참석</option>
+              <option value="24일(2일 차)만 참석">24일(2일 차)만 참석</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold mb-1 block" style={{ color: C.textSecondary }}>참석 여부</label>
+            <select value={form.attending === true ? 'true' : form.attending === false ? 'false' : ''} onChange={e => set('attending', e.target.value === 'true' ? true : e.target.value === 'false' ? false : null)} className={IB} style={FS}>
+              <option value="">미정</option>
+              <option value="true">참석</option>
+              <option value="false">불참</option>
+            </select>
+          </div>
+          {form.attending === false && (
+            <div>
+              <label className="text-xs font-bold mb-1 block" style={{ color: C.textSecondary }}>불참 사유</label>
+              <input value={form.absent_reason || ''} onChange={e => set('absent_reason', e.target.value)} className={IB} style={FS} />
+            </div>
+          )}
+          <div>
+            <label className="text-xs font-bold mb-1 block" style={{ color: C.textSecondary }}>주민등록번호</label>
+            <input value={form.id_number || ''} onChange={e => set('id_number', e.target.value)} className={IB} style={FS} placeholder="미입력" />
+          </div>
+          {err && <p className="text-xs" style={{ color: C.red }}>{err}</p>}
+          <button onClick={save} disabled={saving}
+            className="w-full py-3.5 rounded-2xl font-black text-white disabled:opacity-40"
+            style={{ background: C.purple }}>
+            {saving ? '저장 중...' : '저장하기'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

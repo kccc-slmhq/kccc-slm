@@ -255,7 +255,6 @@ export default function ForumHome() {
 
       {/* Floating bottom buttons */}
       <div className="fixed bottom-6 left-0 right-0 z-50 px-5 space-y-2">
-        {/* 식사 주문 버튼 */}
         {appSettings.meal_order_active && (
           <button onClick={() => setShowMealOrder(true)}
             className="w-full py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 text-white"
@@ -263,7 +262,6 @@ export default function ForumHome() {
             🍽️ 식사 주문하기
           </button>
         )}
-        {/* 호실 배정 버튼 */}
         {appSettings.rooms_published && (
           <button onClick={() => setShowRoomSearch(true)}
             className="w-full py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 text-white"
@@ -271,8 +269,8 @@ export default function ForumHome() {
             🛏️ 배정 호실 보기
           </button>
         )}
-        {/* 등록하기 / 마감 버튼 (포럼 당일부터 숨김) */}
-        {!isEventDay && (
+        {/* 주문/호실 공지 없을 때만 등록 버튼 표시, 포럼 당일 이후 완전 숨김 */}
+        {!appSettings.meal_order_active && !appSettings.rooms_published && !isEventDay && (
           <FloatingRegisterBtn onClick={() => isClosed ? setShowClosed(true) : setShowModal(true)} isClosed={isClosed} />
         )}
       </div>
