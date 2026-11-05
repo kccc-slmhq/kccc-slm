@@ -1014,11 +1014,7 @@ function MealTab() {
 
   async function publishOrder() {
     setSaving(true)
-    await Promise.all([
-      saveSetting('meal_order_start', orderStart),
-      saveSetting('meal_order_end', orderEnd),
-      saveSetting('meal_order_active', 'true'),
-    ])
+    await saveSetting('meal_order_active', 'true')
     setActive(true); setSaving(false); setMsg('공지됨'); setTimeout(() => setMsg(''), 2000)
   }
 
@@ -1048,25 +1044,8 @@ function MealTab() {
       </div>
 
       <div className="rounded-2xl p-5 space-y-4" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
-        <p className="font-bold text-sm" style={{ color: C.textPrimary }}>주문 받을 시간</p>
-        <div className="space-y-3" style={{ minWidth: 0 }}>
-          <div style={{ minWidth: 0 }}>
-            <label className="text-xs mb-1.5 block" style={{ color: C.textSecondary }}>시작</label>
-            <div style={{ overflow: 'hidden', borderRadius: 12, border: `1px solid ${C.border}`, background: C.inputBg }}>
-              <input type="datetime-local" value={orderStart} onChange={e => setOrderStart(e.target.value)}
-                style={{ width: '100%', minWidth: 0, padding: '10px 12px', outline: 'none', border: 'none', background: 'transparent', color: C.textPrimary, fontSize: 14, boxSizing: 'border-box' as const }} />
-            </div>
-          </div>
-          <div style={{ minWidth: 0 }}>
-            <label className="text-xs mb-1.5 block" style={{ color: C.textSecondary }}>종료</label>
-            <div style={{ overflow: 'hidden', borderRadius: 12, border: `1px solid ${C.border}`, background: C.inputBg }}>
-              <input type="datetime-local" value={orderEnd} onChange={e => setOrderEnd(e.target.value)}
-                style={{ width: '100%', minWidth: 0, padding: '10px 12px', outline: 'none', border: 'none', background: 'transparent', color: C.textPrimary, fontSize: 14, boxSizing: 'border-box' as const }} />
-            </div>
-          </div>
-        </div>
         <div className="flex gap-2 flex-wrap">
-          <button onClick={publishOrder} disabled={saving || !orderStart || !orderEnd}
+          <button onClick={publishOrder} disabled={saving}
             className="px-4 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-40" style={{ background: active ? C.green : '#16a34a', minHeight: 44 }}>
             {active ? '✓ 주문 공지 중' : '주문 공지하기'}
           </button>
