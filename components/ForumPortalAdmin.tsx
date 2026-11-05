@@ -498,28 +498,29 @@ function CheckInTab() {
   })
   const highlighted = q ? sorted.filter(r => r.name.includes(q)).map(r => r.id) : []
 
-  const feePaid = attendees.filter(r => r.fee_paid).length
+  const feePaid = attendees.filter(r => r.fee_paid && !isSlmhq(r) && !r.fee_exempt).length
+  const feeExempt = attendees.filter(r => isSlmhq(r) || r.fee_exempt).length
   const attended = attendees.filter(r => r.attended).length
   const keyTaken = attendees.filter(r => r.key_taken).length
-  const feeActual = attendees.filter(r => r.fee_paid && !isSlmhq(r) && !r.fee_exempt).length
-  const feeTotal = feeActual * 50000
+  const feeTotal = feePaid * 50000
 
   return (
     <div className="space-y-4">
       <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-        {[['실납부', feeActual, C.green], ['참석체크', attended, C.cyan], ['키수령', keyTaken, C.amber]].map(([l, n, c]) => (
+        {[['참석체크', attended, C.cyan], ['키수령', keyTaken, C.amber]].map(([l, n, c]) => (
           <div key={l as string} className="rounded-2xl p-3 text-center" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
             <p className="font-black text-xl" style={{ color: c as string }}>{n as number}<span className="text-xs font-normal" style={{ color: C.textMuted }}>/{attendees.length}</span></p>
             <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>{l as string}</p>
           </div>
         ))}
+        <div className="rounded-2xl p-3 text-center" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+          <p className="font-black text-xl" style={{ color: C.green }}>{feePaid}<span className="text-xs font-normal" style={{ color: C.textMuted }}>명</span></p>
+          <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>납부 · 면제 {feeExempt}명 · 전체 {attendees.length}명</p>
+        </div>
       </div>
       <div className="rounded-2xl px-4 py-3 flex items-center justify-between" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
-        <span className="text-sm font-bold" style={{ color: C.textSecondary }}>💰 납부 회비 합계</span>
-        <div className="text-right">
-          <span className="font-black text-lg" style={{ color: C.green }}>{feeTotal.toLocaleString()}원</span>
-          <span className="text-xs ml-1.5" style={{ color: C.textMuted }}>{feeActual}명 × 50,000원 (체크 {feePaid}명 중 스텝·면제 제외)</span>
-        </div>
+        <span className="text-sm font-bold" style={{ color: C.textSecondary }}>💰 회비</span>
+        <span className="font-black text-lg" style={{ color: C.green }}>{feeTotal.toLocaleString()}원</span>
       </div>
 
       <input value={search} onChange={e => { setSearch(e.target.value); tableContainerRef.current && (tableContainerRef.current.scrollTop = 0) }}
