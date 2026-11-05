@@ -99,14 +99,10 @@ export default function ForumHome() {
   useEffect(() => {
     fetch('/api/settings').then(r => r.json()).then(d => {
       const s = d.settings || {}
-      const now = Date.now()
-      const start = s.meal_order_start ? new Date(s.meal_order_start).getTime() : 0
-      const end = s.meal_order_end ? new Date(s.meal_order_end).getTime() : 0
-      const mealActive = s.meal_order_active === 'true' && now >= start && now <= end
       let menu: string[] = []
       try { menu = JSON.parse(s.meal_menu || '[]') } catch {}
       setAppSettings({
-        meal_order_active: mealActive,
+        meal_order_active: s.meal_order_active === 'true',
         meal_order_start: s.meal_order_start || '',
         meal_order_end: s.meal_order_end || '',
         meal_menu: menu,
