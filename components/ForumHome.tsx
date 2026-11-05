@@ -97,7 +97,7 @@ export default function ForumHome() {
   }, [])
 
   useEffect(() => {
-    fetch('/api/admin/settings').then(r => r.json()).then(d => {
+    fetch('/api/settings').then(r => r.json()).then(d => {
       const s = d.settings || {}
       const now = Date.now()
       const start = s.meal_order_start ? new Date(s.meal_order_start).getTime() : 0
