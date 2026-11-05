@@ -15,10 +15,6 @@ export async function POST(request: Request) {
   const map: Record<string, string> = {}
   for (const r of settings || []) map[r.key] = r.value
   if (map['meal_order_active'] !== 'true') return Response.json({ error: 'Order window closed' }, { status: 403 })
-  const now = Date.now()
-  const start = map['meal_order_start'] ? new Date(map['meal_order_start']).getTime() : 0
-  const end = map['meal_order_end'] ? new Date(map['meal_order_end']).getTime() : Infinity
-  if (now < start || now > end) return Response.json({ error: 'Order window closed' }, { status: 403 })
 
   const { error } = await supabase.from('meal_orders').insert({ name, phone, menu_item })
   if (error) return Response.json({ error: error.message }, { status: 500 })
