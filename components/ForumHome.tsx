@@ -74,7 +74,7 @@ export default function ForumHome() {
   const [activeDay, setActiveDay] = useState(0)
   const [showModal, setShowModal] = useState(false)
   const [showClosed, setShowClosed] = useState(false)
-  const [regOverride, setRegOverride] = useState(false)
+  const [regOverride, setRegOverride] = useState<boolean | null>(null)
   const [popupNotice, setPopupNotice] = useState<{id: string; title: string; content: string} | null>(null)
   const [appSettings, setAppSettings] = useState<AppSettings>({ meal_order_active: false, meal_order_start: '', meal_order_end: '', meal_menu: [], rooms_published: false })
   const [showMealOrder, setShowMealOrder] = useState(false)
@@ -124,6 +124,7 @@ export default function ForumHome() {
 
   const now = new Date()
   const isEventDay = now >= EVENT_START
+  const settingsLoaded = regOverride !== null
   const isClosed = !regOverride && now >= DEADLINE
 
   return (
@@ -267,7 +268,7 @@ export default function ForumHome() {
           </button>
         )}
         {/* 주문/호실 공지 없을 때만 등록 버튼 표시, 포럼 당일 이후 완전 숨김 */}
-        {!appSettings.meal_order_active && !appSettings.rooms_published && !isEventDay && (
+        {!appSettings.meal_order_active && !appSettings.rooms_published && !isEventDay && settingsLoaded && (
           <FloatingRegisterBtn onClick={() => isClosed ? setShowClosed(true) : setShowModal(true)} isClosed={isClosed} />
         )}
       </div>
