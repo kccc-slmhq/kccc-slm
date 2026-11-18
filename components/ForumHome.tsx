@@ -108,6 +108,7 @@ export default function ForumHome() {
         meal_menu: menu,
         rooms_published: s.rooms_published === 'true',
       })
+      setRegOverride(s.reg_open_override === 'true')
     }).catch(() => {})
   }, [])
 

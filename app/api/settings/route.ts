@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 
 // Public endpoint — only exposes non-sensitive settings needed by the user app
-const PUBLIC_KEYS = ['meal_order_active', 'meal_order_start', 'meal_order_end', 'meal_menu', 'meal_order_title', 'rooms_published']
+const PUBLIC_KEYS = ['meal_order_active', 'meal_order_start', 'meal_order_end', 'meal_menu', 'meal_order_title', 'rooms_published', 'reg_open_override']
 
 export async function GET() {
   const supabase = await createClient()

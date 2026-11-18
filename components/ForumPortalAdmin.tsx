@@ -1157,7 +1157,7 @@ function SettingsTab() {
   useEffect(() => {
     fetch('/api/admin/settings').then(r => r.json()).then(d => {
       const s = d.settings || {}
-      setRegOpen(s.reg_open_override === todayKST())
+      setRegOpen(s.reg_open_override === 'true')
     })
   }, [])
 
@@ -1165,7 +1165,7 @@ function SettingsTab() {
     setSaving(true)
     await fetch('/api/admin/settings', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: 'reg_open_override', value: v ? todayKST() : null })
+      body: JSON.stringify({ key: 'reg_open_override', value: v ? 'true' : null })
     })
     setRegOpen(v)
     setSaving(false)
@@ -1186,7 +1186,7 @@ function SettingsTab() {
           }}>
           {saving ? '처리 중...' : regOpen ? '🟢 오픈 중' : '🔴 닫힘'}
         </button>
-        <p className="text-xs text-center" style={{ color: C.textMuted }}>당일 자정(00:00)에 자동으로 닫힙니다</p>
+        <p className="text-xs text-center" style={{ color: C.textMuted }}>닫힘 버튼을 누를 때까지 오픈 상태 유지</p>
       </div>
 
       <div className="rounded-2xl p-4" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
