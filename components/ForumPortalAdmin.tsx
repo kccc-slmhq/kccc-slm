@@ -501,15 +501,23 @@ function CheckInTab() {
   const feePaid = attendees.filter(r => r.fee_paid && !isSlmhq(r) && !r.fee_exempt).length
   const feeExempt = attendees.filter(r => isSlmhq(r) || r.fee_exempt).length
   const attended = attendees.filter(r => r.attended).length
+  const overnight = attendees.filter(r => r.attendance_type === '전 일정(1박 2일) 참석').length
   const keyTaken = attendees.filter(r => r.key_taken).length
   const feeTotal = feePaid * 50000
+
+  const tiles: [string, number, number, string][] = [
+    ['회비 납부', feePaid, attendees.length, C.green],
+    ['면제', feeExempt, attendees.length, C.amber],
+    ['참석체크', attended, attendees.length, C.cyan],
+    ['키수령', keyTaken, overnight, '#a78bfa'],
+  ]
 
   return (
     <div className="space-y-4">
       <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
-        {([['회비 납부', feePaid, C.green], ['면제', feeExempt, C.amber], ['참석체크', attended, C.cyan], ['키수령', keyTaken, '#a78bfa']] as [string, number, string][]).map(([l, n, c]) => (
+        {tiles.map(([l, n, total, c]) => (
           <div key={l} className="rounded-2xl p-3 text-center" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
-            <p className="font-black text-xl" style={{ color: c }}>{n}<span className="text-xs font-normal" style={{ color: C.textMuted }}>/{attendees.length}</span></p>
+            <p className="font-black text-xl" style={{ color: c }}>{n}<span className="text-xs font-normal" style={{ color: C.textMuted }}>/{total}</span></p>
             <p className="text-xs mt-0.5" style={{ color: C.textSecondary }}>{l}</p>
           </div>
         ))}
