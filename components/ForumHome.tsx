@@ -203,12 +203,12 @@ export default function ForumHome() {
                 <p className="text-[#4dd9ff] text-xs font-bold mt-1">네이버 지도 →</p>
               </div>
             </a>
-            <a href="https://naver.me/5vJUGSbp"
+            <a href="https://naver.me/FsRsOxzq"
               target="_blank" rel="noopener noreferrer"
               className="flex flex-col gap-2 card-dark rounded-2xl p-4 active:scale-95 transition-all">
               <div className="w-10 h-10 rounded-xl bg-purple-900/50 flex items-center justify-center text-xl border border-purple-500/30">🏨</div>
               <div>
-                <p className="text-white font-bold text-sm leading-snug">숙소(홈스테이 수원)</p>
+                <p className="text-white font-bold text-sm leading-snug">홈즈스테이 수원</p>
                 <p className="text-white/40 text-xs mt-0.5">경기 수원시 팔달구 인계로 116</p>
                 <p className="text-[#4dd9ff] text-xs font-bold mt-1">네이버 지도 →</p>
               </div>
