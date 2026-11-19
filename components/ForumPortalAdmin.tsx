@@ -867,6 +867,16 @@ function InsuranceTab() {
 }
 
 /* ─────────────── Tab 4: Rooms ─────────────── */
+const HOTELS = ['홈즈스테이 수원', '수원실크로드호텔']
+
+function parseRoom(val: string): { hotel: string; num: string } {
+  for (const h of HOTELS) {
+    if (val.startsWith(h + ' ')) return { hotel: h, num: val.slice(h.length + 1) }
+    if (val === h) return { hotel: h, num: '' }
+  }
+  return { hotel: '', num: val }
+}
+
 function RoomsTab() {
   const [regs, setRegs] = useState<Reg[]>([])
   const [rooms, setRooms] = useState<Record<string, string>>({})
@@ -951,9 +961,19 @@ function RoomsTab() {
                     <span className="font-bold text-sm" style={{ color: C.textPrimary }}>{r.name}</span>
                     <span className="text-xs font-bold ml-2" style={{ color: C.textMuted }}>{r.cohort}기 · {r.district}</span>
                   </div>
-                  <input value={rooms[r.id] || ''} onChange={e => setRooms(prev => ({ ...prev, [r.id]: e.target.value }))}
-                    placeholder="호실 입력" className="w-24 rounded-lg px-3 py-2 text-sm text-center outline-none font-bold"
-                    style={{ background: gender === '여성' ? '#fce7f3' : '#eff6ff', border: `1px solid ${gender === '여성' ? '#fbcfe8' : '#bfdbfe'}`, color: gender === '여성' ? '#be185d' : '#1d4ed8' }} />
+                  <div className="flex flex-col gap-1 items-end">
+                    <select value={parseRoom(rooms[r.id] || '').hotel}
+                      onChange={e => { const { num } = parseRoom(rooms[r.id] || ''); setRooms(prev => ({ ...prev, [r.id]: e.target.value ? `${e.target.value} ${num}`.trim() : num })) }}
+                      className="rounded-lg px-2 py-1.5 text-xs outline-none font-bold w-32"
+                      style={{ background: gender === '여성' ? '#fce7f3' : '#eff6ff', border: `1px solid ${gender === '여성' ? '#fbcfe8' : '#bfdbfe'}`, color: gender === '여성' ? '#be185d' : '#1d4ed8' }}>
+                      <option value="">호텔 선택</option>
+                      {HOTELS.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                    <input value={parseRoom(rooms[r.id] || '').num}
+                      onChange={e => { const { hotel } = parseRoom(rooms[r.id] || ''); setRooms(prev => ({ ...prev, [r.id]: hotel ? `${hotel} ${e.target.value}`.trim() : e.target.value })) }}
+                      placeholder="호실 번호" className="w-32 rounded-lg px-2 py-1.5 text-sm text-center outline-none font-bold"
+                      style={{ background: gender === '여성' ? '#fce7f3' : '#eff6ff', border: `1px solid ${gender === '여성' ? '#fbcfe8' : '#bfdbfe'}`, color: gender === '여성' ? '#be185d' : '#1d4ed8' }} />
+                  </div>
                 </div>
               ))}
             </div>

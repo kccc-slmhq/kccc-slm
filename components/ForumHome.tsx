@@ -765,8 +765,8 @@ function RoomSearchModal({ onClose }: { onClose: () => void }) {
         {results && results.length > 0 && results.map((r, i) => (
           <div key={i} className="rounded-2xl p-5 space-y-3" style={{ background: 'rgba(124,92,252,0.15)', border: '1px solid rgba(124,92,252,0.3)' }}>
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-black" style={{ background: '#7c5cfc', color: 'white' }}>
-                {r.room_number || '?'}
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black" style={{ background: '#7c5cfc', color: 'white' }}>
+                {r.room_number ? r.room_number.split(' ').pop() : '?'}
               </div>
               <div>
                 <p className="text-white font-black text-lg">{r.room_number ? `${r.room_number}호` : '미배정'}</p>
