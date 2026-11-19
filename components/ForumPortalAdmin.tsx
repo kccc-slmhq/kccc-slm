@@ -867,7 +867,7 @@ function InsuranceTab() {
 }
 
 /* ─────────────── Tab 4: Rooms ─────────────── */
-const HOTELS = ['홈즈스테이 수원', '수원실크로드호텔']
+const HOTELS = ['홈즈스테이', '실크로드']
 
 function parseRoom(val: string): { hotel: string; num: string } {
   for (const h of HOTELS) {
