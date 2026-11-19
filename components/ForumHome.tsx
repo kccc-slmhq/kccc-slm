@@ -192,27 +192,39 @@ export default function ForumHome() {
           <h2 className="text-[#a78bfa] font-bold text-lg mb-3 flex items-center gap-2">
             <span>📍</span> 수련회 장소
           </h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-3">
             <a href="https://naver.me/FOR75yzX"
               target="_blank" rel="noopener noreferrer"
-              className="flex flex-col gap-2 card-dark rounded-2xl p-4 active:scale-95 transition-all">
-              <div className="w-10 h-10 rounded-xl bg-purple-900/50 flex items-center justify-center text-xl border border-purple-500/30">🏢</div>
-              <div>
+              className="flex items-center gap-3 card-dark rounded-2xl p-4 active:scale-95 transition-all">
+              <div className="w-10 h-10 rounded-xl bg-purple-900/50 flex items-center justify-center text-xl border border-purple-500/30 shrink-0">🏢</div>
+              <div className="flex-1">
                 <p className="text-white font-bold text-sm leading-snug">수원CCC 회관</p>
                 <p className="text-white/40 text-xs mt-0.5">경기 수원시 권선구 새터로23번길 12-6</p>
-                <p className="text-[#4dd9ff] text-xs font-bold mt-1">네이버 지도 →</p>
               </div>
+              <p className="text-[#4dd9ff] text-xs font-bold shrink-0">지도 →</p>
             </a>
+            <div className="grid grid-cols-2 gap-3">
             <a href="https://naver.me/FsRsOxzq"
               target="_blank" rel="noopener noreferrer"
               className="flex flex-col gap-2 card-dark rounded-2xl p-4 active:scale-95 transition-all">
               <div className="w-10 h-10 rounded-xl bg-purple-900/50 flex items-center justify-center text-xl border border-purple-500/30">🏨</div>
               <div>
                 <p className="text-white font-bold text-sm leading-snug">홈즈스테이 수원</p>
-                <p className="text-white/40 text-xs mt-0.5">경기 수원시 팔달구 인계로 116 홈즈스테이 수원</p>
+                <p className="text-white/40 text-xs mt-0.5">경기 수원시 팔달구 인계로 116</p>
                 <p className="text-[#4dd9ff] text-xs font-bold mt-1">네이버 지도 →</p>
               </div>
             </a>
+            <a href="https://naver.me/5uIYf8jO"
+              target="_blank" rel="noopener noreferrer"
+              className="flex flex-col gap-2 card-dark rounded-2xl p-4 active:scale-95 transition-all">
+              <div className="w-10 h-10 rounded-xl bg-purple-900/50 flex items-center justify-center text-xl border border-purple-500/30">🏨</div>
+              <div>
+                <p className="text-white font-bold text-sm leading-snug">실크로드 수원</p>
+                <p className="text-white/40 text-xs mt-0.5">경기 수원시</p>
+                <p className="text-[#4dd9ff] text-xs font-bold mt-1">네이버 지도 →</p>
+              </div>
+            </a>
+            </div>
           </div>
         </section>
 
