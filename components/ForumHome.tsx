@@ -220,7 +220,7 @@ export default function ForumHome() {
               <div className="w-10 h-10 rounded-xl bg-purple-900/50 flex items-center justify-center text-xl border border-purple-500/30">🏨</div>
               <div>
                 <p className="text-white font-bold text-sm leading-snug">실크로드 수원</p>
-                <p className="text-white/40 text-xs mt-0.5">경기 수원시</p>
+                <p className="text-white/40 text-xs mt-0.5">경기 수원시 팔달구 경수대로466번길 28</p>
                 <p className="text-[#4dd9ff] text-xs font-bold mt-1">네이버 지도 →</p>
               </div>
             </a>
