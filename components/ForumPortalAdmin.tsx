@@ -267,12 +267,19 @@ function RegistrationsTab() {
   const [filterAttending, setFilterAttending] = useState(false)
   const [editing, setEditing] = useState<Reg | null>(null)
   const [addingOnsite, setAddingOnsite] = useState(false)
+  const [confirmNoShow, setConfirmNoShow] = useState<Reg | null>(null)
 
   function load() {
     fetch('/api/admin/registrations').then(r => r.json())
       .then(d => { setRegs(d.registrations || []); setLoading(false) })
   }
   useEffect(() => { load() }, [])
+
+  async function markNoShow(id: string) {
+    await fetch('/api/admin/registrations', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, attending: false }) })
+    setRegs(prev => prev.map(r => r.id === id ? { ...r, attending: false } : r))
+    setConfirmNoShow(null)
+  }
 
   function exportCSV() {
     const rows = [['이름','기수','지구','캠퍼스','성별','연락처','참석여부','등록일']]
@@ -339,9 +346,24 @@ function RegistrationsTab() {
                     </span>
                   </td>
                   <td className="px-3 py-2.5">
-                    <button onClick={() => setEditing(r)}
-                      className="px-2.5 py-1 rounded-lg text-xs font-bold"
-                      style={{ background: C.purpleLight, color: C.purple }}>수정</button>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => setEditing(r)}
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold"
+                        style={{ background: C.purpleLight, color: C.purple }}>수정</button>
+                      {r.attending === true && (
+                        <button onClick={() => setConfirmNoShow(r)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold"
+                          style={{ background: '#fef2f2', color: C.red, border: `1px solid #fecaca` }}>불참</button>
+                      )}
+                      {r.attending === false && (
+                        <button onClick={async () => {
+                          await fetch('/api/admin/registrations', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id, attending: true }) })
+                          setRegs(prev => prev.map(x => x.id === r.id ? { ...x, attending: true } : x))
+                        }}
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold"
+                          style={{ background: '#f0fdf4', color: '#16a34a', border: `1px solid #bbf7d0` }}>복구</button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -353,6 +375,20 @@ function RegistrationsTab() {
         </div>
       )}
       {editing && <EditRegModal reg={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load() }} />}
+      {confirmNoShow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setConfirmNoShow(null)}>
+          <div className="w-full max-w-xs rounded-3xl p-6 space-y-4" style={{ background: 'white' }} onClick={e => e.stopPropagation()}>
+            <p className="font-black text-base text-center" style={{ color: C.textPrimary }}>불참 처리</p>
+            <p className="text-sm text-center" style={{ color: C.textSecondary }}>
+              <strong>{confirmNoShow.name}</strong>을(를) 불참으로 처리하면<br/>호실 배정·키수령에서 자동 제외됩니다.
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmNoShow(null)} className="flex-1 py-3 rounded-2xl font-bold text-sm" style={{ background: C.inputBg, color: C.textSecondary }}>취소</button>
+              <button onClick={() => markNoShow(confirmNoShow.id)} className="flex-1 py-3 rounded-2xl font-bold text-sm text-white" style={{ background: C.red }}>불참 처리</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
