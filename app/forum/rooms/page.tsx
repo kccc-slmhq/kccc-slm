@@ -1,72 +1,101 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { useState } from "react"
 
-type Reg = { name: string; district: string; room_number: string | null }
+type RoomResult = {
+  name: string; cohort: string; district: string; room_number: string;
+  room_key_taken: boolean;
+  roommates: { name: string; cohort: string; district: string; key_taken: boolean }[]
+}
 
 export default function RoomsPage() {
-  const [published, setPublished] = useState<boolean | null>(null)
-  const [regs, setRegs] = useState<Reg[]>([])
+  const [name, setName] = useState('')
+  const [cohort, setCohort] = useState('')
+  const [results, setResults] = useState<RoomResult[] | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  useEffect(() => {
-    async function load() {
-      const supabase = createClient()
-      const { data: settings } = await supabase.from('forum_settings').select('key,value').eq('key', 'rooms_published').maybeSingle()
-      if (settings?.value !== 'true') { setPublished(false); return }
-      setPublished(true)
-      const { data } = await supabase.from('forum_registrations').select('name,district,room_number').eq('attending', true).order('room_number', { ascending: true })
-      setRegs(data || [])
-    }
-    load()
-  }, [])
-
-  if (published === null) {
-    return <div className="min-h-screen flex items-center justify-center" style={{ background: '#0f0830' }}>
-      <p className="text-white/40">불러오는 중...</p>
-    </div>
+  async function search() {
+    if (!name.trim() || !cohort.trim()) { setError('이름과 기수를 모두 입력해주세요.'); return }
+    setLoading(true); setError(''); setResults(null)
+    const r = await fetch(`/api/rooms?name=${encodeURIComponent(name.trim())}&cohort=${encodeURIComponent(cohort.trim())}`)
+    const data = await r.json()
+    setLoading(false)
+    if (r.status === 403) { setError('호실 배정이 아직 공지되지 않았습니다.'); return }
+    if (data.error === 'not found') { setError('등록 정보를 찾을 수 없습니다. 이름과 기수를 확인해주세요.'); return }
+    if (data.error) { setError(data.error); return }
+    setResults(data.results || [])
   }
-
-  if (!published) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: '#0f0830' }}>
-        <p className="text-6xl mb-4">🛏️</p>
-        <p className="font-black text-xl" style={{ color: '#a78bfa' }}>호실 배정 준비 중</p>
-        <p className="text-white/40 text-sm mt-2">호실 배정이 아직 공지되지 않았습니다.</p>
-        <button onClick={() => window.history.back()} className="mt-8 px-6 py-3 rounded-2xl font-bold text-white" style={{ background: 'rgba(124,92,252,0.3)' }}>돌아가기</button>
-      </div>
-    )
-  }
-
-  const grouped: Record<string, Reg[]> = {}
-  regs.forEach(r => {
-    const room = r.room_number || '미배정'
-    if (!grouped[room]) grouped[room] = []
-    grouped[room].push(r)
-  })
 
   return (
     <div className="min-h-screen px-4 py-8 max-w-sm mx-auto" style={{ background: '#0f0830' }}>
       <div className="mb-6">
-        <p className="font-black text-2xl" style={{ color: '#a78bfa' }}>🛏️ 숙소 호실 배정</p>
-        <p className="text-white/40 text-sm mt-1">2026 교육간사 포럼 · 수원 CCC 회관</p>
+        <p className="font-black text-2xl" style={{ color: '#a78bfa' }}>🛏️ 숙소 호실 확인</p>
+        <p className="text-white/40 text-sm mt-1">이름과 기수로 내 호실을 확인하세요.</p>
       </div>
 
-      <div className="space-y-3">
-        {Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b, 'ko')).map(([room, list]) => (
-          <div key={room} className="rounded-2xl p-4" style={{ background: '#1a0f3a', border: '1px solid rgba(124,92,252,0.2)' }}>
-            <p className="font-black text-base mb-2" style={{ color: room === '미배정' ? '#f87171' : '#4dd9ff' }}>{room}</p>
-            <div className="space-y-1">
-              {list.map((r, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <span className="text-white text-sm font-bold">{r.name}</span>
-                  <span className="text-white/40 text-xs">{r.district}</span>
+      <div className="space-y-3 mb-4">
+        <input
+          value={name} onChange={e => setName(e.target.value)}
+          placeholder="이름"
+          className="w-full px-4 py-3 rounded-2xl font-bold text-white text-base outline-none"
+          style={{ background: '#1a0f3a', border: '1px solid rgba(124,92,252,0.3)' }}
+          onKeyDown={e => e.key === 'Enter' && search()}
+        />
+        <input
+          value={cohort} onChange={e => setCohort(e.target.value)}
+          placeholder="기수 (예: 30)"
+          className="w-full px-4 py-3 rounded-2xl font-bold text-white text-base outline-none"
+          style={{ background: '#1a0f3a', border: '1px solid rgba(124,92,252,0.3)' }}
+          onKeyDown={e => e.key === 'Enter' && search()}
+        />
+        <button
+          onClick={search} disabled={loading}
+          className="w-full py-3 rounded-2xl font-black text-white text-base"
+          style={{ background: 'linear-gradient(135deg,#7c5cfc,#4dd9ff)' }}
+        >
+          {loading ? '검색 중...' : '호실 확인'}
+        </button>
+      </div>
+
+      {error && <p className="text-center text-sm mt-4" style={{ color: '#f87171' }}>{error}</p>}
+
+      {results && results.length === 0 && (
+        <p className="text-center text-white/40 text-sm mt-4">결과가 없습니다.</p>
+      )}
+
+      {results && results.map((r, i) => (
+        <div key={i} className="mt-4 rounded-2xl p-5" style={{ background: '#1a0f3a', border: '1px solid rgba(124,92,252,0.2)' }}>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm" style={{ background: 'rgba(77,217,255,0.15)', color: '#4dd9ff' }}>
+              {r.room_number ? r.room_number.split(' ').pop() : '?'}
+            </div>
+            <div>
+              <p className="font-black text-white text-base">{r.room_number ? `${r.room_number}호` : '미배정'}</p>
+              <p className="text-white/40 text-xs">{r.name} · {r.district}</p>
+            </div>
+          </div>
+          {r.roommates.length > 0 && (
+            <div className="mb-3 space-y-1">
+              <p className="text-white/30 text-xs mb-1">같은 방</p>
+              {r.roommates.map((m, j) => (
+                <div key={j} className="flex justify-between text-sm">
+                  <span className="text-white/70 font-bold">{m.name}</span>
+                  <span className="text-white/30">{m.district}</span>
                 </div>
               ))}
             </div>
-          </div>
-        ))}
-      </div>
+          )}
+          {r.room_number && (
+            <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              <span className="text-lg">{r.room_key_taken ? '🔑' : '🔒'}</span>
+              <span className="text-sm font-bold" style={{ color: r.room_key_taken ? '#4ade80' : 'rgba(255,255,255,0.4)' }}>
+                {r.room_key_taken ? '키 수령 완료' : '키 미수령'}
+              </span>
+            </div>
+          )}
+        </div>
+      ))}
 
       <button onClick={() => window.location.href = '/forum/home'} className="mt-8 w-full py-3 rounded-2xl font-bold text-white/60" style={{ background: 'rgba(255,255,255,0.06)' }}>홈으로</button>
     </div>
