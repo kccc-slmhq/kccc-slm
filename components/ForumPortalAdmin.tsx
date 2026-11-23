@@ -925,6 +925,11 @@ function RoomsTab() {
 
   async function publish(v: boolean) {
     setSaving(true)
+    if (v) {
+      await Promise.all(Object.entries(rooms).map(([id, room_number]) =>
+        fetch('/api/admin/registrations', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, room_number }) })
+      ))
+    }
     await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'rooms_published', value: v ? 'true' : null }) })
     setPublished(v)
     setSaving(false)
