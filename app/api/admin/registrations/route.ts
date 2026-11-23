@@ -21,7 +21,7 @@ export async function PATCH(request: Request) {
   if (!await checkAuth()) return Response.json({ error: 'Unauthorized' }, { status: 401 })
   const { id, ...updates } = await request.json()
   if (!id) return Response.json({ error: 'Missing id' }, { status: 400 })
-  const allowed = ['fee_paid', 'attended', 'room_number', 'key_taken', 'fee_exempt',
+  const allowed = ['fee_paid', 'attended', 'room_number', 'key_taken', 'fee_exempt', 'fee_memo',
     'name', 'cohort', 'district', 'campus', 'phone', 'gender', 'attendance_type',
     'transportation', 'attending', 'absent_reason', 'id_number']
   const patch: Record<string, unknown> = {}

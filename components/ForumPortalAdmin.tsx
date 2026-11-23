@@ -33,7 +33,7 @@ type Reg = {
   transportation?: string; room_note?: string; gender?: string; id_number?: string
   questions?: string; registered_at: string
   fee_paid?: boolean; attended?: boolean; room_number?: string; key_taken?: boolean
-  fee_exempt?: boolean
+  fee_exempt?: boolean; fee_memo?: string
 }
 
 type Settings = Record<string, string>
@@ -576,15 +576,16 @@ function CheckInTab() {
                     <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.textSecondary }}>{r.cohort}기</td>
                     <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.textSecondary }}>{r.district}</td>
                     <td className="px-3 py-2.5">
-                      {exempt ? (
-                        <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
+                        {exempt ? (
                           <div className="w-6 h-6 rounded-md border-2 flex items-center justify-center" style={{ background: '#d1fae5', borderColor: '#6ee7b7' }}>
                             <span className="text-xs font-black" style={{ color: '#059669' }}>✓</span>
                           </div>
-                        </div>
-                      ) : (
-                        <Checkbox checked={!!r.fee_paid} disabled={saving === r.id} onChange={v => patch(r.id, { fee_paid: v })} color={C.green} />
-                      )}
+                        ) : (
+                          <Checkbox checked={!!r.fee_paid} disabled={saving === r.id} onChange={v => patch(r.id, { fee_paid: v })} color={C.green} />
+                        )}
+                        <FeeMemoBtn id={r.id} memo={r.fee_memo || ''} onSave={memo => patch(r.id, { fee_memo: memo })} />
+                      </div>
                     </td>
                     <td className="px-3 py-2.5">
                       <Checkbox checked={!!r.attended} disabled={saving === r.id} onChange={v => patch(r.id, { attended: v })} color={C.cyan} />
@@ -1274,6 +1275,35 @@ function SettingsTab() {
 }
 
 /* ─────────────── Checkbox ─────────────── */
+function FeeMemoBtn({ id, memo, onSave }: { id: string; memo: string; onSave: (m: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [val, setVal] = useState(memo)
+  function save() { onSave(val.trim()); setOpen(false) }
+  return (
+    <div className="relative">
+      <button onClick={() => { setVal(memo); setOpen(o => !o) }}
+        title={memo || '메모 없음'}
+        className="w-6 h-6 rounded-md flex items-center justify-center text-xs transition-all"
+        style={{ background: memo ? '#fef9c3' : C.inputBg, border: `1px solid ${memo ? '#fde047' : C.border}`, color: memo ? '#854d0e' : C.textMuted }}>
+        📝
+      </button>
+      {open && (
+        <div className="absolute z-50 left-0 top-8 shadow-xl rounded-xl p-3 w-56 space-y-2"
+          style={{ background: 'white', border: `1px solid ${C.border}` }}>
+          <textarea value={val} onChange={e => setVal(e.target.value)}
+            placeholder="메모 입력..." rows={3} autoFocus
+            className="w-full text-xs rounded-lg px-2 py-1.5 outline-none resize-none"
+            style={{ background: C.inputBg, border: `1px solid ${C.border}`, color: C.textPrimary }} />
+          <div className="flex gap-2">
+            <button onClick={save} className="flex-1 py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: C.green }}>저장</button>
+            <button onClick={() => setOpen(false)} className="flex-1 py-1.5 rounded-lg text-xs font-bold" style={{ background: C.inputBg, color: C.textMuted }}>닫기</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Checkbox({ checked, onChange, disabled, color }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; color?: string }) {
   return (
     <button onClick={() => !disabled && onChange(!checked)} disabled={disabled}
