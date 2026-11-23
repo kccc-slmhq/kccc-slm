@@ -918,6 +918,9 @@ function RoomsTab() {
     await Promise.all(Object.entries(rooms).map(([id, room_number]) =>
       fetch('/api/admin/registrations', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, room_number }) })
     ))
+    if (published) {
+      await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'rooms_published', value: 'true' }) })
+    }
     setSaving(false)
     setMsg('저장됨')
     setTimeout(() => setMsg(''), 2000)
