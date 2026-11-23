@@ -880,6 +880,7 @@ function parseRoom(val: string): { hotel: string; num: string } {
 function RoomsTab() {
   const [regs, setRegs] = useState<Reg[]>([])
   const [rooms, setRooms] = useState<Record<string, string>>({})
+  const [keyTaken, setKeyTaken] = useState<Record<string, boolean>>({})
   const [published, setPublished] = useState(false)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
@@ -892,13 +893,25 @@ function RoomsTab() {
       ])
       const list: Reg[] = (rr.registrations || []).filter((r: Reg) => r.attending === true && r.attendance_type === '전 일정(1박 2일) 참석')
       setRegs(list)
-      const init: Record<string, string> = {}
-      list.forEach((r: Reg) => { init[r.id] = r.room_number || '' })
-      setRooms(init)
+      const initRooms: Record<string, string> = {}
+      const initKeys: Record<string, boolean> = {}
+      list.forEach((r: Reg) => { initRooms[r.id] = r.room_number || ''; initKeys[r.id] = r.key_taken || false })
+      setRooms(initRooms)
+      setKeyTaken(initKeys)
       setPublished(sr.settings?.rooms_published === 'true')
     }
     load()
   }, [])
+
+  async function toggleRoomKey(roomVal: string) {
+    const inRoom = regs.filter(r => (rooms[r.id] || '') === roomVal)
+    if (inRoom.length === 0) return
+    const newVal = !inRoom.every(r => keyTaken[r.id])
+    await Promise.all(inRoom.map(r =>
+      fetch('/api/admin/registrations', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id, key_taken: newVal }) })
+    ))
+    setKeyTaken(prev => { const next = { ...prev }; inRoom.forEach(r => { next[r.id] = newVal }); return next })
+  }
 
   async function saveAll() {
     setSaving(true)
@@ -991,6 +1004,33 @@ function RoomsTab() {
                 <span className="text-sm" style={{ color: C.textSecondary }}>{names.join(', ')}</span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {published && Object.keys(grouped).filter(r => r !== '미배정').length > 0 && (
+        <div className="rounded-2xl p-5 space-y-3" style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
+          <p className="text-sm font-bold" style={{ color: C.textSecondary }}>🔑 호실별 키 수령 체크</p>
+          <p className="text-xs" style={{ color: C.textMuted }}>호실 단위로 체크 — 같은 방 전원 자동 처리</p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {Object.entries(grouped).filter(([r]) => r !== '미배정').sort().map(([room, names]) => {
+              const inRoom = regs.filter(r => (rooms[r.id] || '') === room)
+              const allTaken = inRoom.length > 0 && inRoom.every(r => keyTaken[r.id])
+              return (
+                <button key={room} onClick={() => toggleRoomKey(room)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-left transition-all"
+                  style={{ background: allTaken ? '#dcfce7' : C.inputBg, border: `1px solid ${allTaken ? '#86efac' : C.border}` }}>
+                  <div className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all"
+                    style={{ background: allTaken ? '#16a34a' : 'transparent', borderColor: allTaken ? '#16a34a' : '#d1d5db' }}>
+                    {allTaken && <span className="text-white text-xs font-black">✓</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-black text-sm" style={{ color: allTaken ? '#15803d' : C.purple }}>{room}</span>
+                    <span className="text-xs ml-1.5" style={{ color: allTaken ? '#16a34a' : C.textMuted }}>{names.join(', ')}</span>
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}

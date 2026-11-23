@@ -717,7 +717,7 @@ function MealOrderModal({ menu, onClose }: { menu: string[]; onClose: () => void
 }
 
 /* ── 호실 검색 팝업 ── */
-type RoomResult = { name: string; cohort: string; district: string; room_number: string; roommates: { name: string; cohort: string; district: string }[] }
+type RoomResult = { name: string; cohort: string; district: string; room_number: string; room_key_taken: boolean; roommates: { name: string; cohort: string; district: string; key_taken: boolean }[] }
 
 function RoomSearchModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('')
@@ -788,6 +788,14 @@ function RoomSearchModal({ onClose }: { onClose: () => void }) {
             )}
             {r.roommates.length === 0 && r.room_number && (
               <p className="text-white/40 text-sm">룸메이트 없음 (1인실)</p>
+            )}
+            {r.room_number && (
+              <div className="flex items-center gap-2 mt-1 pt-3 border-t border-white/10">
+                <span className="text-lg">{r.room_key_taken ? '🔑' : '🔒'}</span>
+                <span className="text-sm font-bold" style={{ color: r.room_key_taken ? '#4ade80' : 'rgba(255,255,255,0.4)' }}>
+                  {r.room_key_taken ? '키 수령 완료' : '키 미수령'}
+                </span>
+              </div>
             )}
           </div>
         ))}

@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   // Find the person
   const { data: persons } = await supabase
     .from('forum_registrations')
-    .select('id,name,cohort,district,room_number,attending')
+    .select('id,name,cohort,district,room_number,attending,key_taken')
     .ilike('name', name)
     .eq('cohort', cohort)
     .eq('attending', true)
@@ -27,14 +27,16 @@ export async function GET(request: Request) {
 
   // For each match, get roommates
   const results = await Promise.all(persons.map(async person => {
-    if (!person.room_number) return { ...person, roommates: [] }
+    if (!person.room_number) return { ...person, roommates: [], room_key_taken: false }
     const { data: roommates } = await supabase
       .from('forum_registrations')
-      .select('name,cohort,district')
+      .select('name,cohort,district,key_taken')
       .eq('room_number', person.room_number)
       .eq('attending', true)
       .neq('id', person.id)
-    return { ...person, roommates: roommates || [] }
+    const allInRoom = [person, ...(roommates || [])]
+    const room_key_taken = allInRoom.some(r => r.key_taken)
+    return { ...person, roommates: roommates || [], room_key_taken }
   }))
 
   return Response.json({ results })
