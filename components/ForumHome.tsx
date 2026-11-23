@@ -86,12 +86,6 @@ export default function ForumHome() {
   const [showRoomSearch, setShowRoomSearch] = useState(false)
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase.from('announcements').select('content').eq('title', '__reg_open__').maybeSingle()
-      .then(({ data }) => { if (data && data.content === todayKST()) setRegOverride(true) })
-  }, [])
-
-  useEffect(() => {
     fetch('/api/notices').then(r => r.json()).then(({ notices }) => {
       if (!notices?.length) return
       let seen: string[] = []
